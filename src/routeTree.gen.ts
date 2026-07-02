@@ -9,38 +9,133 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TsSecretGate2026RouteImport } from './routes/ts-secret-gate-2026'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedDubbingRouteImport } from './routes/_authenticated/dubbing'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedClipperRouteImport } from './routes/_authenticated/clipper'
 
+const TsSecretGate2026Route = TsSecretGate2026RouteImport.update({
+  id: '/ts-secret-gate-2026',
+  path: '/ts-secret-gate-2026',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedDubbingRoute = AuthenticatedDubbingRouteImport.update({
+  id: '/dubbing',
+  path: '/dubbing',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedClipperRoute = AuthenticatedClipperRouteImport.update({
+  id: '/clipper',
+  path: '/clipper',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/ts-secret-gate-2026': typeof TsSecretGate2026Route
+  '/clipper': typeof AuthenticatedClipperRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/dubbing': typeof AuthenticatedDubbingRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/ts-secret-gate-2026': typeof TsSecretGate2026Route
+  '/clipper': typeof AuthenticatedClipperRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/dubbing': typeof AuthenticatedDubbingRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/ts-secret-gate-2026': typeof TsSecretGate2026Route
+  '/_authenticated/clipper': typeof AuthenticatedClipperRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/dubbing': typeof AuthenticatedDubbingRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/ts-secret-gate-2026'
+    | '/clipper'
+    | '/dashboard'
+    | '/dubbing'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/ts-secret-gate-2026'
+    | '/clipper'
+    | '/dashboard'
+    | '/dubbing'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/ts-secret-gate-2026'
+    | '/_authenticated/clipper'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/dubbing'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
+  TsSecretGate2026Route: typeof TsSecretGate2026Route
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/ts-secret-gate-2026': {
+      id: '/ts-secret-gate-2026'
+      path: '/ts-secret-gate-2026'
+      fullPath: '/ts-secret-gate-2026'
+      preLoaderRoute: typeof TsSecretGate2026RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +143,51 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/dubbing': {
+      id: '/_authenticated/dubbing'
+      path: '/dubbing'
+      fullPath: '/dubbing'
+      preLoaderRoute: typeof AuthenticatedDubbingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/clipper': {
+      id: '/_authenticated/clipper'
+      path: '/clipper'
+      fullPath: '/clipper'
+      preLoaderRoute: typeof AuthenticatedClipperRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedClipperRoute: typeof AuthenticatedClipperRoute
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedDubbingRoute: typeof AuthenticatedDubbingRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedClipperRoute: AuthenticatedClipperRoute,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedDubbingRoute: AuthenticatedDubbingRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
+  TsSecretGate2026Route: TsSecretGate2026Route,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
