@@ -84,6 +84,8 @@ function Index() {
 
       <BeforeAfterSection />
 
+      <BentoGrid />
+
       <section id="pricing" className="mx-auto max-w-5xl px-6 pb-24">
         <h2 className="text-3xl font-bold text-center mb-10">{t("pricing")}</h2>
         <div className="grid gap-6 md:grid-cols-2">
