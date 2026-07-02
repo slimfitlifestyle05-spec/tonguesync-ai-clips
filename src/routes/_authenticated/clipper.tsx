@@ -16,6 +16,15 @@ import { ArrowLeft, Lock, Scissors } from "lucide-react";
 import { toast } from "sonner";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
+import { ProcessingProgress } from "@/components/ProcessingProgress";
+
+const CLIP_STAGES = [
+  "Analyzing transcript…",
+  "Detecting viral moments…",
+  "Generating 3 shorts…",
+  "Applying style & captions…",
+  "Finalizing your clips…",
+];
 
 export const Route = createFileRoute("/_authenticated/clipper")({
   head: () => ({ meta: [{ title: "AI Video Clipper \u2014 TongueSync AI" }] }),
@@ -44,8 +53,13 @@ function Clipper() {
     e.preventDefault();
     if (!title) return;
     setLoading(true);
+    setResults(null);
     try {
-      const res = await create({ data: { title, sourceUrl: source, style, language, autoEmojis, highlight } });
+      // Keep the fake pipeline visible for a beat even if the mock backend replies instantly.
+      const [res] = await Promise.all([
+        create({ data: { title, sourceUrl: source, style, language, autoEmojis, highlight } }),
+        new Promise((r) => setTimeout(r, 4200)),
+      ]);
       if ((res as any).error === "limit") {
         setUpgradeOpen(true);
         return;
@@ -132,7 +146,9 @@ function Clipper() {
           </Button>
         </form>
 
-        {results && <VideoResult videos={results} isPro={isPro} />}
+        <ProcessingProgress active={loading} stages={CLIP_STAGES} duration={4200} skeletonCount={3} />
+
+        {!loading && results && <VideoResult videos={results} isPro={isPro} />}
       </main>
 
       <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
