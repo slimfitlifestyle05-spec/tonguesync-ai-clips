@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TsSecretGate2026RouteImport } from './routes/ts-secret-gate-2026'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -16,6 +17,11 @@ import { Route as AuthenticatedDubbingRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedClipperRouteImport } from './routes/_authenticated/clipper'
 
+const TsSecretGate2026Route = TsSecretGate2026RouteImport.update({
+  id: '/ts-secret-gate-2026',
+  path: '/ts-secret-gate-2026',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -49,6 +55,7 @@ const AuthenticatedClipperRoute = AuthenticatedClipperRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/ts-secret-gate-2026': typeof TsSecretGate2026Route
   '/clipper': typeof AuthenticatedClipperRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/dubbing': typeof AuthenticatedDubbingRoute
@@ -56,6 +63,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/ts-secret-gate-2026': typeof TsSecretGate2026Route
   '/clipper': typeof AuthenticatedClipperRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/dubbing': typeof AuthenticatedDubbingRoute
@@ -65,20 +73,34 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/ts-secret-gate-2026': typeof TsSecretGate2026Route
   '/_authenticated/clipper': typeof AuthenticatedClipperRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/dubbing': typeof AuthenticatedDubbingRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/clipper' | '/dashboard' | '/dubbing'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/ts-secret-gate-2026'
+    | '/clipper'
+    | '/dashboard'
+    | '/dubbing'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/clipper' | '/dashboard' | '/dubbing'
+  to:
+    | '/'
+    | '/auth'
+    | '/ts-secret-gate-2026'
+    | '/clipper'
+    | '/dashboard'
+    | '/dubbing'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/ts-secret-gate-2026'
     | '/_authenticated/clipper'
     | '/_authenticated/dashboard'
     | '/_authenticated/dubbing'
@@ -88,10 +110,18 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  TsSecretGate2026Route: typeof TsSecretGate2026Route
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/ts-secret-gate-2026': {
+      id: '/ts-secret-gate-2026'
+      path: '/ts-secret-gate-2026'
+      fullPath: '/ts-secret-gate-2026'
+      preLoaderRoute: typeof TsSecretGate2026RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -156,6 +186,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  TsSecretGate2026Route: TsSecretGate2026Route,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
