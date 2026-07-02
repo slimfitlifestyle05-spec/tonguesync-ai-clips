@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LANGUAGES, REGIONS, STYLE_TEMPLATES } from "@/lib/premium";
 import { useI18n } from "@/lib/i18n";
-import { ArrowLeft, Globe2, Lock } from "lucide-react";
+import { ArrowLeft, Globe2, Lock, UploadCloud, X } from "lucide-react";
 import { toast } from "sonner";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
@@ -31,6 +31,8 @@ function DubbingPage() {
 
   const [title, setTitle] = useState("");
   const [source, setSource] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [dragActive, setDragActive] = useState(false);
   const [targetLanguage, setTargetLanguage] = useState("ar");
   const [targetCountry, setTargetCountry] = useState("SA");
   const [style, setStyle] = useState("modern");
@@ -45,7 +47,8 @@ function DubbingPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await dub({ data: { title, sourceUrl: source, targetLanguage, targetCountry, style, durationSeconds: duration } });
+      const sourceUrl = file ? `upload://${file.name}` : source;
+      const res = await dub({ data: { title, sourceUrl, targetLanguage, targetCountry, style, durationSeconds: duration } });
       if ((res as any).error === "limit") { setUpgradeOpen(true); return; }
       if ((res as any).error === "duration") { toast.error(`Max ${(res as any).maxDur}s on your plan.`); return; }
       setResult((res as any).video);
@@ -56,6 +59,13 @@ function DubbingPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  function onFiles(files: FileList | null) {
+    if (!files || !files[0]) return;
+    const f = files[0];
+    if (!f.type.startsWith("video/")) { toast.error("Please upload a video file (.mp4, .mov, .webm)"); return; }
+    setFile(f);
   }
 
   return (
@@ -82,8 +92,63 @@ function DubbingPage() {
             <Input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={200} className="bg-white/5 border-white/10 mt-1" />
           </div>
           <div>
-            <Label>Source video URL</Label>
-            <Input value={source} onChange={(e) => setSource(e.target.value)} placeholder="https://..." className="bg-white/5 border-white/10 mt-1" />
+            <Label>Source video</Label>
+            <label
+              onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+              onDragLeave={() => setDragActive(false)}
+              onDrop={(e) => { e.preventDefault(); setDragActive(false); onFiles(e.dataTransfer.files); }}
+              className={`mt-1 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-6 py-8 text-center cursor-pointer transition ${
+                dragActive ? "border-fuchsia-400 bg-fuchsia-500/10" : "border-white/15 bg-white/5 hover:border-white/30 hover:bg-white/10"
+              }`}
+            >
+              {file ? (
+                <div className="flex items-center gap-3">
+                  <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-fuchsia-500 to-amber-400 text-black">
+                    <UploadCloud className="h-5 w-5" />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-sm font-medium truncate max-w-[240px]">{file.name}</div>
+                    <div className="text-xs text-slate-400">{(file.size / (1024 * 1024)).toFixed(1)} MB</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); setFile(null); }}
+                    className="ml-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/10 hover:bg-white/20"
+                    aria-label="Remove file"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10">
+                    <UploadCloud className="h-5 w-5 text-fuchsia-300" />
+                  </div>
+                  <div className="text-sm">
+                    <span className="font-medium">Drag & drop your video here</span>
+                    <span className="text-slate-400"> or </span>
+                    <span className="text-fuchsia-300 underline underline-offset-2">browse</span>
+                  </div>
+                  <div className="text-xs text-slate-500">MP4, MOV, WEBM · up to {maxDur}s</div>
+                </>
+              )}
+              <input
+                type="file"
+                accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm"
+                className="hidden"
+                onChange={(e) => onFiles(e.target.files)}
+              />
+            </label>
+            <div className="mt-3">
+              <Label className="text-xs text-slate-400">Or paste a video URL</Label>
+              <Input
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+                placeholder="https://..."
+                disabled={!!file}
+                className="bg-white/5 border-white/10 mt-1 disabled:opacity-50"
+              />
+            </div>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
             <div>
@@ -115,7 +180,7 @@ function DubbingPage() {
             </div>
           </div>
           <div>
-            <Label>Duration (seconds) \u2014 max {maxDur}s</Label>
+            <Label>Duration (seconds) — Max {maxDur}s</Label>
             <Input type="number" min={5} max={maxDur} value={duration} onChange={(e) => setDuration(parseInt(e.target.value || "0"))} className="bg-white/5 border-white/10 mt-1" />
           </div>
           {!isPro && <p className="text-xs text-amber-300/80">{t("watermark_notice")} Free: 1 dub up to {LIMITS.FREE_DUB_MAX_SECONDS}s.</p>}
