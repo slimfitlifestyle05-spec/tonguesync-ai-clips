@@ -3,8 +3,8 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const FREE_CLIPS = 3;
-const FREE_DUBS = 1;
-const FREE_DUB_MAX_SECONDS = 30;
+const FREE_DUBS = 3;
+const FREE_DUB_MAX_SECONDS = 15;
 const PRO_MONTHLY = 30;
 const PRO_DUB_MAX_SECONDS = 60;
 
