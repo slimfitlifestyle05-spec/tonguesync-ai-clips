@@ -15,6 +15,15 @@ import { ArrowLeft, Globe2, Lock, UploadCloud, X } from "lucide-react";
 import { toast } from "sonner";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
+import { ProcessingProgress } from "@/components/ProcessingProgress";
+
+const DUB_STAGES = [
+  "Analyzing transcript…",
+  "Detecting tone & context…",
+  "Translating with cultural nuance…",
+  "Generating natural voice…",
+  "Rendering dubbed video…",
+];
 
 export const Route = createFileRoute("/_authenticated/dubbing")({
   head: () => ({ meta: [{ title: "Cultural AI Dubbing \u2014 TongueSync AI" }] }),
@@ -46,9 +55,13 @@ function DubbingPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setResult(null);
     try {
       const sourceUrl = file ? `upload://${file.name}` : source;
-      const res = await dub({ data: { title, sourceUrl, targetLanguage, targetCountry, style, durationSeconds: duration } });
+      const [res] = await Promise.all([
+        dub({ data: { title, sourceUrl, targetLanguage, targetCountry, style, durationSeconds: duration } }),
+        new Promise((r) => setTimeout(r, 4200)),
+      ]);
       if ((res as any).error === "limit") { setUpgradeOpen(true); return; }
       if ((res as any).error === "duration") { toast.error(`Max ${(res as any).maxDur}s on your plan.`); return; }
       setResult((res as any).video);
@@ -189,7 +202,9 @@ function DubbingPage() {
           </Button>
         </form>
 
-        {result && <VideoResult videos={[result]} isPro={isPro} />}
+        <ProcessingProgress active={loading} stages={DUB_STAGES} duration={4200} skeletonCount={1} />
+
+        {!loading && result && <VideoResult videos={[result]} isPro={isPro} />}
       </main>
 
       <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
