@@ -91,18 +91,6 @@ function Index() {
   );
 }
 
-function FeatureCard({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-      <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-fuchsia-500/30 to-amber-400/30">
-        {icon}
-      </div>
-      <h3 className="text-xl font-semibold">{title}</h3>
-      <p className="mt-2 text-slate-300 text-sm">{desc}</p>
-    </div>
-  );
-}
-
 function StepCard({ n, icon, title, text }: { n: string; icon: React.ReactNode; title: string; text: string }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-5 backdrop-blur">
