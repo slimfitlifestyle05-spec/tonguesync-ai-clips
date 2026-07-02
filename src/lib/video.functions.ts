@@ -49,6 +49,20 @@ export const listMyVideos = createServerFn({ method: "GET" })
     return data ?? [];
   });
 
+export const getVideoById = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => z.object({ id: z.string().uuid() }).parse(raw))
+  .handler(async ({ context, data }) => {
+    const { supabase, userId } = context;
+    const { data: video } = await supabase
+      .from("videos")
+      .select("*")
+      .eq("id", data.id)
+      .eq("user_id", userId)
+      .maybeSingle();
+    return video;
+  });
+
 export const createClips = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((raw: unknown) =>
