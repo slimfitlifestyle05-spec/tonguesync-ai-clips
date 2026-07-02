@@ -21,12 +21,11 @@ import { loadSession, saveSession, clearSession } from "@/lib/videoCache";
 const CACHE_KEY = "dubbing";
 
 const DUB_STAGES = [
-  "Analyzing transcript…",
-  "Detecting tone & context…",
-  "Translating with cultural nuance…",
-  "Generating natural voice…",
-  "Rendering dubbed video…",
+  "Reading video…",
+  "Transcribing text…",
+  "Finalizing output…",
 ];
+const DUB_BOUNDARIES = [30, 70, 100];
 
 export const Route = createFileRoute("/_authenticated/dubbing")({
   head: () => ({ meta: [{ title: "Cultural AI Dubbing \u2014 TongueSync AI" }] }),
@@ -257,7 +256,7 @@ function DubbingPage() {
           </Button>
         </form>
 
-        <ProcessingProgress active={loading} stages={DUB_STAGES} duration={4200} skeletonCount={1} />
+        <ProcessingProgress active={loading} stages={DUB_STAGES} boundaries={DUB_BOUNDARIES} duration={4200} skeletonCount={1} />
 
         {!loading && result && (
           <div className="mt-6 space-y-3">

@@ -11,12 +11,21 @@ type Props = {
   duration?: number;
   /** How many skeleton result cards to render (0 to hide). Default 3. */
   skeletonCount?: number;
+  /** Optional cumulative percentage boundaries per stage (last should be 100). */
+  boundaries?: number[];
+  /** Label prefix shown next to the percentage. Default "Processing". */
+  label?: string;
 };
 
-export function ProcessingProgress({ active, stages, duration = 4200, skeletonCount = 3 }: Props) {
+export function ProcessingProgress({ active, stages, duration = 4200, skeletonCount = 3, boundaries, label = "Processing" }: Props) {
   const [progress, setProgress] = useState(0);
   const [stageIdx, setStageIdx] = useState(0);
   const announced = useRef<Set<number>>(new Set());
+
+  // Cumulative % boundary at the END of each stage. Defaults to even splits.
+  const bounds = (boundaries && boundaries.length === stages.length)
+    ? boundaries
+    : stages.map((_, i) => Math.round(((i + 1) / stages.length) * 100));
 
   useEffect(() => {
     if (!active) {
@@ -35,14 +44,20 @@ export function ProcessingProgress({ active, stages, duration = 4200, skeletonCo
     announced.current = new Set();
 
     const start = performance.now();
-    // Cap the fake bar at 92% while the real server call is in flight,
-    // so the last 8% happens on completion for a clean, honest finish.
-    const cap = 92;
+    // Cap the fake bar just under the final boundary while the real call is in flight,
+    // so the last few % happen on completion for a clean, honest finish.
+    const finalBoundary = bounds[bounds.length - 1];
+    const cap = Math.max(1, finalBoundary - 3);
     const tick = () => {
       const elapsed = performance.now() - start;
       const pct = Math.min(cap, (elapsed / duration) * cap);
       setProgress(pct);
-      const idx = Math.min(stages.length - 1, Math.floor((pct / cap) * stages.length));
+      // Determine which stage we're in based on cumulative boundaries.
+      let idx = 0;
+      for (let i = 0; i < bounds.length; i++) {
+        if (pct <= bounds[i]) { idx = i; break; }
+        idx = i;
+      }
       setStageIdx(idx);
       if (!announced.current.has(idx)) {
         announced.current.add(idx);
@@ -75,7 +90,12 @@ export function ProcessingProgress({ active, stages, duration = 4200, skeletonCo
               </div>
             </div>
           </div>
-          <div className="text-sm font-mono text-slate-300">{Math.round(progress)}%</div>
+          <div className="text-right">
+            <div className="text-xs uppercase tracking-wide text-slate-400">{label}</div>
+            <div className="text-2xl font-mono font-semibold bg-gradient-to-r from-fuchsia-300 to-amber-300 bg-clip-text text-transparent tabular-nums">
+              {Math.round(progress)}%
+            </div>
+          </div>
         </div>
 
         <Progress value={progress} className="h-2 bg-white/10 [&>div]:bg-gradient-to-r [&>div]:from-fuchsia-500 [&>div]:to-amber-400 [&>div]:transition-all [&>div]:duration-300" />
