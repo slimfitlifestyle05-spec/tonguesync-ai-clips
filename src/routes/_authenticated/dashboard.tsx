@@ -11,6 +11,8 @@ import { LogOut, Crown, Video, ChevronRight, Volume2, Scissors as ScissorsIcon }
 import { Progress } from "@/components/ui/progress";
 import { useState } from "react";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { VideoResult } from "@/components/VideoResult";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard \u2014 TongueSync AI" }] }),
@@ -25,6 +27,7 @@ function Dashboard() {
   const { data: profileData } = useQuery({ queryKey: ["me"], queryFn: () => getProfile() });
   const { data: videos } = useQuery({ queryKey: ["my-videos"], queryFn: () => listVideos() });
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<any | null>(null);
 
   const profile = profileData?.profile;
   const tier = profile?.tier ?? "free";
@@ -88,8 +91,20 @@ function Dashboard() {
           ) : (
             <div className="grid gap-4 md:grid-cols-3">
               {videos.slice(0, 6).map((v: any) => (
-                <div key={v.id} className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
-                  <video src={v.output_url} controls className="w-full aspect-[9/16] object-cover bg-black" />
+                <button
+                  type="button"
+                  key={v.id}
+                  onClick={() => setSelectedVideo(v)}
+                  className="group text-left rounded-xl border border-white/10 bg-white/5 overflow-hidden hover:border-fuchsia-400/40 transition"
+                >
+                  <div className="relative">
+                    <video src={v.output_url} className="w-full aspect-[9/16] object-cover bg-black pointer-events-none" />
+                    <div className="absolute inset-0 flex items-end justify-start bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition p-3">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-white/10 backdrop-blur px-2.5 py-1 text-xs text-white">
+                        Open <ChevronRight className="h-3 w-3" />
+                      </span>
+                    </div>
+                  </div>
                   <div className="p-3">
                     <div className="font-medium text-sm truncate">{v.title}</div>
                     <div className="text-xs text-slate-400 mt-1">
@@ -97,7 +112,7 @@ function Dashboard() {
                       {v.watermarked && <span className="ml-2 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">Watermark</span>}
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -105,6 +120,14 @@ function Dashboard() {
       </main>
 
       <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
+      <Dialog open={!!selectedVideo} onOpenChange={(o) => !o && setSelectedVideo(null)}>
+        <DialogContent className="max-w-md bg-slate-950 border-white/10 text-white">
+          <DialogHeader>
+            <DialogTitle className="truncate pr-6">{selectedVideo?.title}</DialogTitle>
+          </DialogHeader>
+          {selectedVideo && <VideoResult videos={[selectedVideo]} isPro={isPro} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
