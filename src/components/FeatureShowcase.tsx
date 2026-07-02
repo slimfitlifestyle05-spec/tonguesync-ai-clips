@@ -30,7 +30,7 @@ export function FeatureCard({
         </div>
         <div className="shrink-0 inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-fuchsia-200 transition group-hover:border-fuchsia-400/50 group-hover:bg-fuchsia-500/10 group-hover:text-white">
           {t("try_now")}
-          <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+          <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5 rtl:-scale-x-100 rtl:group-hover:-translate-x-0.5" />
         </div>
       </div>
     </Link>
