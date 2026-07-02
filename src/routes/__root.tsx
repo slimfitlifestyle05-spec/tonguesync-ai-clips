@@ -11,6 +11,11 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { I18nProvider } from "../lib/i18n";
+import { Toaster } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { getPublicGA } from "@/lib/admin.functions";
 
 function NotFoundComponent() {
   return (
@@ -77,14 +82,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "TongueSync AI \u2014 Viral shorts & cultural AI dubbing" },
+      { name: "description", content: "Turn any video into vertical shorts with animated captions, then dub them into any local dialect with AI." },
+      { name: "author", content: "TongueSync AI" },
+      { property: "og:title", content: "TongueSync AI" },
+      { property: "og:description", content: "Vertical clips + culturally-native AI dubbing for creators and brands." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
@@ -116,11 +120,56 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      router.invalidate();
+      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [router, queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <I18nProvider>
+        <GAInjector />
+        <Outlet />
+        <Toaster richColors position="top-center" />
+      </I18nProvider>
     </QueryClientProvider>
   );
+}
+
+function GAInjector() {
+  const { data } = useQuery({
+    queryKey: ["public-ga"],
+    queryFn: () => getPublicGA(),
+    staleTime: 5 * 60_000,
+  });
+  const ga = data?.ga?.trim();
+  useEffect(() => {
+    if (!ga || typeof document === "undefined") return;
+    if (document.getElementById("ga-src")) return;
+    const s1 = document.createElement("script");
+    s1.id = "ga-src";
+    s1.async = true;
+    s1.src = `https://www.googletagmanager.com/gtag/js?id=${ga}`;
+    document.head.appendChild(s1);
+    const s2 = document.createElement("script");
+    s2.id = "ga-init";
+    s2.text = `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}window.gtag=gtag;gtag('js',new Date());gtag('config','${ga}');`;
+    document.head.appendChild(s2);
+  }, [ga]);
+  // page view tracking on route changes
+  const router = useRouter();
+  useEffect(() => {
+    if (!ga) return;
+    const unsub = router.subscribe("onLoad", () => {
+      const w = window as any;
+      if (w.gtag) w.gtag("event", "page_view", { page_path: window.location.pathname });
+    });
+    return unsub;
+  }, [ga, router]);
+  return null;
 }
