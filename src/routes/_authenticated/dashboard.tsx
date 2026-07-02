@@ -7,12 +7,13 @@ import { LangToggle } from "@/components/LangToggle";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, Crown, Video, ChevronRight, Volume2, Scissors as ScissorsIcon } from "lucide-react";
+import { LogOut, Crown, Video, ChevronRight } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useState } from "react";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FeatureCard, ClipperVisual, DubbingVisual } from "@/components/FeatureShowcase";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard \u2014 TongueSync AI" }] }),
