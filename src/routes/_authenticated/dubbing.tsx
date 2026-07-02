@@ -202,7 +202,9 @@ function DubbingPage() {
           </Button>
         </form>
 
-        {result && <VideoResult videos={[result]} isPro={isPro} />}
+        <ProcessingProgress active={loading} stages={DUB_STAGES} duration={4200} skeletonCount={1} />
+
+        {!loading && result && <VideoResult videos={[result]} isPro={isPro} />}
       </main>
 
       <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
