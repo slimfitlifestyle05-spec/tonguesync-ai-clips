@@ -14,16 +14,185 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      analytics_events: {
+        Row: {
+          created_at: string
+          event: string
+          id: string
+          path: string | null
+          source: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event: string
+          id?: string
+          path?: string | null
+          source?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event?: string
+          id?: string
+          path?: string | null
+          source?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          clips_used: number
+          created_at: string
+          dubs_used: number
+          email: string | null
+          full_name: string | null
+          id: string
+          monthly_period_start: string
+          monthly_used: number
+          tier: Database["public"]["Enums"]["subscription_tier"]
+          updated_at: string
+        }
+        Insert: {
+          clips_used?: number
+          created_at?: string
+          dubs_used?: number
+          email?: string | null
+          full_name?: string | null
+          id: string
+          monthly_period_start?: string
+          monthly_used?: number
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+          updated_at?: string
+        }
+        Update: {
+          clips_used?: number
+          created_at?: string
+          dubs_used?: number
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          monthly_period_start?: string
+          monthly_used?: number
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      videos: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          kind: Database["public"]["Enums"]["video_kind"]
+          language: string | null
+          output_url: string | null
+          social_kit: Json | null
+          source_url: string | null
+          status: string
+          style: string | null
+          target_country: string | null
+          target_language: string | null
+          title: string
+          user_id: string
+          watermarked: boolean
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          kind: Database["public"]["Enums"]["video_kind"]
+          language?: string | null
+          output_url?: string | null
+          social_kit?: Json | null
+          source_url?: string | null
+          status?: string
+          style?: string | null
+          target_country?: string | null
+          target_language?: string | null
+          title: string
+          user_id: string
+          watermarked?: boolean
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          kind?: Database["public"]["Enums"]["video_kind"]
+          language?: string | null
+          output_url?: string | null
+          social_kit?: Json | null
+          source_url?: string | null
+          status?: string
+          style?: string | null
+          target_country?: string | null
+          target_language?: string | null
+          title?: string
+          user_id?: string
+          watermarked?: boolean
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
+      subscription_tier: "free" | "pro"
+      video_kind: "clip" | "dub"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +319,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+      subscription_tier: ["free", "pro"],
+      video_kind: ["clip", "dub"],
+    },
   },
 } as const
