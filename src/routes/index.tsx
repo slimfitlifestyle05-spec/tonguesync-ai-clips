@@ -128,19 +128,18 @@ function Index() {
 }
 
 function BeforeAfterSection() {
+  const { t } = useI18n();
   const [isLocalized, setIsLocalized] = useState(false);
   return (
     <section className="mx-auto max-w-5xl px-6 pb-24">
       <div className="text-center mb-10">
         <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
-          See and Hear the{" "}
+          {t("ba_h2_a")}{" "}
           <span className="bg-gradient-to-r from-fuchsia-300 to-amber-200 bg-clip-text text-transparent">
-            Magic in Action
+            {t("ba_h2_b")}
           </span>
         </h2>
-        <p className="mt-4 text-slate-400 max-w-xl mx-auto">
-          Toggle between the original voice and the AI culturally-dubbed version — instantly hear how your content transforms for a new audience.
-        </p>
+        <p className="mt-4 text-slate-400 max-w-xl mx-auto">{t("ba_sub")}</p>
       </div>
       <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 to-slate-950 p-6 md:p-8 shadow-2xl">
         <div className="relative aspect-video rounded-2xl overflow-hidden bg-gradient-to-br from-fuchsia-950/50 via-slate-900 to-amber-950/30 border border-white/5">
@@ -150,11 +149,11 @@ function BeforeAfterSection() {
                 <Play className="h-7 w-7 text-white ml-1" fill="currentColor" />
               </div>
               <div className="text-2xl font-semibold">
-                {isLocalized ? "مرحباً بكم في المستقبل" : "Welcome to the future"}
+                {isLocalized ? t("ba_caption_ar") : t("ba_caption_en")}
               </div>
               <div className="mt-2 text-sm text-slate-400 flex items-center justify-center gap-2">
                 <Volume2 className="h-4 w-4" />
-                {isLocalized ? "Arabic \u2014 Egyptian dialect" : "Original English audio"}
+                {isLocalized ? t("ba_lang_local") : t("ba_lang_orig")}
               </div>
             </div>
           </div>
@@ -168,13 +167,13 @@ function BeforeAfterSection() {
               onClick={() => setIsLocalized(false)}
               className={`px-5 py-2 text-sm font-medium rounded-full transition-all ${!isLocalized ? "bg-white text-slate-900 shadow-lg" : "text-slate-400 hover:text-white"}`}
             >
-              Original English
+              {t("toggle_original")}
             </button>
             <button
               onClick={() => setIsLocalized(true)}
               className={`px-5 py-2 text-sm font-medium rounded-full transition-all ${isLocalized ? "bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black shadow-lg" : "text-slate-400 hover:text-white"}`}
             >
-              Localized Arabic
+              {t("toggle_localized")}
             </button>
           </div>
         </div>
@@ -184,26 +183,18 @@ function BeforeAfterSection() {
 }
 
 function FAQSection() {
+  const { t } = useI18n();
   const faqs = [
-    {
-      q: "What languages and dialects are supported?",
-      a: "We support 40+ regional accents including Egyptian, Khaleeji, Levantine, North African, English, Spanish, and more.",
-    },
-    {
-      q: "Can I cancel my Pro subscription anytime?",
-      a: "Yes, you can cancel, upgrade, or downgrade your plan at any time directly from your billing dashboard.",
-    },
-    {
-      q: "What happens if I run out of video minutes?",
-      a: "Pro users can easily top up their account or upgrade tiers to continue generating high-quality clips instantly.",
-    },
+    { q: t("faq_q1"), a: t("faq_a1") },
+    { q: t("faq_q2"), a: t("faq_a2") },
+    { q: t("faq_q3"), a: t("faq_a3") },
   ];
   return (
     <section className="mx-auto max-w-3xl px-6 pb-24">
       <h2 className="text-3xl md:text-4xl font-bold text-center mb-10">
-        Frequently Asked{" "}
+        {t("faq_h2_a")}{" "}
         <span className="bg-gradient-to-r from-fuchsia-300 to-amber-200 bg-clip-text text-transparent">
-          Questions
+          {t("faq_h2_b")}
         </span>
       </h2>
       <Accordion type="single" collapsible className="space-y-3">
@@ -259,9 +250,10 @@ function PriceCard({ tier, price, perks, highlight }: { tier: string; price: str
 }
 
 function TrustBar() {
+  const { t } = useI18n();
   return (
     <section className="mx-auto max-w-6xl px-6 pb-16 text-center">
-      <p className="text-sm text-slate-400 tracking-wide">Trusted by 5,000+ video creators, brands, and agencies worldwide</p>
+      <p className="text-sm text-slate-400 tracking-wide">{t("trust_line")}</p>
       <div className="mt-5 flex flex-wrap items-center justify-center gap-8 opacity-40">
         <div className="flex items-center gap-2 text-slate-300">
           <Smartphone className="h-5 w-5" />
@@ -285,23 +277,24 @@ function TrustBar() {
 }
 
 function BentoGrid() {
+  const { t } = useI18n();
   return (
     <section className="mx-auto max-w-6xl px-6 pb-24">
       <div className="grid gap-4 md:grid-cols-3">
         <BentoCard
           icon={<Brain className="h-5 w-5" />}
-          title="99% Dialect Accuracy"
-          desc="Optimized to understand local slang, cultural jokes, and regional idioms perfectly."
+          title={t("bento_1_title")}
+          desc={t("bento_1_desc")}
         />
         <BentoCard
           icon={<Mic className="h-5 w-5" />}
-          title="Voice Tone Preservation"
-          desc="Our AI retains the original speaker's unique emotion, pitch, and energy."
+          title={t("bento_2_title")}
+          desc={t("bento_2_desc")}
         />
         <BentoCard
           icon={<Zap className="h-5 w-5" />}
-          title="Lightning Fast Rendering"
-          desc="Powered by high-performance GPU pipelines to deliver your shorts in seconds."
+          title={t("bento_3_title")}
+          desc={t("bento_3_desc")}
         />
       </div>
     </section>
@@ -321,34 +314,35 @@ function BentoCard({ icon, title, desc }: { icon: React.ReactNode; title: string
 }
 
 function Footer() {
+  const { t } = useI18n();
   return (
     <footer className="border-t border-white/10 bg-slate-950/50">
       <div className="mx-auto max-w-6xl px-6 py-12 grid gap-8 md:grid-cols-3 text-sm">
         <div>
-          <h4 className="font-semibold text-white mb-3">Product</h4>
+          <h4 className="font-semibold text-white mb-3">{t("footer_product")}</h4>
           <ul className="space-y-2 text-slate-400">
-            <li><Link to="/clipper" className="hover:text-white transition-colors">AI Clipper</Link></li>
-            <li><Link to="/dubbing" className="hover:text-white transition-colors">Cultural Dubber</Link></li>
-            <li><Link to="/" className="hover:text-white transition-colors">Pricing</Link></li>
+            <li><Link to="/clipper" className="hover:text-white transition-colors">{t("link_ai_clipper")}</Link></li>
+            <li><Link to="/dubbing" className="hover:text-white transition-colors">{t("link_cultural_dubber")}</Link></li>
+            <li><Link to="/" className="hover:text-white transition-colors">{t("link_pricing")}</Link></li>
           </ul>
         </div>
         <div>
-          <h4 className="font-semibold text-white mb-3">Legal</h4>
+          <h4 className="font-semibold text-white mb-3">{t("footer_legal")}</h4>
           <ul className="space-y-2 text-slate-400">
-            <li><Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
-            <li><Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
+            <li><Link to="/privacy" className="hover:text-white transition-colors">{t("link_privacy")}</Link></li>
+            <li><Link to="/terms" className="hover:text-white transition-colors">{t("link_terms")}</Link></li>
           </ul>
         </div>
         <div>
-          <h4 className="font-semibold text-white mb-3">Company</h4>
+          <h4 className="font-semibold text-white mb-3">{t("footer_company")}</h4>
           <ul className="space-y-2 text-slate-400">
-            <li><Link to="/about" className="hover:text-white transition-colors">About Us</Link></li>
-            <li><Link to="/contact" className="hover:text-white transition-colors">Contact</Link></li>
+            <li><Link to="/about" className="hover:text-white transition-colors">{t("link_about")}</Link></li>
+            <li><Link to="/contact" className="hover:text-white transition-colors">{t("link_contact")}</Link></li>
           </ul>
         </div>
       </div>
       <div className="border-t border-white/10 py-6 text-center text-sm text-slate-500">
-        &copy; 2026 TongueSync AI. All rights reserved.
+        {t("footer_copy")}
       </div>
     </footer>
   );
