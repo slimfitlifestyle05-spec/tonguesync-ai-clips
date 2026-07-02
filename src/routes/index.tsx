@@ -45,7 +45,7 @@ function Index() {
 
       <Reveal as="section" className="mx-auto max-w-4xl px-6 pt-16 pb-24 text-center">
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs">
-          <Sparkles className="h-3 w-3 text-amber-300" /> AI shorts + cultural dubbing
+          <Sparkles className="h-3 w-3 text-amber-300" /> {t("hero_badge")}
         </div>
         <h1 className="text-5xl md:text-7xl font-bold tracking-tight bg-gradient-to-r from-fuchsia-300 via-white to-amber-200 bg-clip-text text-transparent">
           {t("tagline")}
@@ -62,16 +62,16 @@ function Index() {
         <Reveal delay={0}>
           <FeatureCard
             to="/clipper"
-            title="AI Video Clipper"
-            desc="Automatically split long videos into highly engaging vertical shorts with animated captions."
+            title={t("feat_clipper_title")}
+            desc={t("feat_clipper_desc")}
             visual={<ClipperVisual />}
           />
         </Reveal>
         <Reveal delay={120}>
           <FeatureCard
             to="/dubbing"
-            title="Cultural AI Dubbing"
-            desc="Translate, rewrite, and re-voice your video into localized regional dialects and accents instantly."
+            title={t("feat_dubbing_title")}
+            desc={t("feat_dubbing_desc")}
             visual={<DubbingVisual />}
           />
         </Reveal>
@@ -81,25 +81,20 @@ function Index() {
         <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-fuchsia-500/10 via-white/[0.03] to-amber-400/10 p-8 md:p-12">
           <div className="max-w-2xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-              <Sparkles className="h-3 w-3 text-amber-300" /> How it works
+              <Sparkles className="h-3 w-3 text-amber-300" /> {t("how_badge")}
             </div>
             <h2 className="mt-4 text-3xl md:text-4xl font-bold tracking-tight">
-              One video in.{" "}
+              {t("how_h2_a")}{" "}
               <span className="bg-gradient-to-r from-fuchsia-300 to-amber-200 bg-clip-text text-transparent">
-                A whole content engine out.
+                {t("how_h2_b")}
               </span>
             </h2>
-            <p className="mt-4 text-slate-300 leading-relaxed">
-              Upload a single long video and TongueSync AI handles the rest — it finds the viral
-              moments, cuts vertical shorts with animated captions, dubs them into the exact
-              regional dialect your audience speaks, and even writes SEO-ready titles, descriptions,
-              and hashtags. No editors, no translators, no guesswork.
-            </p>
+            <p className="mt-4 text-slate-300 leading-relaxed">{t("how_p")}</p>
           </div>
           <div className="mt-10 grid gap-4 md:grid-cols-3">
-            <StepCard n="01" icon={<Wand2 className="h-4 w-4" />} title="Analyze" text="Our AI reads the transcript, detects the hook, and picks the highest-retention moments." />
-            <StepCard n="02" icon={<Languages className="h-4 w-4" />} title="Localize" text="Translate and re-voice into 40+ regional accents — Khaleeji, Egyptian, Darija, LATAM Spanish, and more." />
-            <StepCard n="03" icon={<Rocket className="h-4 w-4" />} title="Publish" text="Download platform-ready vertical shorts with captions and an auto-generated Social Kit." />
+            <StepCard n="01" icon={<Wand2 className="h-4 w-4" />} title={t("step_1_title")} text={t("step_1_text")} />
+            <StepCard n="02" icon={<Languages className="h-4 w-4" />} title={t("step_2_title")} text={t("step_2_text")} />
+            <StepCard n="03" icon={<Rocket className="h-4 w-4" />} title={t("step_3_title")} text={t("step_3_text")} />
           </div>
         </div>
       </Reveal>
@@ -112,13 +107,13 @@ function Index() {
         <div id="pricing" />
         <h2 className="text-3xl font-bold text-center mb-10">{t("pricing")}</h2>
         <div className="grid gap-6 md:grid-cols-2">
-          <PriceCard tier={t("free_tier")} price="$0" perks={["3 clip generations", "3 dubs (\u226435s per clip)", "Watermark", "Basic caption styles"]} />
-          <PriceCard highlight tier={t("pro_tier")} price={"$10" + t("per_month")} perks={["30 videos / month", "Dubs up to 60s", "No watermark", "All premium styles + Social Kit"]} />
+          <PriceCard tier={t("free_tier")} price="$0" perks={[t("perk_free_1"), t("perk_free_2"), t("perk_free_3"), t("perk_free_4")]} />
+          <PriceCard highlight tier={t("pro_tier")} price={"$10" + t("per_month")} perks={[t("perk_pro_1"), t("perk_pro_2"), t("perk_pro_3"), t("perk_pro_4")]} />
         </div>
         <div className="mt-12 flex justify-center">
           <Link to="/auth">
             <Button size="lg" className="bg-gradient-to-r from-fuchsia-500 via-pink-500 to-amber-400 text-black font-semibold px-10 py-6 text-base shadow-[0_10px_40px_-10px_rgba(217,70,239,0.6)] hover:opacity-90 hover:shadow-[0_15px_50px_-10px_rgba(217,70,239,0.8)] transition-all">
-              Start Syncing For Free
+              {t("pricing_cta")}
             </Button>
           </Link>
         </div>
