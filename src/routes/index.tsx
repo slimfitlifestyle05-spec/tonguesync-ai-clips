@@ -104,6 +104,7 @@ function Index() {
       <FAQSection />
 
       <Footer />
+    </div>
   );
 }
 
