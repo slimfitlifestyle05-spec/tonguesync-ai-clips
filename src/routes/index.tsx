@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { LangToggle } from "@/components/LangToggle";
@@ -7,6 +7,9 @@ import { useI18n } from "@/lib/i18n";
 import { Check, Sparkles, ShieldCheck, Wand2, Languages, Rocket, Play, Volume2, Zap, Brain, Mic, Monitor, Smartphone, Video, Radio } from "lucide-react";
 import { FeatureCard, ClipperVisual, DubbingVisual } from "@/components/FeatureShowcase";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { Reveal } from "@/components/Reveal";
+import { SocialProofToast } from "@/components/SocialProofToast";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -14,48 +17,67 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const { t } = useI18n();
+  const [isDark, setIsDark] = useState(true);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const apply = () => setIsDark(document.documentElement.classList.contains("dark") || !document.documentElement.classList.contains("light"));
+    apply();
+    const obs = new MutationObserver(apply);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
+    <div className={
+      "min-h-screen transition-colors duration-500 " +
+      (isDark
+        ? "bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white"
+        : "bg-gradient-to-b from-white via-slate-50 to-white text-slate-900")
+    }>
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
         <Logo />
         <nav className="flex items-center gap-2">
           <LangToggle />
+          <ThemeToggle />
           <Link to="/auth"><Button variant="ghost" className="text-white hover:bg-white/10">{t("sign_in")}</Button></Link>
           <Link to="/auth"><Button className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold hover:opacity-90">{t("get_started")}</Button></Link>
         </nav>
       </header>
 
-      <section className="mx-auto max-w-4xl px-6 pt-16 pb-24 text-center">
+      <Reveal as="section" className="mx-auto max-w-4xl px-6 pt-16 pb-24 text-center">
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs">
           <Sparkles className="h-3 w-3 text-amber-300" /> AI shorts + cultural dubbing
         </div>
         <h1 className="text-5xl md:text-7xl font-bold tracking-tight bg-gradient-to-r from-fuchsia-300 via-white to-amber-200 bg-clip-text text-transparent">
           {t("tagline")}
         </h1>
-        <p className="mt-6 text-lg text-slate-300 max-w-2xl mx-auto">{t("hero_sub")}</p>
+        <p className={"mt-6 text-lg max-w-2xl mx-auto " + (isDark ? "text-slate-300" : "text-slate-600")}>{t("hero_sub")}</p>
         <div className="mt-8 flex flex-wrap gap-3 justify-center">
           <Link to="/auth"><Button size="lg" className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold">{t("get_started")}</Button></Link>
         </div>
-      </section>
+      </Reveal>
 
-      <TrustBar />
+      <Reveal delay={80}><TrustBar /></Reveal>
 
       <section className="mx-auto max-w-6xl px-6 pb-16 grid gap-6 md:grid-cols-2">
-        <FeatureCard
-          to="/clipper"
-          title="AI Video Clipper"
-          desc="Automatically split long videos into highly engaging vertical shorts with animated captions."
-          visual={<ClipperVisual />}
-        />
-        <FeatureCard
-          to="/dubbing"
-          title="Cultural AI Dubbing"
-          desc="Translate, rewrite, and re-voice your video into localized regional dialects and accents instantly."
-          visual={<DubbingVisual />}
-        />
+        <Reveal delay={0}>
+          <FeatureCard
+            to="/clipper"
+            title="AI Video Clipper"
+            desc="Automatically split long videos into highly engaging vertical shorts with animated captions."
+            visual={<ClipperVisual />}
+          />
+        </Reveal>
+        <Reveal delay={120}>
+          <FeatureCard
+            to="/dubbing"
+            title="Cultural AI Dubbing"
+            desc="Translate, rewrite, and re-voice your video into localized regional dialects and accents instantly."
+            visual={<DubbingVisual />}
+          />
+        </Reveal>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 pb-24">
+      <Reveal as="section" className="mx-auto max-w-6xl px-6 pb-24">
         <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-fuchsia-500/10 via-white/[0.03] to-amber-400/10 p-8 md:p-12">
           <div className="max-w-2xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
@@ -80,13 +102,14 @@ function Index() {
             <StepCard n="03" icon={<Rocket className="h-4 w-4" />} title="Publish" text="Download platform-ready vertical shorts with captions and an auto-generated Social Kit." />
           </div>
         </div>
-      </section>
+      </Reveal>
 
-      <BeforeAfterSection />
+      <Reveal><BeforeAfterSection /></Reveal>
 
-      <BentoGrid />
+      <Reveal><BentoGrid /></Reveal>
 
-      <section id="pricing" className="mx-auto max-w-5xl px-6 pb-24">
+      <Reveal as="section" className="mx-auto max-w-5xl px-6 pb-24">
+        <div id="pricing" />
         <h2 className="text-3xl font-bold text-center mb-10">{t("pricing")}</h2>
         <div className="grid gap-6 md:grid-cols-2">
           <PriceCard tier={t("free_tier")} price="$0" perks={["3 clip generations", "3 dubs (\u226435s per clip)", "Watermark", "Basic caption styles"]} />
@@ -99,11 +122,12 @@ function Index() {
             </Button>
           </Link>
         </div>
-      </section>
+      </Reveal>
 
-      <FAQSection />
+      <Reveal><FAQSection /></Reveal>
 
       <Footer />
+      <SocialProofToast />
     </div>
   );
 }
