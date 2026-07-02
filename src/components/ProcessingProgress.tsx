@@ -113,8 +113,7 @@ export function ProcessingProgress({ active, stages, duration = 4200, skeletonCo
               style={{ animationDelay: `${i * 80}ms` }}
             >
               <div className="relative aspect-[9/16] bg-black overflow-hidden">
-                <Skeleton className="absolute inset-0 rounded-none bg-white/5" />
-                <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent animate-[shimmer_1.6s_infinite]" />
+                <Skeleton className="absolute inset-0 rounded-none bg-gradient-to-br from-white/5 via-white/10 to-white/5" />
               </div>
               <div className="p-3 space-y-3">
                 <Skeleton className="h-3 w-3/4 bg-white/10" />
