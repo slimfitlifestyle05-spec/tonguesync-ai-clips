@@ -250,7 +250,7 @@ function DubbingPage() {
             <Label>Duration (seconds) — Max {maxDur}s</Label>
             <Input type="number" min={5} max={maxDur} value={duration} onChange={(e) => setDuration(parseInt(e.target.value || "0"))} className="bg-white/5 border-white/10 mt-1" />
           </div>
-          {!isPro && <p className="text-xs text-amber-300/80">{t("watermark_notice")} Free: 1 dub up to {LIMITS.FREE_DUB_MAX_SECONDS}s.</p>}
+          {!isPro && <p className="text-xs text-amber-300/80">{t("watermark_notice")} Free: {LIMITS.FREE_DUBS} dubs up to {LIMITS.FREE_DUB_MAX_SECONDS}s each.</p>}
           <Button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold">
             {loading ? t("processing") : t("generate")}
           </Button>

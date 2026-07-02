@@ -81,7 +81,7 @@ function Index() {
       <section id="pricing" className="mx-auto max-w-5xl px-6 pb-24">
         <h2 className="text-3xl font-bold text-center mb-10">{t("pricing")}</h2>
         <div className="grid gap-6 md:grid-cols-2">
-          <PriceCard tier={t("free_tier")} price="$0" perks={["3 clip generations", "1 dub (\u226430s)", "Watermark", "Basic caption styles"]} />
+          <PriceCard tier={t("free_tier")} price="$0" perks={["3 clip generations", "3 dubs (\u226435s per clip)", "Watermark", "Basic caption styles"]} />
           <PriceCard highlight tier={t("pro_tier")} price={"$10" + t("per_month")} perks={["30 videos / month", "Dubs up to 60s", "No watermark", "All premium styles + Social Kit"]} />
         </div>
       </section>
