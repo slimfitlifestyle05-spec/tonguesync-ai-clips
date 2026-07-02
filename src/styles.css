@@ -3,6 +3,7 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant rtl (&:where([dir="rtl"], [dir="rtl"] *));
 
 /*
  * Design system definition.
