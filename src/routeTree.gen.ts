@@ -20,6 +20,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedDubbingRouteImport } from './routes/_authenticated/dubbing'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedClipperRouteImport } from './routes/_authenticated/clipper'
+import { Route as AuthenticatedActionVideoIdRouteImport } from './routes/_authenticated/action.$videoId'
 
 const TsSecretGate2026Route = TsSecretGate2026RouteImport.update({
   id: '/ts-secret-gate-2026',
@@ -75,6 +76,12 @@ const AuthenticatedClipperRoute = AuthenticatedClipperRouteImport.update({
   path: '/clipper',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedActionVideoIdRoute =
+  AuthenticatedActionVideoIdRouteImport.update({
+    id: '/action/$videoId',
+    path: '/action/$videoId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/clipper': typeof AuthenticatedClipperRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/dubbing': typeof AuthenticatedDubbingRoute
+  '/action/$videoId': typeof AuthenticatedActionVideoIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -99,6 +107,7 @@ export interface FileRoutesByTo {
   '/clipper': typeof AuthenticatedClipperRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/dubbing': typeof AuthenticatedDubbingRoute
+  '/action/$videoId': typeof AuthenticatedActionVideoIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -113,6 +122,7 @@ export interface FileRoutesById {
   '/_authenticated/clipper': typeof AuthenticatedClipperRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/dubbing': typeof AuthenticatedDubbingRoute
+  '/_authenticated/action/$videoId': typeof AuthenticatedActionVideoIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/clipper'
     | '/dashboard'
     | '/dubbing'
+    | '/action/$videoId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/clipper'
     | '/dashboard'
     | '/dubbing'
+    | '/action/$videoId'
   id:
     | '__root__'
     | '/'
@@ -152,6 +164,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clipper'
     | '/_authenticated/dashboard'
     | '/_authenticated/dubbing'
+    | '/_authenticated/action/$videoId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -244,6 +257,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClipperRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/action/$videoId': {
+      id: '/_authenticated/action/$videoId'
+      path: '/action/$videoId'
+      fullPath: '/action/$videoId'
+      preLoaderRoute: typeof AuthenticatedActionVideoIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -251,12 +271,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClipperRoute: typeof AuthenticatedClipperRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDubbingRoute: typeof AuthenticatedDubbingRoute
+  AuthenticatedActionVideoIdRoute: typeof AuthenticatedActionVideoIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedClipperRoute: AuthenticatedClipperRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDubbingRoute: AuthenticatedDubbingRoute,
+  AuthenticatedActionVideoIdRoute: AuthenticatedActionVideoIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
