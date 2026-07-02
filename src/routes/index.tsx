@@ -86,7 +86,7 @@ function Index() {
         </div>
       </section>
 
-      <footer className="border-t border-white/10 py-6 text-center text-sm text-slate-400">\u00a9 TongueSync AI</footer>
+      <footer className="border-t border-white/10 py-6 text-center text-sm text-slate-400">© {new Date().getFullYear()} TongueSync AI</footer>
     </div>
   );
 }
