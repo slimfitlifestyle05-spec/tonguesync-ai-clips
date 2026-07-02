@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { LangToggle } from "@/components/LangToggle";
 import { useI18n } from "@/lib/i18n";
-import { Check, Sparkles, ShieldCheck, Wand2, Languages, Rocket } from "lucide-react";
+import { Check, Sparkles, ShieldCheck, Wand2, Languages, Rocket, Play, Volume2 } from "lucide-react";
 import { FeatureCard, ClipperVisual, DubbingVisual } from "@/components/FeatureShowcase";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -78,16 +80,126 @@ function Index() {
         </div>
       </section>
 
+      <BeforeAfterSection />
+
       <section id="pricing" className="mx-auto max-w-5xl px-6 pb-24">
         <h2 className="text-3xl font-bold text-center mb-10">{t("pricing")}</h2>
         <div className="grid gap-6 md:grid-cols-2">
           <PriceCard tier={t("free_tier")} price="$0" perks={["3 clip generations", "3 dubs (\u226435s per clip)", "Watermark", "Basic caption styles"]} />
           <PriceCard highlight tier={t("pro_tier")} price={"$10" + t("per_month")} perks={["30 videos / month", "Dubs up to 60s", "No watermark", "All premium styles + Social Kit"]} />
         </div>
+        <div className="mt-12 flex justify-center">
+          <Link to="/auth">
+            <Button size="lg" className="bg-gradient-to-r from-fuchsia-500 via-pink-500 to-amber-400 text-black font-semibold px-10 py-6 text-base shadow-[0_10px_40px_-10px_rgba(217,70,239,0.6)] hover:opacity-90 hover:shadow-[0_15px_50px_-10px_rgba(217,70,239,0.8)] transition-all">
+              Start Syncing For Free
+            </Button>
+          </Link>
+        </div>
       </section>
+
+      <FAQSection />
 
       <footer className="border-t border-white/10 py-6 text-center text-sm text-slate-400">© {new Date().getFullYear()} TongueSync AI</footer>
     </div>
+  );
+}
+
+function BeforeAfterSection() {
+  const [isLocalized, setIsLocalized] = useState(false);
+  return (
+    <section className="mx-auto max-w-5xl px-6 pb-24">
+      <div className="text-center mb-10">
+        <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
+          See and Hear the{" "}
+          <span className="bg-gradient-to-r from-fuchsia-300 to-amber-200 bg-clip-text text-transparent">
+            Magic in Action
+          </span>
+        </h2>
+        <p className="mt-4 text-slate-400 max-w-xl mx-auto">
+          Toggle between the original voice and the AI culturally-dubbed version — instantly hear how your content transforms for a new audience.
+        </p>
+      </div>
+      <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 to-slate-950 p-6 md:p-8 shadow-2xl">
+        <div className="relative aspect-video rounded-2xl overflow-hidden bg-gradient-to-br from-fuchsia-950/50 via-slate-900 to-amber-950/30 border border-white/5">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-white/10 backdrop-blur border border-white/20 mb-4">
+                <Play className="h-7 w-7 text-white ml-1" fill="currentColor" />
+              </div>
+              <div className="text-2xl font-semibold">
+                {isLocalized ? "مرحباً بكم في المستقبل" : "Welcome to the future"}
+              </div>
+              <div className="mt-2 text-sm text-slate-400 flex items-center justify-center gap-2">
+                <Volume2 className="h-4 w-4" />
+                {isLocalized ? "Arabic \u2014 Egyptian dialect" : "Original English audio"}
+              </div>
+            </div>
+          </div>
+          <div className="absolute bottom-4 left-4 right-4 h-1 rounded-full bg-white/10 overflow-hidden">
+            <div className="h-full w-2/5 bg-gradient-to-r from-fuchsia-400 to-amber-300" />
+          </div>
+        </div>
+        <div className="mt-6 flex justify-center">
+          <div className="inline-flex items-center rounded-full border border-white/10 bg-slate-900/80 p-1 backdrop-blur">
+            <button
+              onClick={() => setIsLocalized(false)}
+              className={`px-5 py-2 text-sm font-medium rounded-full transition-all ${!isLocalized ? "bg-white text-slate-900 shadow-lg" : "text-slate-400 hover:text-white"}`}
+            >
+              Original English
+            </button>
+            <button
+              onClick={() => setIsLocalized(true)}
+              className={`px-5 py-2 text-sm font-medium rounded-full transition-all ${isLocalized ? "bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black shadow-lg" : "text-slate-400 hover:text-white"}`}
+            >
+              Localized Arabic
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FAQSection() {
+  const faqs = [
+    {
+      q: "What languages and dialects are supported?",
+      a: "We support 40+ regional accents including Egyptian, Khaleeji, Levantine, North African, English, Spanish, and more.",
+    },
+    {
+      q: "Can I cancel my Pro subscription anytime?",
+      a: "Yes, you can cancel, upgrade, or downgrade your plan at any time directly from your billing dashboard.",
+    },
+    {
+      q: "What happens if I run out of video minutes?",
+      a: "Pro users can easily top up their account or upgrade tiers to continue generating high-quality clips instantly.",
+    },
+  ];
+  return (
+    <section className="mx-auto max-w-3xl px-6 pb-24">
+      <h2 className="text-3xl md:text-4xl font-bold text-center mb-10">
+        Frequently Asked{" "}
+        <span className="bg-gradient-to-r from-fuchsia-300 to-amber-200 bg-clip-text text-transparent">
+          Questions
+        </span>
+      </h2>
+      <Accordion type="single" collapsible className="space-y-3">
+        {faqs.map((f, i) => (
+          <AccordionItem
+            key={i}
+            value={`item-${i}`}
+            className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 backdrop-blur data-[state=open]:bg-white/[0.06] data-[state=open]:border-fuchsia-400/30"
+          >
+            <AccordionTrigger className="text-left text-base font-medium hover:no-underline py-5">
+              {f.q}
+            </AccordionTrigger>
+            <AccordionContent className="text-slate-400 leading-relaxed pb-5">
+              {f.a}
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
+    </section>
   );
 }
 
