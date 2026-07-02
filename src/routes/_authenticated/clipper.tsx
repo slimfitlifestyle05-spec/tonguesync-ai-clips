@@ -22,12 +22,11 @@ import { loadSession, saveSession, clearSession } from "@/lib/videoCache";
 const CACHE_KEY = "clipper";
 
 const CLIP_STAGES = [
-  "Analyzing transcript…",
-  "Detecting viral moments…",
-  "Generating 3 shorts…",
-  "Applying style & captions…",
-  "Finalizing your clips…",
+  "Reading video…",
+  "Transcribing text…",
+  "Finalizing output…",
 ];
+const CLIP_BOUNDARIES = [30, 70, 100];
 
 export const Route = createFileRoute("/_authenticated/clipper")({
   head: () => ({ meta: [{ title: "AI Video Clipper \u2014 TongueSync AI" }] }),
@@ -193,7 +192,7 @@ function Clipper() {
           </Button>
         </form>
 
-        <ProcessingProgress active={loading} stages={CLIP_STAGES} duration={4200} skeletonCount={3} />
+        <ProcessingProgress active={loading} stages={CLIP_STAGES} boundaries={CLIP_BOUNDARIES} duration={4200} skeletonCount={3} />
 
         {!loading && results && (
           <div className="mt-6 space-y-3">
