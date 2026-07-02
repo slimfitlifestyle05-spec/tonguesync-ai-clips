@@ -107,8 +107,9 @@ function SocialKitPanel({ kit, isPro }: { kit: any; isPro: boolean }) {
 export function VideoResult({ videos, isPro }: { videos: any[]; isPro: boolean }) {
   const { t } = useI18n();
   if (!videos?.length) return null;
+  const cols = videos.length === 1 ? "md:grid-cols-1 max-w-sm mx-auto" : videos.length === 2 ? "md:grid-cols-2" : "md:grid-cols-3";
   return (
-    <div className="mt-8 grid gap-4 md:grid-cols-3">
+    <div className={`mt-8 grid gap-4 ${cols}`}>
       {videos.map((v) => (
         <div key={v.id} className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
           <div className="relative">
