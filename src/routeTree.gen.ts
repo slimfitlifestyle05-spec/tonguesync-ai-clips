@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedDubbingRouteImport } from './routes/_authenticated/dubbing'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedClipperRouteImport } from './routes/_authenticated/clipper'
 
@@ -29,6 +30,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedDubbingRoute = AuthenticatedDubbingRouteImport.update({
+  id: '/dubbing',
+  path: '/dubbing',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -45,12 +51,14 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/clipper': typeof AuthenticatedClipperRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/dubbing': typeof AuthenticatedDubbingRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/clipper': typeof AuthenticatedClipperRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/dubbing': typeof AuthenticatedDubbingRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -59,12 +67,13 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/clipper': typeof AuthenticatedClipperRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/dubbing': typeof AuthenticatedDubbingRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/clipper' | '/dashboard'
+  fullPaths: '/' | '/auth' | '/clipper' | '/dashboard' | '/dubbing'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/clipper' | '/dashboard'
+  to: '/' | '/auth' | '/clipper' | '/dashboard' | '/dubbing'
   id:
     | '__root__'
     | '/'
@@ -72,6 +81,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/clipper'
     | '/_authenticated/dashboard'
+    | '/_authenticated/dubbing'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -103,6 +113,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/dubbing': {
+      id: '/_authenticated/dubbing'
+      path: '/dubbing'
+      fullPath: '/dubbing'
+      preLoaderRoute: typeof AuthenticatedDubbingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -123,11 +140,13 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedClipperRoute: typeof AuthenticatedClipperRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedDubbingRoute: typeof AuthenticatedDubbingRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedClipperRoute: AuthenticatedClipperRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedDubbingRoute: AuthenticatedDubbingRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
