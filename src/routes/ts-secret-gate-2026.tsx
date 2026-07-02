@@ -3,7 +3,17 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getAdminOverview, getAdminSettings, saveAdminSettings } from "@/lib/admin.functions";
+import {
+  getAdminOverview,
+  getAdminSettings,
+  saveAdminSettings,
+  getPromoVideo,
+  setPromoVideo,
+  listAppUsers,
+  inviteUser,
+  setUserTier,
+  deleteAppUser,
+} from "@/lib/admin.functions";
 import { getMyProfile } from "@/lib/video.functions";
 import { Logo } from "@/components/Logo";
 import { LangToggle } from "@/components/LangToggle";
@@ -14,7 +24,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 import { toast } from "sonner";
-import { Users, DollarSign, Video, Activity, Loader2 } from "lucide-react";
+import { Users, DollarSign, Video, Activity, Loader2, Trash2, UserPlus, Crown } from "lucide-react";
 
 export const Route = createFileRoute("/ts-secret-gate-2026")({
   ssr: false,
@@ -53,9 +63,17 @@ function AdminDashboard() {
   const getOverview = useServerFn(getAdminOverview);
   const getSettings = useServerFn(getAdminSettings);
   const save = useServerFn(saveAdminSettings);
+  const getPromo = useServerFn(getPromoVideo);
+  const savePromo = useServerFn(setPromoVideo);
+  const listUsers = useServerFn(listAppUsers);
+  const invite = useServerFn(inviteUser);
+  const setTier = useServerFn(setUserTier);
+  const delUser = useServerFn(deleteAppUser);
   const qc = useQueryClient();
   const { data: overview } = useQuery({ queryKey: ["admin-overview"], queryFn: () => getOverview(), refetchInterval: 15000 });
   const { data: settings } = useQuery({ queryKey: ["admin-settings"], queryFn: () => getSettings() });
+  const { data: promo } = useQuery({ queryKey: ["admin-promo"], queryFn: () => getPromo() });
+  const { data: users } = useQuery({ queryKey: ["admin-users"], queryFn: () => listUsers() });
 
   const [ga, setGa] = useState("");
   const [openai, setOpenai] = useState("");
@@ -63,6 +81,11 @@ function AdminDashboard() {
   const [elevenlabs, setElevenlabs] = useState("");
   const [twoFactor, setTwoFactor] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [promoUrl, setPromoUrl] = useState("");
+  const [promoTitle, setPromoTitle] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteTier, setInviteTier] = useState<"free" | "pro">("free");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (settings) {
@@ -74,6 +97,13 @@ function AdminDashboard() {
     }
   }, [settings]);
 
+  useEffect(() => {
+    if (promo) {
+      setPromoUrl(promo.url ?? "");
+      setPromoTitle(promo.title ?? "");
+    }
+  }, [promo]);
+
   async function saveAll() {
     setSaving(true);
     try {
@@ -82,6 +112,46 @@ function AdminDashboard() {
       qc.invalidateQueries();
     } catch (e: any) { toast.error(e?.message ?? "Save failed"); }
     finally { setSaving(false); }
+  }
+
+  async function savePromoVideo() {
+    setBusy(true);
+    try {
+      await savePromo({ data: { url: promoUrl, title: promoTitle } });
+      toast.success("Promo video saved");
+      qc.invalidateQueries({ queryKey: ["admin-promo"] });
+      qc.invalidateQueries({ queryKey: ["promo-video"] });
+    } catch (e: any) { toast.error(e?.message ?? "Save failed"); }
+    finally { setBusy(false); }
+  }
+
+  async function handleInvite() {
+    if (!inviteEmail) return;
+    setBusy(true);
+    try {
+      await invite({ data: { email: inviteEmail, tier: inviteTier } });
+      toast.success(`Invitation sent to ${inviteEmail}`);
+      setInviteEmail("");
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+    } catch (e: any) { toast.error(e?.message ?? "Invite failed"); }
+    finally { setBusy(false); }
+  }
+
+  async function handleSetTier(userId: string, tier: "free" | "pro") {
+    try {
+      await setTier({ data: { userId, tier } });
+      toast.success(`User set to ${tier}`);
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+    } catch (e: any) { toast.error(e?.message ?? "Update failed"); }
+  }
+
+  async function handleDelete(userId: string, email: string | null) {
+    if (!confirm(`Delete user ${email ?? userId}? This cannot be undone.`)) return;
+    try {
+      await delUser({ data: { userId } });
+      toast.success("User deleted");
+      qc.invalidateQueries({ queryKey: ["admin-users"] });
+    } catch (e: any) { toast.error(e?.message ?? "Delete failed"); }
   }
 
   return (
@@ -134,6 +204,8 @@ function AdminDashboard() {
             <TabsTrigger value="analytics">Google Analytics</TabsTrigger>
             <TabsTrigger value="api">API Keys</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
+            <TabsTrigger value="promo">Promo Video</TabsTrigger>
+            <TabsTrigger value="users">Users</TabsTrigger>
           </TabsList>
           <TabsContent value="analytics">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
@@ -164,6 +236,84 @@ function AdminDashboard() {
                 <Switch checked={twoFactor} onCheckedChange={setTwoFactor} />
               </label>
               <Button onClick={saveAll} disabled={saving}>Save changes</Button>
+            </div>
+          </TabsContent>
+          <TabsContent value="promo">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
+              <div>
+                <Label>Promo video URL (MP4 or embed)</Label>
+                <Input value={promoUrl} onChange={(e) => setPromoUrl(e.target.value)} placeholder="https://.../promo.mp4" className="bg-white/5 border-white/10 mt-1" />
+                <p className="text-xs text-slate-400 mt-1">Shown on the landing page as an intro explaining what TongueSync AI does. Leave empty to hide.</p>
+              </div>
+              <div>
+                <Label>Caption (optional)</Label>
+                <Input value={promoTitle} onChange={(e) => setPromoTitle(e.target.value)} placeholder="Watch how it works in 60 seconds" className="bg-white/5 border-white/10 mt-1" />
+              </div>
+              {promoUrl ? (
+                <div className="rounded-xl overflow-hidden border border-white/10 aspect-video bg-black">
+                  <video src={promoUrl} controls className="w-full h-full" />
+                </div>
+              ) : null}
+              <Button onClick={savePromoVideo} disabled={busy}>Save promo video</Button>
+            </div>
+          </TabsContent>
+          <TabsContent value="users">
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+                <h3 className="font-semibold mb-3 flex items-center gap-2"><UserPlus className="h-4 w-4" /> Invite a user</h3>
+                <div className="flex flex-wrap gap-2 items-end">
+                  <div className="flex-1 min-w-[240px]">
+                    <Label>Email</Label>
+                    <Input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="user@example.com" className="bg-white/5 border-white/10 mt-1" />
+                  </div>
+                  <div>
+                    <Label>Plan</Label>
+                    <select value={inviteTier} onChange={(e) => setInviteTier(e.target.value as "free" | "pro")} className="mt-1 rounded-md bg-white/5 border border-white/10 px-3 py-2 text-sm">
+                      <option value="free">Free</option>
+                      <option value="pro">Pro (paid)</option>
+                    </select>
+                  </div>
+                  <Button onClick={handleInvite} disabled={busy || !inviteEmail}>Send invite</Button>
+                </div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-white/5 text-slate-400 text-xs uppercase">
+                    <tr>
+                      <th className="text-left px-4 py-3">Email</th>
+                      <th className="text-left px-4 py-3">Tier</th>
+                      <th className="text-left px-4 py-3">Role</th>
+                      <th className="text-right px-4 py-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(users ?? []).map((u) => (
+                      <tr key={u.id} className="border-t border-white/5">
+                        <td className="px-4 py-3">{u.email ?? <span className="text-slate-500">—</span>}<div className="text-xs text-slate-500">{u.full_name}</div></td>
+                        <td className="px-4 py-3">
+                          <span className={"inline-flex items-center gap-1 px-2 py-1 rounded text-xs " + (u.tier === "pro" ? "bg-amber-500/20 text-amber-300" : "bg-white/10 text-slate-300")}>
+                            {u.tier === "pro" ? <Crown className="h-3 w-3" /> : null}{u.tier}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-400">{u.roles.join(", ") || "user"}</td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="inline-flex gap-2">
+                            {u.tier === "pro" ? (
+                              <Button size="sm" variant="ghost" onClick={() => handleSetTier(u.id, "free")}>Downgrade</Button>
+                            ) : (
+                              <Button size="sm" variant="ghost" onClick={() => handleSetTier(u.id, "pro")}>Upgrade to Pro</Button>
+                            )}
+                            <Button size="sm" variant="ghost" className="text-red-400 hover:bg-red-500/10" onClick={() => handleDelete(u.id, u.email)}><Trash2 className="h-4 w-4" /></Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {(users ?? []).length === 0 ? (
+                      <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-500">No users yet.</td></tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
