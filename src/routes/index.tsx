@@ -108,7 +108,16 @@ function Index() {
         <h2 className="text-3xl font-bold text-center mb-10">{t("pricing")}</h2>
         <div className="grid gap-6 md:grid-cols-2">
           <PriceCard tier={t("free_tier")} price="$0" perks={[t("perk_free_1"), t("perk_free_2"), t("perk_free_3"), t("perk_free_4")]} />
-          <PriceCard highlight tier={t("pro_tier")} price={"$10" + t("per_month")} perks={[t("perk_pro_1"), t("perk_pro_2"), t("perk_pro_3"), t("perk_pro_4")]} />
+          <PriceCard
+            highlight
+            tier={t("pro_tier")}
+            price={"$10" + t("per_month")}
+            originalPrice={"$20" + t("per_month")}
+            launchBadge={t("launch_badge")}
+            launchNote={t("launch_note")}
+            launchPill={t("launch_pill")}
+            perks={[t("perk_pro_1"), t("perk_pro_2"), t("perk_pro_3"), t("perk_pro_4")]}
+          />
         </div>
         <div className="mt-12 flex justify-center">
           <Link to="/auth">
@@ -232,14 +241,53 @@ function StepCard({ n, icon, title, text }: { n: string; icon: React.ReactNode; 
   );
 }
 
-function PriceCard({ tier, price, perks, highlight }: { tier: string; price: string; perks: string[]; highlight?: boolean }) {
+function PriceCard({
+  tier,
+  price,
+  perks,
+  highlight,
+  originalPrice,
+  launchBadge,
+  launchNote,
+  launchPill,
+}: {
+  tier: string;
+  price: string;
+  perks: string[];
+  highlight?: boolean;
+  originalPrice?: string;
+  launchBadge?: string;
+  launchNote?: string;
+  launchPill?: string;
+}) {
   return (
-    <div className={`rounded-2xl border p-8 ${highlight ? "border-amber-400/40 bg-gradient-to-br from-fuchsia-950/40 to-amber-950/20" : "border-white/10 bg-white/5"}`}>
+    <div
+      className={`relative rounded-2xl border p-8 ${highlight ? "border-amber-400/40 bg-gradient-to-br from-fuchsia-950/40 to-amber-950/20 shadow-[0_20px_60px_-20px_rgba(217,70,239,0.35)]" : "border-white/10 bg-white/5"}`}
+    >
+      {launchPill && (
+        <div className="absolute -top-3 start-6 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-fuchsia-500 via-pink-500 to-amber-400 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-black shadow-lg animate-pulse">
+          <span>🔥</span>
+          <span>{launchPill}</span>
+        </div>
+      )}
       <div className="flex items-baseline justify-between">
         <h3 className="text-lg font-semibold">{tier}</h3>
         {highlight && <ShieldCheck className="h-5 w-5 text-amber-300" />}
       </div>
-      <div className="mt-2 text-4xl font-bold">{price}</div>
+      <div className="mt-2 flex items-baseline gap-3 flex-wrap">
+        <div className="text-4xl font-bold">{price}</div>
+        {originalPrice && (
+          <div className="text-lg font-medium text-slate-500 line-through">{originalPrice}</div>
+        )}
+      </div>
+      {launchNote && (
+        <p className="mt-2 text-xs font-medium text-amber-300/90">{launchNote}</p>
+      )}
+      {launchBadge && (
+        <div className="mt-4 rounded-xl border border-fuchsia-400/30 bg-gradient-to-r from-fuchsia-500/15 via-pink-500/10 to-amber-400/15 p-3 text-xs leading-relaxed text-slate-100">
+          {launchBadge}
+        </div>
+      )}
       <ul className="mt-6 space-y-3 text-sm">
         {perks.map((p) => (
           <li key={p} className="flex gap-2"><Check className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />{p}</li>
