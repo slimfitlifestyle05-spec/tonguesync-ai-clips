@@ -238,3 +238,99 @@ function PriceCard({ tier, price, perks, highlight }: { tier: string; price: str
     </div>
   );
 }
+
+function TrustBar() {
+  return (
+    <section className="mx-auto max-w-6xl px-6 pb-16 text-center">
+      <p className="text-sm text-slate-400 tracking-wide">Trusted by 5,000+ video creators, brands, and agencies worldwide</p>
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-8 opacity-40">
+        <div className="flex items-center gap-2 text-slate-300">
+          <Smartphone className="h-5 w-5" />
+          <span className="text-xs font-medium tracking-wider uppercase">TikTok</span>
+        </div>
+        <div className="flex items-center gap-2 text-slate-300">
+          <Monitor className="h-5 w-5" />
+          <span className="text-xs font-medium tracking-wider uppercase">YouTube</span>
+        </div>
+        <div className="flex items-center gap-2 text-slate-300">
+          <Video className="h-5 w-5" />
+          <span className="text-xs font-medium tracking-wider uppercase">Reels</span>
+        </div>
+        <div className="flex items-center gap-2 text-slate-300">
+          <Radio className="h-5 w-5" />
+          <span className="text-xs font-medium tracking-wider uppercase">Podcasts</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BentoGrid() {
+  return (
+    <section className="mx-auto max-w-6xl px-6 pb-24">
+      <div className="grid gap-4 md:grid-cols-3">
+        <BentoCard
+          icon={<Brain className="h-5 w-5" />}
+          title="99% Dialect Accuracy"
+          desc="Optimized to understand local slang, cultural jokes, and regional idioms perfectly."
+        />
+        <BentoCard
+          icon={<Mic className="h-5 w-5" />}
+          title="Voice Tone Preservation"
+          desc="Our AI retains the original speaker's unique emotion, pitch, and energy."
+        />
+        <BentoCard
+          icon={<Zap className="h-5 w-5" />}
+          title="Lightning Fast Rendering"
+          desc="Powered by high-performance GPU pipelines to deliver your shorts in seconds."
+        />
+      </div>
+    </section>
+  );
+}
+
+function BentoCard({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur hover:bg-white/[0.05] transition-colors">
+      <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-500/20 to-amber-400/20 border border-white/10 mb-4">
+        {icon}
+      </div>
+      <h3 className="text-lg font-semibold">{title}</h3>
+      <p className="mt-2 text-sm text-slate-400 leading-relaxed">{desc}</p>
+    </div>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="border-t border-white/10 bg-slate-950/50">
+      <div className="mx-auto max-w-6xl px-6 py-12 grid gap-8 md:grid-cols-3 text-sm">
+        <div>
+          <h4 className="font-semibold text-white mb-3">Product</h4>
+          <ul className="space-y-2 text-slate-400">
+            <li><Link to="/clipper" className="hover:text-white transition-colors">AI Clipper</Link></li>
+            <li><Link to="/dubbing" className="hover:text-white transition-colors">Cultural Dubber</Link></li>
+            <li><Link to="/" className="hover:text-white transition-colors">Pricing</Link></li>
+          </ul>
+        </div>
+        <div>
+          <h4 className="font-semibold text-white mb-3">Legal</h4>
+          <ul className="space-y-2 text-slate-400">
+            <li><span className="hover:text-white transition-colors cursor-pointer">Privacy Policy</span></li>
+            <li><span className="hover:text-white transition-colors cursor-pointer">Terms of Service</span></li>
+          </ul>
+        </div>
+        <div>
+          <h4 className="font-semibold text-white mb-3">Company</h4>
+          <ul className="space-y-2 text-slate-400">
+            <li><span className="hover:text-white transition-colors cursor-pointer">About Us</span></li>
+            <li><span className="hover:text-white transition-colors cursor-pointer">Contact</span></li>
+          </ul>
+        </div>
+      </div>
+      <div className="border-t border-white/10 py-6 text-center text-sm text-slate-500">
+        &copy; 2026 TongueSync AI. All rights reserved.
+      </div>
+    </footer>
+  );
+}
