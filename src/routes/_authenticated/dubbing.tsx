@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createDub, getMyProfile, LIMITS } from "@/lib/video.functions";
@@ -11,11 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LANGUAGES, REGIONS, STYLE_TEMPLATES } from "@/lib/premium";
 import { useI18n } from "@/lib/i18n";
-import { ArrowLeft, Globe2, Lock, UploadCloud, X } from "lucide-react";
+import { ArrowLeft, Globe2, Lock, RotateCcw, UploadCloud, X } from "lucide-react";
 import { toast } from "sonner";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
 import { ProcessingProgress } from "@/components/ProcessingProgress";
+import { loadSession, saveSession, clearSession } from "@/lib/videoCache";
+
+const CACHE_KEY = "dubbing";
 
 const DUB_STAGES = [
   "Analyzing transcript…",
@@ -49,6 +52,58 @@ function DubbingPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const hydrated = useRef(false);
+
+  // Restore cached session (including uploaded file Blob)
+  useEffect(() => {
+    loadSession(CACHE_KEY).then((s) => {
+      if (s) {
+        const f = s.form || {};
+        if (typeof f.title === "string") setTitle(f.title);
+        if (typeof f.source === "string") setSource(f.source);
+        if (typeof f.targetLanguage === "string") setTargetLanguage(f.targetLanguage);
+        if (typeof f.targetCountry === "string") setTargetCountry(f.targetCountry);
+        if (typeof f.style === "string") setStyle(f.style);
+        if (typeof f.duration === "number") setDuration(f.duration);
+        if (s.file && s.file.blob) {
+          try {
+            const restored = new File([s.file.blob], s.file.name, { type: s.file.type });
+            setFile(restored);
+          } catch {}
+        }
+        if (s.results) {
+          setResult(s.results);
+          toast.success("Restored your last dubbing session");
+        }
+      }
+      hydrated.current = true;
+    });
+  }, []);
+
+  // Persist changes
+  useEffect(() => {
+    if (!hydrated.current) return;
+    saveSession({
+      key: CACHE_KEY,
+      updatedAt: Date.now(),
+      form: { title, source, targetLanguage, targetCountry, style, duration },
+      results: result,
+      file: file ? { name: file.name, type: file.type, size: file.size, blob: file } : null,
+    });
+  }, [title, source, targetLanguage, targetCountry, style, duration, result, file]);
+
+  function resetAll() {
+    setTitle("");
+    setSource("");
+    setFile(null);
+    setTargetLanguage("ar");
+    setTargetCountry("SA");
+    setStyle("modern");
+    setDuration(20);
+    setResult(null);
+    clearSession(CACHE_KEY);
+    toast.success("Cleared — ready for a new video");
+  }
 
   const maxDur = isPro ? LIMITS.PRO_DUB_MAX_SECONDS : LIMITS.FREE_DUB_MAX_SECONDS;
 
@@ -204,7 +259,16 @@ function DubbingPage() {
 
         <ProcessingProgress active={loading} stages={DUB_STAGES} duration={4200} skeletonCount={1} />
 
-        {!loading && result && <VideoResult videos={[result]} isPro={isPro} />}
+        {!loading && result && (
+          <div className="mt-6 space-y-3">
+            <div className="flex justify-end">
+              <Button type="button" variant="outline" size="sm" onClick={resetAll} className="border-white/15 bg-white/5 hover:bg-white/10">
+                <RotateCcw className="h-4 w-4 mr-1" /> New video
+              </Button>
+            </div>
+            <VideoResult videos={[result]} isPro={isPro} />
+          </div>
+        )}
       </main>
 
       <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
