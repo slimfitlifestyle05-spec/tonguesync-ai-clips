@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClips, getMyProfile, LIMITS } from "@/lib/video.functions";
@@ -12,11 +12,14 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { STYLE_TEMPLATES, LANGUAGES } from "@/lib/premium";
 import { useI18n } from "@/lib/i18n";
-import { ArrowLeft, Lock, Scissors } from "lucide-react";
+import { ArrowLeft, Lock, RotateCcw, Scissors } from "lucide-react";
 import { toast } from "sonner";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
 import { ProcessingProgress } from "@/components/ProcessingProgress";
+import { loadSession, saveSession, clearSession } from "@/lib/videoCache";
+
+const CACHE_KEY = "clipper";
 
 const CLIP_STAGES = [
   "Analyzing transcript…",
@@ -48,6 +51,50 @@ function Clipper() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any[] | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const hydrated = useRef(false);
+
+  // Restore cached session on mount
+  useEffect(() => {
+    loadSession(CACHE_KEY).then((s) => {
+      if (s) {
+        const f = s.form || {};
+        if (typeof f.title === "string") setTitle(f.title);
+        if (typeof f.source === "string") setSource(f.source);
+        if (typeof f.style === "string") setStyle(f.style);
+        if (typeof f.language === "string") setLanguage(f.language);
+        if (typeof f.autoEmojis === "boolean") setAutoEmojis(f.autoEmojis);
+        if (typeof f.highlight === "boolean") setHighlight(f.highlight);
+        if (s.results) {
+          setResults(s.results);
+          toast.success("Restored your last session");
+        }
+      }
+      hydrated.current = true;
+    });
+  }, []);
+
+  // Persist form + results whenever they change (after initial hydration)
+  useEffect(() => {
+    if (!hydrated.current) return;
+    saveSession({
+      key: CACHE_KEY,
+      updatedAt: Date.now(),
+      form: { title, source, style, language, autoEmojis, highlight },
+      results,
+    });
+  }, [title, source, style, language, autoEmojis, highlight, results]);
+
+  function resetAll() {
+    setTitle("");
+    setSource("");
+    setStyle("modern");
+    setLanguage("en");
+    setAutoEmojis(false);
+    setHighlight(false);
+    setResults(null);
+    clearSession(CACHE_KEY);
+    toast.success("Cleared — ready for a new video");
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -148,7 +195,16 @@ function Clipper() {
 
         <ProcessingProgress active={loading} stages={CLIP_STAGES} duration={4200} skeletonCount={3} />
 
-        {!loading && results && <VideoResult videos={results} isPro={isPro} />}
+        {!loading && results && (
+          <div className="mt-6 space-y-3">
+            <div className="flex justify-end">
+              <Button type="button" variant="outline" size="sm" onClick={resetAll} className="border-white/15 bg-white/5 hover:bg-white/10">
+                <RotateCcw className="h-4 w-4 mr-1" /> New video
+              </Button>
+            </div>
+            <VideoResult videos={results} isPro={isPro} />
+          </div>
+        )}
       </main>
 
       <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
