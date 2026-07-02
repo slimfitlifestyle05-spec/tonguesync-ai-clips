@@ -340,15 +340,15 @@ function Footer() {
         <div>
           <h4 className="font-semibold text-white mb-3">Legal</h4>
           <ul className="space-y-2 text-slate-400">
-            <li><span className="hover:text-white transition-colors cursor-pointer">Privacy Policy</span></li>
-            <li><span className="hover:text-white transition-colors cursor-pointer">Terms of Service</span></li>
+            <li><Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+            <li><Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
           </ul>
         </div>
         <div>
           <h4 className="font-semibold text-white mb-3">Company</h4>
           <ul className="space-y-2 text-slate-400">
-            <li><span className="hover:text-white transition-colors cursor-pointer">About Us</span></li>
-            <li><span className="hover:text-white transition-colors cursor-pointer">Contact</span></li>
+            <li><Link to="/about" className="hover:text-white transition-colors">About Us</Link></li>
+            <li><Link to="/contact" className="hover:text-white transition-colors">Contact</Link></li>
           </ul>
         </div>
       </div>
