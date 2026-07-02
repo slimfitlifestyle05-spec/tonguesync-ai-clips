@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { LangToggle } from "@/components/LangToggle";
 import { useI18n } from "@/lib/i18n";
-import { Check, Sparkles, ShieldCheck, Wand2, Languages, Rocket, Play, Volume2 } from "lucide-react";
+import { Check, Sparkles, ShieldCheck, Wand2, Languages, Rocket, Play, Volume2, Zap, Brain, Mic, Monitor, Smartphone, Video, Radio } from "lucide-react";
 import { FeatureCard, ClipperVisual, DubbingVisual } from "@/components/FeatureShowcase";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
