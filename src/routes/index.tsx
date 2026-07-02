@@ -303,6 +303,28 @@ function PriceCard({
 }
 
 function TrustBar() {
+  return _TrustBar();
+}
+
+function PromoVideoSection() {
+  const getPromo = useServerFn(getPromoVideo);
+  const { data } = useQuery({ queryKey: ["promo-video"], queryFn: () => getPromo() });
+  if (!data?.url) return null;
+  return (
+    <Reveal>
+      <section className="mx-auto max-w-4xl px-6 pb-16">
+        <div className="rounded-2xl overflow-hidden border border-white/10 bg-black shadow-2xl shadow-fuchsia-500/10">
+          <video src={data.url} controls className="w-full aspect-video" />
+        </div>
+        {data.title ? (
+          <p className="text-center text-sm text-slate-400 mt-3">{data.title}</p>
+        ) : null}
+      </section>
+    </Reveal>
+  );
+}
+
+function _TrustBar() {
   const { t } = useI18n();
   return (
     <section className="mx-auto max-w-6xl px-6 pb-16 text-center">
