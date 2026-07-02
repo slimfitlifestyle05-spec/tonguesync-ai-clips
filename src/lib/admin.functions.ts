@@ -122,3 +122,90 @@ export const getPublicGA = createServerFn({ method: "GET" }).handler(async () =>
   const { data } = await client.from("app_settings").select("value").eq("key", "ga_measurement_id").maybeSingle();
   return { ga: typeof data?.value === "string" ? data.value : "" };
 });
+
+export const getPromoVideo = createServerFn({ method: "GET" }).handler(async () => {
+  const { createClient } = await import("@supabase/supabase-js");
+  const client = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
+    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+  });
+  const { data } = await client.from("app_settings").select("value").eq("key", "promo_video").maybeSingle();
+  const v = data?.value as { url?: string; title?: string } | null;
+  return { url: v?.url ?? "", title: v?.title ?? "" };
+});
+
+export const setPromoVideo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z.object({ url: z.string().url().max(500).or(z.literal("")), title: z.string().max(120).optional().default("") }).parse(raw)
+  )
+  .handler(async ({ context, data }) => {
+    await requireAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("app_settings").upsert(
+      { key: "promo_video", value: { url: data.url, title: data.title }, updated_by: context.userId, updated_at: new Date().toISOString() },
+      { onConflict: "key" }
+    );
+    return { ok: true };
+  });
+
+export const listAppUsers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: profiles } = await supabaseAdmin
+      .from("profiles")
+      .select("id, email, full_name, tier, created_at")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    const { data: roles } = await supabaseAdmin.from("user_roles").select("user_id, role");
+    const roleMap = new Map<string, string[]>();
+    (roles ?? []).forEach((r: { user_id: string; role: string }) => {
+      const arr = roleMap.get(r.user_id) ?? [];
+      arr.push(r.role);
+      roleMap.set(r.user_id, arr);
+    });
+    return (profiles ?? []).map((p) => ({ ...p, roles: roleMap.get(p.id) ?? [] }));
+  });
+
+export const inviteUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z.object({ email: z.string().email().max(255), tier: z.enum(["free", "pro"]).default("free") }).parse(raw)
+  )
+  .handler(async ({ context, data }) => {
+    await requireAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: created, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(data.email);
+    if (error) throw new Error(error.message);
+    const userId = created?.user?.id;
+    if (userId && data.tier === "pro") {
+      await supabaseAdmin.from("profiles").update({ tier: "pro" }).eq("id", userId);
+    }
+    return { ok: true, userId };
+  });
+
+export const setUserTier = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z.object({ userId: z.string().uuid(), tier: z.enum(["free", "pro"]) }).parse(raw)
+  )
+  .handler(async ({ context, data }) => {
+    await requireAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("profiles").update({ tier: data.tier }).eq("id", data.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteAppUser = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) => z.object({ userId: z.string().uuid() }).parse(raw))
+  .handler(async ({ context, data }) => {
+    await requireAdmin(context);
+    if (data.userId === context.userId) throw new Error("Cannot delete yourself");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
