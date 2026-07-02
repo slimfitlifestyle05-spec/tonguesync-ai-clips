@@ -2,7 +2,52 @@ import { useEffect, useRef, useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { Sparkles, Check, Loader2 } from "lucide-react";
+import { Sparkles, Check, Loader2, Lightbulb } from "lucide-react";
+
+const VIRAL_TIPS = [
+  "Hook viewers in the first 3 seconds — start with a question or a bold claim.",
+  "Vertical 9:16 clips outperform landscape on TikTok, Reels & Shorts by ~2x.",
+  "Use burned-in captions — 85% of social videos are watched with sound off.",
+  "Post 3–5 shorts per week to train the algorithm on your niche.",
+  "End every clip with a clear CTA: follow, comment, or watch the next one.",
+  "Localizing your clip into a regional dialect can 3x engagement in that market.",
+  "Keep clips under 45 seconds — retention drops sharply after that mark.",
+  "Use trending audio only if it matches your message — relevance beats reach.",
+];
+
+function ViralTipCarousel() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setI((v) => (v + 1) % VIRAL_TIPS.length), 4500);
+    return () => window.clearInterval(id);
+  }, []);
+  return (
+    <div className="mt-5 rounded-xl border border-fuchsia-400/20 bg-gradient-to-r from-fuchsia-500/10 via-white/[0.03] to-amber-400/10 p-4">
+      <div className="flex items-start gap-3">
+        <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-fuchsia-500 text-black">
+          <Lightbulb className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[10px] uppercase tracking-widest text-amber-300/90 font-semibold">Viral Video Tip</div>
+          <div key={i} className="mt-1 text-sm text-slate-200 leading-relaxed animate-fade-in">
+            {VIRAL_TIPS[i]}
+          </div>
+          <div className="mt-3 flex gap-1">
+            {VIRAL_TIPS.map((_, k) => (
+              <span
+                key={k}
+                className={
+                  "h-1 rounded-full transition-all " +
+                  (k === i ? "w-6 bg-gradient-to-r from-fuchsia-400 to-amber-300" : "w-1.5 bg-white/15")
+                }
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 type Props = {
   active: boolean;
@@ -122,6 +167,8 @@ export function ProcessingProgress({ active, stages, duration = 4200, skeletonCo
             );
           })}
         </div>
+
+        {active && <ViralTipCarousel />}
       </div>
 
       {skeletonCount > 0 && (
