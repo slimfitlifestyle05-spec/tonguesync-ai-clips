@@ -10,6 +10,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Reveal } from "@/components/Reveal";
 import { SocialProofToast } from "@/components/SocialProofToast";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
+import { getPromoVideo } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -57,6 +60,8 @@ function Index() {
       </Reveal>
 
       <Reveal delay={80}><TrustBar /></Reveal>
+
+      <PromoVideoSection />
 
       <section className="mx-auto max-w-6xl px-6 pb-16 grid gap-6 md:grid-cols-2">
         <Reveal delay={0}>
