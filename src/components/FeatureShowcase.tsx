@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ChevronRight, Scissors as ScissorsIcon, Volume2 } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 export function FeatureCard({
   to,
@@ -12,6 +13,7 @@ export function FeatureCard({
   desc: string;
   visual: React.ReactNode;
 }) {
+  const { t } = useI18n();
   return (
     <Link
       to={to as any}
@@ -27,7 +29,7 @@ export function FeatureCard({
           <p className="mt-1 text-sm text-slate-400 line-clamp-2">{desc}</p>
         </div>
         <div className="shrink-0 inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-fuchsia-200 transition group-hover:border-fuchsia-400/50 group-hover:bg-fuchsia-500/10 group-hover:text-white">
-          Try Now
+          {t("try_now")}
           <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
         </div>
       </div>

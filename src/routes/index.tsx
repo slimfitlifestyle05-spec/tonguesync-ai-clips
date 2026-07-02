@@ -45,7 +45,7 @@ function Index() {
 
       <Reveal as="section" className="mx-auto max-w-4xl px-6 pt-16 pb-24 text-center">
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs">
-          <Sparkles className="h-3 w-3 text-amber-300" /> AI shorts + cultural dubbing
+          <Sparkles className="h-3 w-3 text-amber-300" /> {t("hero_badge")}
         </div>
         <h1 className="text-5xl md:text-7xl font-bold tracking-tight bg-gradient-to-r from-fuchsia-300 via-white to-amber-200 bg-clip-text text-transparent">
           {t("tagline")}
@@ -62,16 +62,16 @@ function Index() {
         <Reveal delay={0}>
           <FeatureCard
             to="/clipper"
-            title="AI Video Clipper"
-            desc="Automatically split long videos into highly engaging vertical shorts with animated captions."
+            title={t("feat_clipper_title")}
+            desc={t("feat_clipper_desc")}
             visual={<ClipperVisual />}
           />
         </Reveal>
         <Reveal delay={120}>
           <FeatureCard
             to="/dubbing"
-            title="Cultural AI Dubbing"
-            desc="Translate, rewrite, and re-voice your video into localized regional dialects and accents instantly."
+            title={t("feat_dubbing_title")}
+            desc={t("feat_dubbing_desc")}
             visual={<DubbingVisual />}
           />
         </Reveal>
@@ -81,25 +81,20 @@ function Index() {
         <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-fuchsia-500/10 via-white/[0.03] to-amber-400/10 p-8 md:p-12">
           <div className="max-w-2xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-              <Sparkles className="h-3 w-3 text-amber-300" /> How it works
+              <Sparkles className="h-3 w-3 text-amber-300" /> {t("how_badge")}
             </div>
             <h2 className="mt-4 text-3xl md:text-4xl font-bold tracking-tight">
-              One video in.{" "}
+              {t("how_h2_a")}{" "}
               <span className="bg-gradient-to-r from-fuchsia-300 to-amber-200 bg-clip-text text-transparent">
-                A whole content engine out.
+                {t("how_h2_b")}
               </span>
             </h2>
-            <p className="mt-4 text-slate-300 leading-relaxed">
-              Upload a single long video and TongueSync AI handles the rest — it finds the viral
-              moments, cuts vertical shorts with animated captions, dubs them into the exact
-              regional dialect your audience speaks, and even writes SEO-ready titles, descriptions,
-              and hashtags. No editors, no translators, no guesswork.
-            </p>
+            <p className="mt-4 text-slate-300 leading-relaxed">{t("how_p")}</p>
           </div>
           <div className="mt-10 grid gap-4 md:grid-cols-3">
-            <StepCard n="01" icon={<Wand2 className="h-4 w-4" />} title="Analyze" text="Our AI reads the transcript, detects the hook, and picks the highest-retention moments." />
-            <StepCard n="02" icon={<Languages className="h-4 w-4" />} title="Localize" text="Translate and re-voice into 40+ regional accents — Khaleeji, Egyptian, Darija, LATAM Spanish, and more." />
-            <StepCard n="03" icon={<Rocket className="h-4 w-4" />} title="Publish" text="Download platform-ready vertical shorts with captions and an auto-generated Social Kit." />
+            <StepCard n="01" icon={<Wand2 className="h-4 w-4" />} title={t("step_1_title")} text={t("step_1_text")} />
+            <StepCard n="02" icon={<Languages className="h-4 w-4" />} title={t("step_2_title")} text={t("step_2_text")} />
+            <StepCard n="03" icon={<Rocket className="h-4 w-4" />} title={t("step_3_title")} text={t("step_3_text")} />
           </div>
         </div>
       </Reveal>
@@ -112,13 +107,13 @@ function Index() {
         <div id="pricing" />
         <h2 className="text-3xl font-bold text-center mb-10">{t("pricing")}</h2>
         <div className="grid gap-6 md:grid-cols-2">
-          <PriceCard tier={t("free_tier")} price="$0" perks={["3 clip generations", "3 dubs (\u226435s per clip)", "Watermark", "Basic caption styles"]} />
-          <PriceCard highlight tier={t("pro_tier")} price={"$10" + t("per_month")} perks={["30 videos / month", "Dubs up to 60s", "No watermark", "All premium styles + Social Kit"]} />
+          <PriceCard tier={t("free_tier")} price="$0" perks={[t("perk_free_1"), t("perk_free_2"), t("perk_free_3"), t("perk_free_4")]} />
+          <PriceCard highlight tier={t("pro_tier")} price={"$10" + t("per_month")} perks={[t("perk_pro_1"), t("perk_pro_2"), t("perk_pro_3"), t("perk_pro_4")]} />
         </div>
         <div className="mt-12 flex justify-center">
           <Link to="/auth">
             <Button size="lg" className="bg-gradient-to-r from-fuchsia-500 via-pink-500 to-amber-400 text-black font-semibold px-10 py-6 text-base shadow-[0_10px_40px_-10px_rgba(217,70,239,0.6)] hover:opacity-90 hover:shadow-[0_15px_50px_-10px_rgba(217,70,239,0.8)] transition-all">
-              Start Syncing For Free
+              {t("pricing_cta")}
             </Button>
           </Link>
         </div>
@@ -133,19 +128,18 @@ function Index() {
 }
 
 function BeforeAfterSection() {
+  const { t } = useI18n();
   const [isLocalized, setIsLocalized] = useState(false);
   return (
     <section className="mx-auto max-w-5xl px-6 pb-24">
       <div className="text-center mb-10">
         <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
-          See and Hear the{" "}
+          {t("ba_h2_a")}{" "}
           <span className="bg-gradient-to-r from-fuchsia-300 to-amber-200 bg-clip-text text-transparent">
-            Magic in Action
+            {t("ba_h2_b")}
           </span>
         </h2>
-        <p className="mt-4 text-slate-400 max-w-xl mx-auto">
-          Toggle between the original voice and the AI culturally-dubbed version — instantly hear how your content transforms for a new audience.
-        </p>
+        <p className="mt-4 text-slate-400 max-w-xl mx-auto">{t("ba_sub")}</p>
       </div>
       <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 to-slate-950 p-6 md:p-8 shadow-2xl">
         <div className="relative aspect-video rounded-2xl overflow-hidden bg-gradient-to-br from-fuchsia-950/50 via-slate-900 to-amber-950/30 border border-white/5">
@@ -155,11 +149,11 @@ function BeforeAfterSection() {
                 <Play className="h-7 w-7 text-white ml-1" fill="currentColor" />
               </div>
               <div className="text-2xl font-semibold">
-                {isLocalized ? "مرحباً بكم في المستقبل" : "Welcome to the future"}
+                {isLocalized ? t("ba_caption_ar") : t("ba_caption_en")}
               </div>
               <div className="mt-2 text-sm text-slate-400 flex items-center justify-center gap-2">
                 <Volume2 className="h-4 w-4" />
-                {isLocalized ? "Arabic \u2014 Egyptian dialect" : "Original English audio"}
+                {isLocalized ? t("ba_lang_local") : t("ba_lang_orig")}
               </div>
             </div>
           </div>
@@ -173,13 +167,13 @@ function BeforeAfterSection() {
               onClick={() => setIsLocalized(false)}
               className={`px-5 py-2 text-sm font-medium rounded-full transition-all ${!isLocalized ? "bg-white text-slate-900 shadow-lg" : "text-slate-400 hover:text-white"}`}
             >
-              Original English
+              {t("toggle_original")}
             </button>
             <button
               onClick={() => setIsLocalized(true)}
               className={`px-5 py-2 text-sm font-medium rounded-full transition-all ${isLocalized ? "bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black shadow-lg" : "text-slate-400 hover:text-white"}`}
             >
-              Localized Arabic
+              {t("toggle_localized")}
             </button>
           </div>
         </div>
@@ -189,26 +183,18 @@ function BeforeAfterSection() {
 }
 
 function FAQSection() {
+  const { t } = useI18n();
   const faqs = [
-    {
-      q: "What languages and dialects are supported?",
-      a: "We support 40+ regional accents including Egyptian, Khaleeji, Levantine, North African, English, Spanish, and more.",
-    },
-    {
-      q: "Can I cancel my Pro subscription anytime?",
-      a: "Yes, you can cancel, upgrade, or downgrade your plan at any time directly from your billing dashboard.",
-    },
-    {
-      q: "What happens if I run out of video minutes?",
-      a: "Pro users can easily top up their account or upgrade tiers to continue generating high-quality clips instantly.",
-    },
+    { q: t("faq_q1"), a: t("faq_a1") },
+    { q: t("faq_q2"), a: t("faq_a2") },
+    { q: t("faq_q3"), a: t("faq_a3") },
   ];
   return (
     <section className="mx-auto max-w-3xl px-6 pb-24">
       <h2 className="text-3xl md:text-4xl font-bold text-center mb-10">
-        Frequently Asked{" "}
+        {t("faq_h2_a")}{" "}
         <span className="bg-gradient-to-r from-fuchsia-300 to-amber-200 bg-clip-text text-transparent">
-          Questions
+          {t("faq_h2_b")}
         </span>
       </h2>
       <Accordion type="single" collapsible className="space-y-3">
@@ -264,9 +250,10 @@ function PriceCard({ tier, price, perks, highlight }: { tier: string; price: str
 }
 
 function TrustBar() {
+  const { t } = useI18n();
   return (
     <section className="mx-auto max-w-6xl px-6 pb-16 text-center">
-      <p className="text-sm text-slate-400 tracking-wide">Trusted by 5,000+ video creators, brands, and agencies worldwide</p>
+      <p className="text-sm text-slate-400 tracking-wide">{t("trust_line")}</p>
       <div className="mt-5 flex flex-wrap items-center justify-center gap-8 opacity-40">
         <div className="flex items-center gap-2 text-slate-300">
           <Smartphone className="h-5 w-5" />
@@ -290,23 +277,24 @@ function TrustBar() {
 }
 
 function BentoGrid() {
+  const { t } = useI18n();
   return (
     <section className="mx-auto max-w-6xl px-6 pb-24">
       <div className="grid gap-4 md:grid-cols-3">
         <BentoCard
           icon={<Brain className="h-5 w-5" />}
-          title="99% Dialect Accuracy"
-          desc="Optimized to understand local slang, cultural jokes, and regional idioms perfectly."
+          title={t("bento_1_title")}
+          desc={t("bento_1_desc")}
         />
         <BentoCard
           icon={<Mic className="h-5 w-5" />}
-          title="Voice Tone Preservation"
-          desc="Our AI retains the original speaker's unique emotion, pitch, and energy."
+          title={t("bento_2_title")}
+          desc={t("bento_2_desc")}
         />
         <BentoCard
           icon={<Zap className="h-5 w-5" />}
-          title="Lightning Fast Rendering"
-          desc="Powered by high-performance GPU pipelines to deliver your shorts in seconds."
+          title={t("bento_3_title")}
+          desc={t("bento_3_desc")}
         />
       </div>
     </section>
@@ -326,34 +314,35 @@ function BentoCard({ icon, title, desc }: { icon: React.ReactNode; title: string
 }
 
 function Footer() {
+  const { t } = useI18n();
   return (
     <footer className="border-t border-white/10 bg-slate-950/50">
       <div className="mx-auto max-w-6xl px-6 py-12 grid gap-8 md:grid-cols-3 text-sm">
         <div>
-          <h4 className="font-semibold text-white mb-3">Product</h4>
+          <h4 className="font-semibold text-white mb-3">{t("footer_product")}</h4>
           <ul className="space-y-2 text-slate-400">
-            <li><Link to="/clipper" className="hover:text-white transition-colors">AI Clipper</Link></li>
-            <li><Link to="/dubbing" className="hover:text-white transition-colors">Cultural Dubber</Link></li>
-            <li><Link to="/" className="hover:text-white transition-colors">Pricing</Link></li>
+            <li><Link to="/clipper" className="hover:text-white transition-colors">{t("link_ai_clipper")}</Link></li>
+            <li><Link to="/dubbing" className="hover:text-white transition-colors">{t("link_cultural_dubber")}</Link></li>
+            <li><Link to="/" className="hover:text-white transition-colors">{t("link_pricing")}</Link></li>
           </ul>
         </div>
         <div>
-          <h4 className="font-semibold text-white mb-3">Legal</h4>
+          <h4 className="font-semibold text-white mb-3">{t("footer_legal")}</h4>
           <ul className="space-y-2 text-slate-400">
-            <li><Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
-            <li><Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
+            <li><Link to="/privacy" className="hover:text-white transition-colors">{t("link_privacy")}</Link></li>
+            <li><Link to="/terms" className="hover:text-white transition-colors">{t("link_terms")}</Link></li>
           </ul>
         </div>
         <div>
-          <h4 className="font-semibold text-white mb-3">Company</h4>
+          <h4 className="font-semibold text-white mb-3">{t("footer_company")}</h4>
           <ul className="space-y-2 text-slate-400">
-            <li><Link to="/about" className="hover:text-white transition-colors">About Us</Link></li>
-            <li><Link to="/contact" className="hover:text-white transition-colors">Contact</Link></li>
+            <li><Link to="/about" className="hover:text-white transition-colors">{t("link_about")}</Link></li>
+            <li><Link to="/contact" className="hover:text-white transition-colors">{t("link_contact")}</Link></li>
           </ul>
         </div>
       </div>
       <div className="border-t border-white/10 py-6 text-center text-sm text-slate-500">
-        &copy; 2026 TongueSync AI. All rights reserved.
+        {t("footer_copy")}
       </div>
     </footer>
   );
