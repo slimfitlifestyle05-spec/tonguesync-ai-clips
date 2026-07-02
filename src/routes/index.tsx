@@ -38,6 +38,8 @@ function Index() {
         </div>
       </section>
 
+      <TrustBar />
+
       <section className="mx-auto max-w-6xl px-6 pb-16 grid gap-6 md:grid-cols-2">
         <FeatureCard
           to="/clipper"
