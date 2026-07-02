@@ -17,6 +17,20 @@ function sampleOutput(kind: "clip" | "dub", idx = 0) {
   return samples[(kind === "dub" ? 1 : idx) % samples.length];
 }
 
+// Mocked "transcription" step. In production this is the Gemini transcript of
+// the uploaded video; for the demo we synthesize a plausible, topic-rich
+// transcript so the AI Social Kit output looks like real content analysis.
+const MOCK_TRANSCRIPTS = [
+  "Here's the AI workflow I use to replace four hours of manual work every morning. I chain a Gemini agent with a scraper, feed the output into a prompt template, and the automation ships a first draft before I finish coffee. If you're a founder still doing this by hand in 2026, you're leaving hours on the table.",
+  "Most small business owners underprice their offer and then wonder why revenue is flat. This is the exact pricing tweak we rolled out last month — same product, new positioning, sharper guarantee — and it doubled monthly revenue in thirty days without touching ad spend.",
+  "Your content isn't converting because the hook is dying in the first three seconds. Here's the retention pattern top creators are using right now: pattern interrupt, promise, proof, payoff. Rebuild your last three posts around it before you publish anything new.",
+  "There's a hidden setting on your phone that unlocks a genuinely useful automation, and almost nobody talks about it. I'll show you the two taps to enable it and the tiny workflow that saves me about twenty minutes a day.",
+];
+
+function mockTranscript(seedIdx: number) {
+  return MOCK_TRANSCRIPTS[seedIdx % MOCK_TRANSCRIPTS.length];
+}
+
 export const getMyProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -64,20 +78,26 @@ export const createClips = createServerFn({ method: "POST" })
     const style = tier === "free" && data.style !== "modern" && data.style !== "minimal" ? "modern" : data.style;
     const autoEmojis = tier === "pro" ? data.autoEmojis : false;
     const highlight = tier === "pro" ? data.highlight : false;
-    const socialKit = tier === "pro" ? (await import("./premium")).generateSocialKit(data.title) : null;
+    const premium = tier === "pro" ? await import("./premium") : null;
 
-    const rows = Array.from({ length: 3 }).map((_, i) => ({
-      user_id: userId,
-      kind: "clip" as const,
-      title: `${data.title} \u2014 Short ${i + 1}`,
-      source_url: data.sourceUrl || null,
-      output_url: sampleOutput("clip", i),
-      style,
-      language: data.language,
-      watermarked: tier === "free",
-      social_kit: socialKit ? { ...socialKit, autoEmojis, highlight } : { autoEmojis, highlight },
-      status: "ready",
-    }));
+    // Each short gets its own "transcript slice" and its own analyzed Social Kit.
+    const baseSeed = profile.clips_used + Date.now();
+    const rows = Array.from({ length: 3 }).map((_, i) => {
+      const transcript = mockTranscript(baseSeed + i);
+      const socialKit = premium ? premium.generateSocialKit(transcript) : null;
+      return {
+        user_id: userId,
+        kind: "clip" as const,
+        title: socialKit?.title ?? `${data.title} \u2014 Short ${i + 1}`,
+        source_url: data.sourceUrl || null,
+        output_url: sampleOutput("clip", i),
+        style,
+        language: data.language,
+        watermarked: tier === "free",
+        social_kit: socialKit ? { ...socialKit, autoEmojis, highlight } : { autoEmojis, highlight },
+        status: "ready",
+      };
+    });
     const { data: inserted, error } = await supabase.from("videos").insert(rows).select();
     if (error) throw new Error(error.message);
     await supabase
@@ -114,14 +134,15 @@ export const createDub = createServerFn({ method: "POST" })
     if (tier === "pro" && profile.monthly_used >= PRO_MONTHLY) return { error: "limit" as const };
 
     const style = tier === "free" && data.style !== "modern" && data.style !== "minimal" ? "modern" : data.style;
-    const socialKit = tier === "pro" ? (await import("./premium")).generateSocialKit(data.title) : null;
+    const transcript = mockTranscript(profile.dubs_used + Date.now());
+    const socialKit = tier === "pro" ? (await import("./premium")).generateSocialKit(transcript) : null;
 
     const { data: inserted, error } = await supabase
       .from("videos")
       .insert({
         user_id: userId,
         kind: "dub",
-        title: `${data.title} \u2014 ${data.targetCountry}`,
+        title: socialKit?.title ? `${socialKit.title} (${data.targetCountry})` : `${data.title} \u2014 ${data.targetCountry}`,
         source_url: data.sourceUrl || null,
         output_url: sampleOutput("dub"),
         style,
