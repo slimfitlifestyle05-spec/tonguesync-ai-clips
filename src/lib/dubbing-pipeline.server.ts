@@ -346,7 +346,7 @@ export async function runDubbingPipeline(input: {
       // the client muxer place each dubbed sentence exactly on the
       // original speaker's mouth, giving a simplified but very effective
       // lip-sync. Best-effort — falls back to the single combined take.
-      let segments: PipelineResult extends { ok: true; segments?: infer S } ? S : never = undefined as any;
+      let segments: Array<{ start: number; end: number; text: string; audioDataUrl: string }> | undefined;
       if (asrSegments.length > 0) {
         try {
           const out: Array<{ start: number; end: number; text: string; audioDataUrl: string }> = [];
@@ -368,7 +368,7 @@ export async function runDubbingPipeline(input: {
           }
           await Promise.all([worker(), worker(), worker(), worker()]);
           out.sort((a, b) => a.start - b.start);
-          segments = out as any;
+          segments = out;
         } catch (e: any) {
           console.warn("[dubbing-pipeline] per-segment synth failed, using single take:", e?.message ?? e);
         }
