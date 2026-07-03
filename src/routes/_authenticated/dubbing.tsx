@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LANGUAGES, REGIONS, STYLE_TEMPLATES } from "@/lib/premium";
 import { useI18n } from "@/lib/i18n";
-import { ArrowLeft, Globe2, Lock, RotateCcw, UploadCloud, X } from "lucide-react";
+import { ArrowLeft, Globe2, Lock, RotateCcw, UploadCloud, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
@@ -257,18 +257,50 @@ function DubbingPage() {
           </Button>
         </form>
 
-        {!loading && result && (
+        {(loading || result) && (
           <aside className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-6 min-w-0 h-full flex flex-col">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <div className="text-xs uppercase tracking-wider text-fuchsia-300/80 font-semibold">Result</div>
-                <h2 className="text-lg font-semibold">Your dubbed video</h2>
+                <h2 className="text-lg font-semibold">{loading ? "Generating your video…" : "Your dubbed video"}</h2>
               </div>
-              <Button type="button" variant="outline" size="sm" onClick={resetAll} className="border-white/15 bg-white/5 hover:bg-white/10 shrink-0">
-                <RotateCcw className="h-4 w-4 mr-1" /> New
-              </Button>
+              {!loading && (
+                <Button type="button" variant="outline" size="sm" onClick={resetAll} className="border-white/15 bg-white/5 hover:bg-white/10 shrink-0">
+                  <RotateCcw className="h-4 w-4 mr-1" /> New
+                </Button>
+              )}
             </div>
-            <VideoResult videos={[result]} isPro={isPro} />
+
+            {loading ? (
+              <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden animate-fade-in">
+                <div className="relative aspect-[9/16] bg-black overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-white/10 to-white/5 animate-pulse" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                    <div className="relative inline-flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-amber-400 text-black">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span className="absolute inset-0 rounded-full bg-fuchsia-400/40 blur-lg animate-pulse" />
+                    </div>
+                    <div className="text-xs text-slate-300 font-medium">Dubbing in progress…</div>
+                    <div className="text-[10px] text-slate-500">This may take a few moments</div>
+                  </div>
+                </div>
+                <div className="p-3 space-y-3">
+                  <div className="h-3 w-3/4 bg-white/10 rounded animate-pulse" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="h-8 w-full bg-white/10 rounded animate-pulse" />
+                    <div className="h-8 w-full bg-white/10 rounded animate-pulse" />
+                  </div>
+                  <div className="rounded-lg border border-white/10 bg-black/30 p-3 space-y-2">
+                    <div className="h-2 w-1/2 bg-white/10 rounded animate-pulse" />
+                    <div className="h-3 w-full bg-white/10 rounded animate-pulse" />
+                    <div className="h-3 w-5/6 bg-white/10 rounded animate-pulse" />
+                    <div className="h-3 w-2/3 bg-fuchsia-500/20 rounded animate-pulse" />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <VideoResult videos={[result]} isPro={isPro} />
+            )}
           </aside>
         )}
         </div>
