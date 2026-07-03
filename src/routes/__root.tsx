@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { getPublicGA } from "@/lib/admin.functions";
 import { SupportChat } from "@/components/SupportChat";
+import { CommandPalette } from "@/components/CommandPalette";
 
 function NotFoundComponent() {
   return (
@@ -90,6 +91,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Vertical clips + culturally-native AI dubbing for creators and brands." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "theme-color", content: "#0f172a" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
     ],
     links: [
       {
@@ -97,10 +101,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "apple-touch-icon", href: "/app-icon.png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Cairo:wght@400;600;700;800&display=swap" },
     ],
+    scripts: [],
   }),
   shellComponent: RootShell,
   component: RootComponent,
@@ -141,6 +148,7 @@ function RootComponent() {
         <Outlet />
         <Toaster richColors position="top-center" />
         <SupportChat />
+        <CommandPalette />
       </I18nProvider>
     </QueryClientProvider>
   );
