@@ -16,6 +16,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { getPublicGA } from "@/lib/admin.functions";
+import { SupportChat } from "@/components/SupportChat";
 
 function NotFoundComponent() {
   return (
@@ -139,6 +140,7 @@ function RootComponent() {
         <GAInjector />
         <Outlet />
         <Toaster richColors position="top-center" />
+        <SupportChat />
       </I18nProvider>
     </QueryClientProvider>
   );
