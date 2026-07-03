@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 import { MagicPreviewModal } from "@/components/MagicPreviewModal";
+import { DownloadDubbedButton } from "@/components/DownloadDubbedButton";
 
 const KIT_STAGES = [
   { label: "Reading transcript…", boundary: 30 },
@@ -139,6 +140,13 @@ export function VideoResult({ videos, isPro }: { videos: any[]; isPro: boolean }
               </a>
             </div>
             <SocialKitPanel kit={v.social_kit} isPro={isPro} />
+            {v.social_kit?.dubbed_audio_url ? (
+              <DownloadDubbedButton
+                videoUrl={v.source_url || v.output_url}
+                audioUrl={v.social_kit.dubbed_audio_url}
+                filename={`${(v.title || "dubbed").replace(/[^\w-]+/g, "_")}.mp4`}
+              />
+            ) : null}
           </div>
         </div>
       ))}
