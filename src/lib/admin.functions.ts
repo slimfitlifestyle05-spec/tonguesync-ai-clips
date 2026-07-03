@@ -12,7 +12,7 @@ export const getAdminOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await requireAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const [{ count: totalUsers }, { count: proUsers }, { count: totalVideos }, { data: recentEvents }, { data: videosByDay }] =
       await Promise.all([
         supabaseAdmin.from("profiles").select("id", { head: true, count: "exact" }),
@@ -69,7 +69,7 @@ export const getAdminSettings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await requireAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const { data } = await supabaseAdmin.from("app_settings").select("key, value");
     const map: Record<string, any> = {};
     (data ?? []).forEach((r) => (map[r.key] = r.value));
@@ -112,7 +112,7 @@ export const saveAdminSettings = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await requireAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const updates: { key: string; value: any; updated_by: string }[] = [];
     if (data.ga !== undefined)
       updates.push({ key: "ga_measurement_id", value: data.ga, updated_by: context.userId });
@@ -159,7 +159,7 @@ export const setPromoVideo = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await requireAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     await supabaseAdmin.from("app_settings").upsert(
       { key: "promo_video", value: { url: data.url, title: data.title }, updated_by: context.userId, updated_at: new Date().toISOString() },
       { onConflict: "key" }
@@ -171,7 +171,7 @@ export const listAppUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await requireAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const { data: profiles } = await supabaseAdmin
       .from("profiles")
       .select("id, email, full_name, tier, created_at")
@@ -194,7 +194,7 @@ export const inviteUser = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await requireAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const { data: created, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(data.email);
     if (error) throw new Error(error.message);
     const userId = created?.user?.id;
@@ -211,7 +211,7 @@ export const setUserTier = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await requireAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const { error } = await supabaseAdmin.from("profiles").update({ tier: data.tier }).eq("id", data.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -223,7 +223,7 @@ export const deleteAppUser = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await requireAdmin(context);
     if (data.userId === context.userId) throw new Error("Cannot delete yourself");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -269,7 +269,7 @@ export const getPaymentProviders = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await requireAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     const { data } = await supabaseAdmin
       .from("app_settings")
       .select("value")
@@ -301,7 +301,7 @@ export const savePaymentProviders = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await requireAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const supabaseAdmin = context.supabase;
     await supabaseAdmin.from("app_settings").upsert(
       {
         key: "payment_providers",
