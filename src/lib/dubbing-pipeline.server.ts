@@ -214,6 +214,7 @@ export async function runDubbingPipeline(input: {
   transcript: string;
   targetLanguage: string;
   targetCountry: string;
+  durationSeconds?: number;
 }): Promise<PipelineResult> {
   const started = Date.now();
   const settings = await loadPipelineSettings();
@@ -265,6 +266,7 @@ export async function runDubbingPipeline(input: {
         localizedText,
         input.targetLanguage,
         cartesiaModel,
+        input.durationSeconds,
       );
       return {
         ok: true,
