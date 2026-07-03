@@ -153,8 +153,8 @@ function DubbingPage() {
           </div>
         </div>
 
-        <div className={`grid gap-6 ${result && !loading ? "lg:grid-cols-2 items-start" : "grid-cols-1"}`}>
-        <form onSubmit={submit} className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4 min-w-0">
+        <div className={`grid gap-6 ${result && !loading ? "lg:grid-cols-2 items-stretch" : "grid-cols-1"}`}>
+        <form onSubmit={submit} className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4 min-w-0 h-full flex flex-col">
           <div>
             <Label>{t("title_placeholder")}</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={200} className="bg-white/5 border-white/10 mt-1" />
