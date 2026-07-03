@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LANGUAGES, REGIONS, STYLE_TEMPLATES } from "@/lib/premium";
 import { useI18n } from "@/lib/i18n";
-import { ArrowLeft, Globe2, Lock, RotateCcw, UploadCloud, X, Loader2 } from "lucide-react";
+import { ArrowLeft, Globe2, Lock, RotateCcw, UploadCloud, X, Loader2, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
@@ -55,6 +55,9 @@ function DubbingPage() {
   const [duration, setDuration] = useState(20);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any | null>(null);
+  const [batchResults, setBatchResults] = useState<any[] | null>(null);
+  const [extraLanguages, setExtraLanguages] = useState<string[]>([]);
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const hydrated = useRef(false);
 
@@ -122,27 +125,46 @@ function DubbingPage() {
     e.preventDefault();
     setLoading(true);
     setResult(null);
+    setBatchResults(null);
     try {
       const sourceUrl = file ? `upload://${file.name}` : source;
-      const [res] = await Promise.all([
-        dub({ data: { title, sourceUrl, targetLanguage, targetCountry, style, durationSeconds: duration } }),
-        new Promise((r) => setTimeout(r, 4200)),
-      ]);
-      if ((res as any).error === "limit") { setUpgradeOpen(true); return; }
-      if ((res as any).error === "duration") { toast.error(`Max ${(res as any).maxDur}s on your plan.`); return; }
-      setResult((res as any).video);
-      qc.invalidateQueries();
-      const pipelineError = (res as any).pipelineError as string | null | undefined;
-      if (pipelineError) {
-        console.warn("[dubbing] pipeline error:", pipelineError);
-        toast.warning(`Dubbed with fallback voice. ${pipelineError}`, { duration: 6000 });
-      } else {
-        toast.success("Dubbed!");
+      const targets = [targetLanguage, ...extraLanguages.filter((l) => l !== targetLanguage)];
+      const isBatch = targets.length > 1;
+      if (isBatch && !isPro) {
+        toast.error("Multi-language batch dub is a Pro feature");
+        setUpgradeOpen(true);
+        return;
       }
+      if (isBatch) setBatchProgress({ done: 0, total: targets.length });
+      const results: any[] = [];
+      let firstError: string | null = null;
+      for (let i = 0; i < targets.length; i++) {
+        const lang = targets[i];
+        const [res] = await Promise.all([
+          dub({ data: { title: isBatch ? `${title} — ${lang.toUpperCase()}` : title, sourceUrl, targetLanguage: lang, targetCountry, style, durationSeconds: duration } }),
+          i === 0 ? new Promise((r) => setTimeout(r, 4200)) : Promise.resolve(),
+        ]);
+        if ((res as any).error === "limit") { setUpgradeOpen(true); return; }
+        if ((res as any).error === "duration") { toast.error(`Max ${(res as any).maxDur}s on your plan.`); return; }
+        results.push((res as any).video);
+        const pipelineError = (res as any).pipelineError as string | null | undefined;
+        if (pipelineError && !firstError) firstError = pipelineError;
+        if (isBatch) setBatchProgress({ done: i + 1, total: targets.length });
+      }
+      if (isBatch) {
+        setBatchResults(results);
+        toast.success(`Dubbed in ${results.length} languages`);
+      } else {
+        setResult(results[0]);
+        if (firstError) toast.warning(`Dubbed with fallback voice. ${firstError}`, { duration: 6000 });
+        else toast.success("Dubbed!");
+      }
+      qc.invalidateQueries();
     } catch (err: any) {
       toast.error(err?.message ?? "Failed");
     } finally {
       setLoading(false);
+      setBatchProgress(null);
     }
   }
 
@@ -276,22 +298,69 @@ function DubbingPage() {
             <Label>Duration (seconds) — Max {maxDur}s</Label>
             <Input type="number" min={5} max={maxDur} value={duration} onChange={(e) => setDuration(parseInt(e.target.value || "0"))} className="bg-white/5 border-white/10 mt-1" />
           </div>
+          <div>
+            <Label className="flex items-center gap-1.5">
+              <Layers className="h-3.5 w-3.5" /> Also dub into (batch)
+              {!isPro && <span className="text-[10px] text-amber-300/80">Pro only 🔒</span>}
+            </Label>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {LANGUAGES.filter((l) => l.code !== targetLanguage).map((l) => {
+                const active = extraLanguages.includes(l.code);
+                return (
+                  <button
+                    key={l.code}
+                    type="button"
+                    disabled={!isPro}
+                    onClick={() =>
+                      setExtraLanguages((prev) => (prev.includes(l.code) ? prev.filter((x) => x !== l.code) : [...prev, l.code]))
+                    }
+                    className={`rounded-full px-2.5 py-1 text-xs border transition ${
+                      active
+                        ? "bg-gradient-to-r from-fuchsia-500/30 to-amber-400/30 border-fuchsia-400/50 text-white"
+                        : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+                    } ${!isPro ? "opacity-50 cursor-not-allowed" : ""}`}
+                  >
+                    {l.label}
+                  </button>
+                );
+              })}
+            </div>
+            {extraLanguages.length > 0 && (
+              <div className="mt-2 text-[10px] text-fuchsia-300">
+                Batch will generate {extraLanguages.length + 1} videos in one run.
+              </div>
+            )}
+          </div>
           {!isPro && <p className="text-xs text-amber-300/80">{t("watermark_notice")} Free: {LIMITS.FREE_DUBS} dubs up to {LIMITS.FREE_DUB_MAX_SECONDS}s each.</p>}
           </div>
           <Button type="submit" disabled={loading} className="mt-4 w-full bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold">
-            {loading ? t("processing") : t("generate")}
+            {loading
+              ? batchProgress
+                ? `Batch ${batchProgress.done}/${batchProgress.total}…`
+                : t("processing")
+              : extraLanguages.length > 0
+              ? `Generate ${extraLanguages.length + 1} dubs`
+              : t("generate")}
           </Button>
         </form>
 
-        {(loading || result) && (
+        {(loading || result || batchResults) && (
           <aside className="rounded-2xl border border-white/10 bg-white/[0.04] p-6 min-w-0 h-full flex flex-col">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <div className="text-xs uppercase tracking-wider text-fuchsia-300/80 font-semibold">Result</div>
-                <h2 className="text-lg font-semibold">{loading ? "Generating your video…" : "Your dubbed video"}</h2>
+                <h2 className="text-lg font-semibold">
+                  {loading
+                    ? batchProgress
+                      ? `Generating ${batchProgress.total} dubs — ${batchProgress.done} done`
+                      : "Generating your video…"
+                    : batchResults
+                    ? `Your ${batchResults.length} dubbed videos`
+                    : "Your dubbed video"}
+                </h2>
               </div>
               {!loading && (
-                <Button type="button" variant="outline" size="sm" onClick={resetAll} className="border-white/15 bg-white/5 hover:bg-white/10 shrink-0">
+                <Button type="button" variant="outline" size="sm" onClick={() => { resetAll(); setBatchResults(null); setExtraLanguages([]); }} className="border-white/15 bg-white/5 hover:bg-white/10 shrink-0">
                   <RotateCcw className="h-4 w-4 mr-1" /> New
                 </Button>
               )}
@@ -307,7 +376,9 @@ function DubbingPage() {
                       <span className="absolute inset-0 rounded-full bg-fuchsia-400/40 blur-lg animate-pulse" />
                     </div>
                     <div className="text-xs text-slate-300 font-medium">Dubbing in progress…</div>
-                    <div className="text-[10px] text-slate-500">This may take a few moments</div>
+                    <div className="text-[10px] text-slate-500">
+                      {batchProgress ? `Language ${batchProgress.done + 1} of ${batchProgress.total}` : "This may take a few moments"}
+                    </div>
                   </div>
                 </div>
                 <div className="p-3 space-y-3">
@@ -326,7 +397,7 @@ function DubbingPage() {
               </div>
             ) : (
               <div className="flex-1">
-                <VideoResult videos={[result]} isPro={isPro} embedded />
+                <VideoResult videos={batchResults ?? [result]} isPro={isPro} embedded />
               </div>
             )}
           </aside>

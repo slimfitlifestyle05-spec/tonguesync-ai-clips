@@ -7,13 +7,16 @@ import { LangToggle } from "@/components/LangToggle";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, Crown, Video, ChevronRight, Languages } from "lucide-react";
+import { LogOut, Crown, Video, ChevronRight, Languages, Search } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FeatureCard, ClipperVisual, DubbingVisual } from "@/components/FeatureShowcase";
+import { OnboardingTour } from "@/components/OnboardingTour";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard \u2014 TongueSync AI" }] }),
@@ -29,12 +32,41 @@ function Dashboard() {
   const { data: videos } = useQuery({ queryKey: ["my-videos"], queryFn: () => listVideos() });
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<any | null>(null);
+  const [query, setQuery] = useState("");
+  const [kindFilter, setKindFilter] = useState<"all" | "clip" | "dub">("all");
+  const [langFilter, setLangFilter] = useState<string>("all");
 
   const profile = profileData?.profile;
   const tier = profile?.tier ?? "free";
   const isPro = tier === "pro";
   const usedTotal = isPro ? profile?.monthly_used ?? 0 : (profile?.clips_used ?? 0) + (profile?.dubs_used ?? 0);
   const cap = isPro ? LIMITS.PRO_MONTHLY : LIMITS.FREE_CLIPS + LIMITS.FREE_DUBS;
+
+  const languageOptions = useMemo(() => {
+    const set = new Set<string>();
+    (videos ?? []).forEach((v: any) => {
+      const l = v.target_language || v.language;
+      if (l) set.add(l);
+    });
+    return Array.from(set).sort();
+  }, [videos]);
+
+  const filteredVideos = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return (videos ?? []).filter((v: any) => {
+      if (kindFilter !== "all" && v.kind !== kindFilter) return false;
+      if (langFilter !== "all") {
+        const l = v.target_language || v.language;
+        if (l !== langFilter) return false;
+      }
+      if (!q) return true;
+      return (
+        (v.title || "").toLowerCase().includes(q) ||
+        (v.style || "").toLowerCase().includes(q) ||
+        (v.target_country || "").toLowerCase().includes(q)
+      );
+    });
+  }, [videos, query, kindFilter, langFilter]);
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -70,6 +102,8 @@ function Dashboard() {
           </div>
         </div>
 
+        <OnboardingTour profile={profile} />
+
         <div className="grid gap-6 md:grid-cols-2">
           <FeatureCard
             to="/clipper"
@@ -86,12 +120,48 @@ function Dashboard() {
         </div>
 
         <section>
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Video className="h-5 w-5" />Recent generations</h2>
+          <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+            <h2 className="text-lg font-semibold flex items-center gap-2"><Video className="h-5 w-5" />Recent generations</h2>
+            {(videos && videos.length > 0) && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                  <Input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search title, style, region…"
+                    className="pl-8 h-9 w-56 bg-white/5 border-white/10"
+                  />
+                </div>
+                <Select value={kindFilter} onValueChange={(v) => setKindFilter(v as any)}>
+                  <SelectTrigger className="h-9 w-28 bg-white/5 border-white/10"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All types</SelectItem>
+                    <SelectItem value="clip">Clips</SelectItem>
+                    <SelectItem value="dub">Dubs</SelectItem>
+                  </SelectContent>
+                </Select>
+                {languageOptions.length > 0 && (
+                  <Select value={langFilter} onValueChange={setLangFilter}>
+                    <SelectTrigger className="h-9 w-32 bg-white/5 border-white/10"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All languages</SelectItem>
+                      {languageOptions.map((l) => (
+                        <SelectItem key={l} value={l}>{l.toUpperCase()}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
+          </div>
           {(!videos || videos.length === 0) ? (
             <div className="text-slate-400 text-sm">No videos yet. Start with the Clipper or Dubbing card above.</div>
+          ) : filteredVideos.length === 0 ? (
+            <div className="text-slate-400 text-sm">No matches. Try clearing the filters.</div>
           ) : (
             <div className="grid gap-4 md:grid-cols-3">
-              {videos.slice(0, 6).map((v: any) => (
+              {filteredVideos.slice(0, 12).map((v: any) => (
                 <div
                   key={v.id}
                   className="group relative rounded-xl border border-white/10 bg-white/5 overflow-hidden hover:border-fuchsia-400/40 transition"
