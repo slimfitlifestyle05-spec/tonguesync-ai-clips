@@ -16,6 +16,7 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FeatureCard, ClipperVisual, DubbingVisual } from "@/components/FeatureShowcase";
+import { OnboardingTour } from "@/components/OnboardingTour";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard \u2014 TongueSync AI" }] }),
@@ -100,6 +101,8 @@ function Dashboard() {
             </div>
           </div>
         </div>
+
+        <OnboardingTour profile={profile} />
 
         <div className="grid gap-6 md:grid-cols-2">
           <FeatureCard
