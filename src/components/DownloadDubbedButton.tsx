@@ -1,11 +1,26 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, Loader2, X, Sparkles } from "lucide-react";
+import { Download, Loader2, X, Sparkles, Play, Pause, Subtitles } from "lucide-react";
 import { toast } from "sonner";
 
 type Segment = { start: number; end: number; text?: string; audioDataUrl: string };
 
 type Phase = "idle" | "loading-core" | "fetching" | "mixing" | "done";
+
+function toSrtTime(seconds: number) {
+  const s = Math.max(0, seconds);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.floor(s % 60);
+  const ms = Math.floor((s - Math.floor(s)) * 1000);
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")},${String(ms).padStart(3, "0")}`;
+}
+
+function segmentsToSrt(segments: Segment[]) {
+  return segments
+    .map((s, i) => `${i + 1}\n${toSrtTime(s.start)} --> ${toSrtTime(s.end)}\n${(s.text ?? "").replace(/\r?\n/g, " ")}\n`)
+    .join("\n");
+}
 
 /**
  * Client-side muxer with:
@@ -14,6 +29,11 @@ type Phase = "idle" | "loading-core" | "fetching" | "mixing" | "done";
  *   - optional per-segment lip-sync: each dubbed sentence is placed at its
  *     exact source timestamp via `adelay`, then mixed over the ducked
  *     original — so the new voice lands on the original speaker's mouth.
+ *   - optional burn-in subtitles from segments (SRT generated in memory).
+ *   - EBU R128 loudness normalization on every mix so exports match the
+ *     -16 LUFS streaming target.
+ *   - inline synced preview player (source video + dubbed audio) so users
+ *     review the result before spending time on the full mux.
  */
 export function DownloadDubbedButton({
   videoUrl,
@@ -29,9 +49,16 @@ export function DownloadDubbedButton({
   const [phase, setPhase] = useState<Phase>("idle");
   const [pct, setPct] = useState(0);
   const [label, setLabel] = useState("");
+  const [burnSubs, setBurnSubs] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewPlaying, setPreviewPlaying] = useState(false);
+  const previewVideoRef = useRef<HTMLVideoElement | null>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const ffmpegRef = useRef<any>(null);
   const abortRef = useRef<AbortController | null>(null);
   const canceledRef = useRef(false);
+
+  const hasSegments = Array.isArray(segments) && segments.length > 0;
 
   function reset() {
     setPhase("idle");
