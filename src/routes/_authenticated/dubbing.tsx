@@ -160,7 +160,14 @@ function DubbingPage() {
         </div>
 
         <div className={`grid gap-6 ${result && !loading ? "lg:grid-cols-2 items-stretch" : "grid-cols-1"}`}>
-        <form onSubmit={submit} className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4 min-w-0 h-full flex flex-col">
+        <form onSubmit={submit} className="rounded-2xl border border-white/10 bg-white/[0.04] p-6 min-w-0 h-full flex flex-col">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs uppercase tracking-wider text-fuchsia-300/80 font-semibold">Configure</div>
+              <h2 className="text-lg font-semibold">Dubbing settings</h2>
+            </div>
+          </div>
+          <div className="space-y-4 flex-1">
           <div>
             <Label>{t("title_placeholder")}</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={200} className="bg-white/5 border-white/10 mt-1" />
@@ -258,13 +265,14 @@ function DubbingPage() {
             <Input type="number" min={5} max={maxDur} value={duration} onChange={(e) => setDuration(parseInt(e.target.value || "0"))} className="bg-white/5 border-white/10 mt-1" />
           </div>
           {!isPro && <p className="text-xs text-amber-300/80">{t("watermark_notice")} Free: {LIMITS.FREE_DUBS} dubs up to {LIMITS.FREE_DUB_MAX_SECONDS}s each.</p>}
-          <Button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold">
+          </div>
+          <Button type="submit" disabled={loading} className="mt-4 w-full bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold">
             {loading ? t("processing") : t("generate")}
           </Button>
         </form>
 
         {(loading || result) && (
-          <aside className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-6 min-w-0 h-full flex flex-col">
+          <aside className="rounded-2xl border border-white/10 bg-white/[0.04] p-6 min-w-0 h-full flex flex-col">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <div className="text-xs uppercase tracking-wider text-fuchsia-300/80 font-semibold">Result</div>
@@ -278,7 +286,7 @@ function DubbingPage() {
             </div>
 
             {loading ? (
-              <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden animate-fade-in">
+              <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden animate-fade-in flex-1 flex flex-col">
                 <div className="relative aspect-[9/16] bg-black overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-white/10 to-white/5 animate-pulse" />
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
@@ -305,7 +313,9 @@ function DubbingPage() {
                 </div>
               </div>
             ) : (
-              <VideoResult videos={[result]} isPro={isPro} />
+              <div className="flex-1">
+                <VideoResult videos={[result]} isPro={isPro} embedded />
+              </div>
             )}
           </aside>
         )}
