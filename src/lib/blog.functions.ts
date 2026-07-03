@@ -278,3 +278,107 @@ export const updatePostAdmin = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true, slug: nextSlug };
   });
+
+// ---------- Regenerate images ----------
+const imgUrl = (prompt: string, w = 1200, h = 700) =>
+  `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&nologo=true&seed=${Math.floor(Math.random() * 1_000_000)}`;
+
+function stripExistingInlineImages(md: string): string {
+  // Remove pollinations image lines the generator inserted
+  return md
+    .split("\n")
+    .filter((line) => !/!\[[^\]]*\]\(https?:\/\/image\.pollinations\.ai[^)]*\)/.test(line))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n");
+}
+
+export const regeneratePostImagesAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      mode: z.enum(["cover", "inline", "all"]).default("all"),
+      updateMarkdown: z.boolean().default(true),
+      hint: z.string().max(300).optional(),
+    }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { data: row, error } = await context.supabase
+      .from("blog_posts")
+      .select("id, title, excerpt, content, cover_image_url")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("Not found");
+
+    const { lovableChat } = await import("@/lib/ai-gateway.server");
+    const system = `You generate short, vivid, photorealistic image prompts for editorial blog articles. No text, no logos, no watermarks, cinematic lighting. Return ONLY JSON like {"cover":"...","inline":["...","..."]} — each prompt 10-18 words.`;
+    const user = `Article title: ${row.title}
+Excerpt: ${row.excerpt}
+${data.hint ? `Extra direction: ${data.hint}` : ""}
+
+Generate one cover prompt and exactly two inline image prompts that complement the article visually.`;
+
+    const raw = await lovableChat(
+      [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      { temperature: 0.9, maxTokens: 400 },
+    );
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+    let parsed: { cover?: string; inline?: string[] };
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      parsed = {
+        cover: `Editorial cover illustration for: ${row.title}`,
+        inline: [`Editorial photo related to: ${row.title}`, `Editorial photo related to: ${row.title}, second angle`],
+      };
+    }
+
+    const coverPrompt = parsed.cover || `Editorial cover for: ${row.title}`;
+    const inlinePrompts = (parsed.inline ?? []).slice(0, 2);
+    while (inlinePrompts.length < 2) inlinePrompts.push(`Editorial photo related to: ${row.title}`);
+
+    const newCover = data.mode === "inline" ? row.cover_image_url : imgUrl(coverPrompt, 1600, 900);
+    const inlineUrls =
+      data.mode === "cover"
+        ? []
+        : inlinePrompts.map((p) => ({ prompt: p, url: imgUrl(p) }));
+
+    let newContent = row.content ?? "";
+    if (data.updateMarkdown && data.mode !== "cover" && inlineUrls.length) {
+      newContent = stripExistingInlineImages(newContent);
+      const md1 = `\n\n![${inlineUrls[0].prompt.slice(0, 120)}](${inlineUrls[0].url})\n\n`;
+      const md2 = `\n\n![${inlineUrls[1].prompt.slice(0, 120)}](${inlineUrls[1].url})\n\n`;
+      const parts = newContent.split(/\n(?=## )/);
+      if (parts.length >= 3) {
+        parts.splice(1, 0, md1.trim());
+        parts.splice(3, 0, md2.trim());
+        newContent = parts.join("\n\n");
+      } else if (parts.length === 2) {
+        parts.splice(1, 0, md1.trim());
+        newContent = parts.join("\n\n") + md2;
+      } else {
+        newContent = newContent + md1 + md2;
+      }
+    }
+
+    const update: Record<string, unknown> = {};
+    if (newCover !== row.cover_image_url) update.cover_image_url = newCover;
+    if (data.updateMarkdown && newContent !== row.content) update.content = newContent;
+    if (Object.keys(update).length) {
+      const { error: upErr } = await context.supabase.from("blog_posts").update(update).eq("id", data.id);
+      if (upErr) throw new Error(upErr.message);
+    }
+
+    return {
+      ok: true,
+      cover_image_url: newCover,
+      inline_urls: inlineUrls.map((x) => x.url),
+      content: newContent,
+      updatedMarkdown: data.updateMarkdown,
+    };
+  });
