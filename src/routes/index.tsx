@@ -8,6 +8,7 @@ import { Check, Sparkles, ShieldCheck, Wand2, Languages, Rocket, Play, Volume2, 
 import { FeatureCard, ClipperVisual, DubbingVisual } from "@/components/FeatureShowcase";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { TrustBar } from "@/components/TrustBar";
 import { Reveal } from "@/components/Reveal";
 import { SocialProofToast } from "@/components/SocialProofToast";
 import { useServerFn } from "@tanstack/react-start";
