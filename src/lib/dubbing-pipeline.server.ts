@@ -11,6 +11,7 @@ type ApiKeys = {
 export type PipelineSettings = {
   apiKeys: ApiKeys;
   ttsProvider: "cartesia" | "elevenlabs";
+  cartesiaModel: "sonic-2" | "sonic-turbo" | "sonic";
 };
 
 export type PipelineResult =
@@ -30,13 +31,22 @@ export async function loadPipelineSettings(): Promise<PipelineSettings> {
     .from("app_settings")
     .select("key, value")
     .in("key", ["api_keys", "tts_provider"]);
+  const { data: extra } = await supabaseAdmin
+    .from("app_settings")
+    .select("key, value")
+    .in("key", ["cartesia_model"]);
   const map: Record<string, any> = {};
   (data ?? []).forEach((r) => (map[r.key] = r.value));
+  (extra ?? []).forEach((r) => (map[r.key] = r.value));
   return {
     apiKeys: map.api_keys ?? {},
     ttsProvider: (typeof map.tts_provider === "string" ? map.tts_provider : "cartesia") as
       | "cartesia"
       | "elevenlabs",
+    cartesiaModel: (typeof map.cartesia_model === "string" ? map.cartesia_model : "sonic-2") as
+      | "sonic-2"
+      | "sonic-turbo"
+      | "sonic",
   };
 }
 
@@ -100,8 +110,9 @@ async function synthesizeWithCartesia(
   key: string,
   text: string,
   language: string,
+  model: "sonic-2" | "sonic-turbo" | "sonic" = "sonic-2",
 ): Promise<{ audioDataUrl: string }> {
-  // Sonic model — Cartesia's flagship low-latency TTS.
+  // Cartesia Sonic family — sonic-2 = flagship quality, sonic-turbo = ~40ms latency.
   const res = await fetch("https://api.cartesia.ai/tts/bytes", {
     method: "POST",
     headers: {
@@ -110,7 +121,7 @@ async function synthesizeWithCartesia(
       "Cartesia-Version": "2024-11-13",
     },
     body: JSON.stringify({
-      model_id: "sonic-2",
+      model_id: model,
       transcript: text,
       voice: { mode: "id", id: "a0e99841-438c-4a64-b679-ae501e7d6091" },
       output_format: { container: "mp3", sample_rate: 44100, bit_rate: 128000 },
@@ -152,7 +163,7 @@ export async function runDubbingPipeline(input: {
 }): Promise<PipelineResult> {
   const started = Date.now();
   const settings = await loadPipelineSettings();
-  const { apiKeys, ttsProvider } = settings;
+  const { apiKeys, ttsProvider, cartesiaModel } = settings;
 
   // Translation step — prefer Gemini, fall back to OpenAI.
   let localizedText = "";
@@ -199,6 +210,7 @@ export async function runDubbingPipeline(input: {
         apiKeys.cartesia,
         localizedText,
         input.targetLanguage,
+        cartesiaModel,
       );
       return {
         ok: true,

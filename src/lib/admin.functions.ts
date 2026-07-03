@@ -84,6 +84,10 @@ export const getAdminSettings = createServerFn({ method: "GET" })
       ttsProvider: (typeof map.tts_provider === "string" ? map.tts_provider : "cartesia") as
         | "cartesia"
         | "elevenlabs",
+      cartesiaModel: (typeof map.cartesia_model === "string" ? map.cartesia_model : "sonic-2") as
+        | "sonic-2"
+        | "sonic-turbo"
+        | "sonic",
       twoFactor: !!map.two_factor_enabled,
     };
   });
@@ -102,6 +106,7 @@ export const saveAdminSettings = createServerFn({ method: "POST" })
         })
         .optional(),
       ttsProvider: z.enum(["cartesia", "elevenlabs"]).optional(),
+      cartesiaModel: z.enum(["sonic-2", "sonic-turbo", "sonic"]).optional(),
       twoFactor: z.boolean().optional(),
     }).parse(raw)
   )
@@ -115,6 +120,8 @@ export const saveAdminSettings = createServerFn({ method: "POST" })
       updates.push({ key: "api_keys", value: data.apiKeys, updated_by: context.userId });
     if (data.ttsProvider !== undefined)
       updates.push({ key: "tts_provider", value: data.ttsProvider, updated_by: context.userId });
+    if (data.cartesiaModel !== undefined)
+      updates.push({ key: "cartesia_model", value: data.cartesiaModel, updated_by: context.userId });
     if (data.twoFactor !== undefined)
       updates.push({ key: "two_factor_enabled", value: data.twoFactor, updated_by: context.userId });
     for (const u of updates) {
