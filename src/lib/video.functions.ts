@@ -163,6 +163,7 @@ export const createDub = createServerFn({ method: "POST" })
         transcript,
         targetLanguage: data.targetLanguage,
         targetCountry: data.targetCountry,
+        durationSeconds: data.durationSeconds,
       });
       if (result.ok) {
         dubbedAudioUrl = result.audioDataUrl;

@@ -50,15 +50,58 @@ export async function loadPipelineSettings(): Promise<PipelineSettings> {
   };
 }
 
+// Normalize target language input (e.g. "arabic", "ar-EG") to a Cartesia BCP47 code.
+function normalizeLanguage(input: string): string {
+  const key = input.toLowerCase().trim();
+  const map: Record<string, string> = {
+    ar: "ar", arabic: "ar", "ar-eg": "ar", egyptian: "ar", "ar-sa": "ar", khaleeji: "ar",
+    en: "en", english: "en", "en-us": "en", "en-gb": "en",
+    es: "es", spanish: "es", "es-mx": "es", "es-es": "es",
+    fr: "fr", french: "fr",
+    de: "de", german: "de",
+    it: "it", italian: "it",
+    pt: "pt", portuguese: "pt", "pt-br": "pt",
+    tr: "tr", turkish: "tr",
+    hi: "hi", hindi: "hi",
+    ja: "ja", japanese: "ja",
+    ko: "ko", korean: "ko",
+    zh: "zh", chinese: "zh", mandarin: "zh",
+    ru: "ru", russian: "ru",
+    nl: "nl", dutch: "nl",
+    pl: "pl", polish: "pl",
+  };
+  return map[key] ?? key.slice(0, 2);
+}
+
+// Cartesia Sonic-2 is cross-lingual: one voice can speak any supported language.
+// We keep a small curated map so each language sounds native — pick a warm, mid-pitched voice.
+function voiceForLanguage(lang: string): string {
+  const map: Record<string, string> = {
+    ar: "a67e0421-22e0-4d5b-b586-bd4a64aee41d", // Farsi/Arabic-friendly narrator
+    en: "a0e99841-438c-4a64-b679-ae501e7d6091", // Barbershop Man
+    es: "846d6cb0-2301-48b6-9683-48f5618ea2f6", // Spanish-speaking Lady
+    fr: "a8a1eb38-5f15-4c1d-8722-7ac0f329727d", // Calm French Man
+    de: "b9de4a89-2257-424b-94c2-db18ba68c81a", // German conversational
+    pt: "700d1ee3-a641-4018-ba6e-899dcadc9e2b", // Brazilian Portuguese
+    it: "13524ffb-a918-499a-ae97-c98c7c4408c4", // Italian narrator
+    tr: "bf991597-6c13-47e4-8411-91ec2de5c466", // Turkish narrator
+    hi: "9b953e7b-b1ce-4a20-9a34-eb1c11d94f11", // Hindi conversational
+    ja: "2b568345-1d48-4047-b25f-7baccf842eb0", // Japanese narrator
+    zh: "e90c6678-f0d3-4767-9883-5d0ecf5894a8", // Mandarin narrator
+    ru: "779673f3-895f-4935-b6b5-b031dc78b319", // Russian storyteller
+  };
+  return map[lang] ?? map.en;
+}
+
 async function translateWithGemini(
   key: string,
   transcript: string,
   targetLanguage: string,
   targetCountry: string,
 ): Promise<string> {
-  const prompt = `You are a native localization expert. Rewrite the transcript below into the ${targetLanguage} language using the natural spoken dialect of ${targetCountry}. Preserve meaning, tone, pacing and approximate sentence timing so it can be re-dubbed over the original video. Return ONLY the rewritten transcript with no preface.\n\nTRANSCRIPT:\n${transcript}`;
+  const prompt = `You are a native localization expert and voice director. Rewrite the transcript below into the ${targetLanguage} language using the natural spoken dialect of ${targetCountry}. Match idioms, cultural references, and rhythm as if it were originally written for that audience. Preserve meaning, tone, pacing and approximate sentence duration so it can be re-dubbed over the original video without desyncing. Return ONLY the rewritten transcript with no preface.\n\nTRANSCRIPT:\n${transcript}`;
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(key)}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${encodeURIComponent(key)}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -111,8 +154,19 @@ async function synthesizeWithCartesia(
   text: string,
   language: string,
   model: "sonic-2" | "sonic-turbo" | "sonic" = "sonic-2",
+  targetDurationSeconds?: number,
 ): Promise<{ audioDataUrl: string }> {
   // Cartesia Sonic family — sonic-2 = flagship quality, sonic-turbo = ~40ms latency.
+  const lang = normalizeLanguage(language);
+  const voiceId = voiceForLanguage(lang);
+  // Estimate speech duration (~15 chars/sec at speed 1) and adjust `speed`
+  // to match the source clip's length within Cartesia's [-1,1] range.
+  let speed = 0;
+  if (targetDurationSeconds && text.length > 0) {
+    const estSec = text.length / 15;
+    const ratio = estSec / targetDurationSeconds; // >1 means too long → speed up
+    speed = Math.max(-0.5, Math.min(0.5, (ratio - 1) * 0.8));
+  }
   const res = await fetch("https://api.cartesia.ai/tts/bytes", {
     method: "POST",
     headers: {
@@ -123,9 +177,9 @@ async function synthesizeWithCartesia(
     body: JSON.stringify({
       model_id: model,
       transcript: text,
-      voice: { mode: "id", id: "a0e99841-438c-4a64-b679-ae501e7d6091" },
+      voice: { mode: "id", id: voiceId, __experimental_controls: { speed } },
       output_format: { container: "mp3", sample_rate: 44100, bit_rate: 128000 },
-      language,
+      language: lang,
     }),
   });
   if (!res.ok) {
@@ -160,6 +214,7 @@ export async function runDubbingPipeline(input: {
   transcript: string;
   targetLanguage: string;
   targetCountry: string;
+  durationSeconds?: number;
 }): Promise<PipelineResult> {
   const started = Date.now();
   const settings = await loadPipelineSettings();
@@ -211,6 +266,7 @@ export async function runDubbingPipeline(input: {
         localizedText,
         input.targetLanguage,
         cartesiaModel,
+        input.durationSeconds,
       );
       return {
         ok: true,
