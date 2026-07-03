@@ -22,6 +22,12 @@ export type PipelineResult =
       localizedText: string;
       audioDataUrl: string;
       elapsedMs: number;
+      // When real ASR + per-sentence sync is available we also return each
+      // localized segment aligned to the original source timing. The client
+      // muxer uses these to place each dubbed sentence at its exact start —
+      // a simplified lip-sync so mouth movements line up with the new voice.
+      segments?: Array<{ start: number; end: number; text: string; audioDataUrl: string }>;
+      transcriptSource?: "whisper" | "mock";
     }
   | { ok: false; stage: "config" | "llm" | "tts"; message: string };
 
@@ -191,6 +197,52 @@ async function synthesizeWithCartesia(
   return { audioDataUrl: `data:audio/mpeg;base64,${base64}` };
 }
 
+// Real ASR via OpenAI Whisper. Returns per-segment timestamps we can use to
+// place each dubbed sentence at its exact position in the source video.
+async function transcribeWithWhisper(
+  key: string,
+  sourceUrl: string,
+): Promise<{ text: string; segments: Array<{ start: number; end: number; text: string }> }> {
+  const src = await fetch(sourceUrl);
+  if (!src.ok) throw new Error(`Whisper source fetch ${src.status}`);
+  const blob = await src.blob();
+  if (blob.size > 24 * 1024 * 1024) throw new Error("Source too large for Whisper (25MB)");
+  const form = new FormData();
+  form.append("file", blob, "source.mp4");
+  form.append("model", "whisper-1");
+  form.append("response_format", "verbose_json");
+  form.append("timestamp_granularities[]", "segment");
+  const res = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}` },
+    body: form,
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Whisper ${res.status}: ${body.slice(0, 200)}`);
+  }
+  const json: any = await res.json();
+  const text: string = json?.text ?? "";
+  const segments = (json?.segments ?? []).map((s: any) => ({
+    start: Number(s.start) || 0,
+    end: Number(s.end) || 0,
+    text: String(s.text || "").trim(),
+  })).filter((s: any) => s.text);
+  return { text, segments };
+}
+
+// Translate a single sentence while preserving pacing and voice-direction.
+async function translateSentence(
+  apiKeys: ApiKeys,
+  text: string,
+  targetLanguage: string,
+  targetCountry: string,
+): Promise<string> {
+  if (apiKeys.gemini) return translateWithGemini(apiKeys.gemini, text, targetLanguage, targetCountry);
+  if (apiKeys.openai) return translateWithOpenAI(apiKeys.openai, text, targetLanguage, targetCountry);
+  return text;
+}
+
 async function synthesizeWithElevenLabs(
   key: string,
   text: string,
@@ -215,10 +267,30 @@ export async function runDubbingPipeline(input: {
   targetLanguage: string;
   targetCountry: string;
   durationSeconds?: number;
+  sourceUrl?: string | null;
 }): Promise<PipelineResult> {
   const started = Date.now();
   const settings = await loadPipelineSettings();
   const { apiKeys, ttsProvider, cartesiaModel } = settings;
+
+  // Step 0 (optional) — real ASR with timestamps via Whisper. Falls back
+  // silently to the caller-supplied transcript if disabled or fails.
+  let workingTranscript = input.transcript;
+  let asrSegments: Array<{ start: number; end: number; text: string }> = [];
+  let transcriptSource: "whisper" | "mock" = "mock";
+  if (input.sourceUrl && apiKeys.openai) {
+    try {
+      const w = await transcribeWithWhisper(apiKeys.openai, input.sourceUrl);
+      if (w.text.trim()) {
+        workingTranscript = w.text;
+        asrSegments = w.segments;
+        transcriptSource = "whisper";
+        console.log(`[dubbing-pipeline] whisper ok segments=${w.segments.length}`);
+      }
+    } catch (e: any) {
+      console.warn("[dubbing-pipeline] whisper failed, using mock transcript:", e?.message ?? e);
+    }
+  }
 
   // Translation step — prefer Gemini, fall back to OpenAI.
   let localizedText = "";
@@ -228,7 +300,7 @@ export async function runDubbingPipeline(input: {
       llm = "gemini";
       localizedText = await translateWithGemini(
         apiKeys.gemini,
-        input.transcript,
+        workingTranscript,
         input.targetLanguage,
         input.targetCountry,
       );
@@ -236,7 +308,7 @@ export async function runDubbingPipeline(input: {
       llm = "openai";
       localizedText = await translateWithOpenAI(
         apiKeys.openai,
-        input.transcript,
+        workingTranscript,
         input.targetLanguage,
         input.targetCountry,
       );
@@ -268,6 +340,40 @@ export async function runDubbingPipeline(input: {
         cartesiaModel,
         input.durationSeconds,
       );
+
+      // Per-segment synthesis for lip-sync: translate + speak each ASR
+      // sentence individually, matching its original duration. This lets
+      // the client muxer place each dubbed sentence exactly on the
+      // original speaker's mouth, giving a simplified but very effective
+      // lip-sync. Best-effort — falls back to the single combined take.
+      let segments: Array<{ start: number; end: number; text: string; audioDataUrl: string }> | undefined;
+      if (asrSegments.length > 0) {
+        try {
+          const out: Array<{ start: number; end: number; text: string; audioDataUrl: string }> = [];
+          // Parallelism cap = 4 to keep Cartesia + Gemini rate-limits happy.
+          const queue = [...asrSegments];
+          async function worker() {
+            while (queue.length) {
+              const s = queue.shift()!;
+              const localized = await translateSentence(apiKeys, s.text, input.targetLanguage, input.targetCountry);
+              const { audioDataUrl: segAudio } = await synthesizeWithCartesia(
+                apiKeys.cartesia!,
+                localized,
+                input.targetLanguage,
+                cartesiaModel,
+                Math.max(0.4, s.end - s.start),
+              );
+              out.push({ start: s.start, end: s.end, text: localized, audioDataUrl: segAudio });
+            }
+          }
+          await Promise.all([worker(), worker(), worker(), worker()]);
+          out.sort((a, b) => a.start - b.start);
+          segments = out;
+        } catch (e: any) {
+          console.warn("[dubbing-pipeline] per-segment synth failed, using single take:", e?.message ?? e);
+        }
+      }
+
       return {
         ok: true,
         provider: "cartesia",
@@ -275,6 +381,8 @@ export async function runDubbingPipeline(input: {
         localizedText,
         audioDataUrl,
         elapsedMs: Date.now() - started,
+        segments,
+        transcriptSource,
       };
     }
     if (!apiKeys.elevenlabs)
@@ -291,6 +399,7 @@ export async function runDubbingPipeline(input: {
       localizedText,
       audioDataUrl,
       elapsedMs: Date.now() - started,
+      transcriptSource,
     };
   } catch (e: any) {
     console.error("[dubbing-pipeline] TTS failed:", e?.message ?? e);

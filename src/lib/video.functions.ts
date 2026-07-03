@@ -157,6 +157,8 @@ export const createDub = createServerFn({ method: "POST" })
     let dubbedAudioUrl: string | null = null;
     let localizedText: string | null = null;
     let ttsProvider: "cartesia" | "elevenlabs" | null = null;
+    let dubbedSegments: Array<{ start: number; end: number; text: string; audioDataUrl: string }> | null = null;
+    let transcriptSource: "whisper" | "mock" | null = null;
     try {
       const { runDubbingPipeline } = await import("./dubbing-pipeline.server");
       const result = await runDubbingPipeline({
@@ -164,13 +166,16 @@ export const createDub = createServerFn({ method: "POST" })
         targetLanguage: data.targetLanguage,
         targetCountry: data.targetCountry,
         durationSeconds: data.durationSeconds,
+        sourceUrl: data.sourceUrl || null,
       });
       if (result.ok) {
         dubbedAudioUrl = result.audioDataUrl;
         localizedText = result.localizedText;
         ttsProvider = result.provider;
+        dubbedSegments = result.segments ?? null;
+        transcriptSource = result.transcriptSource ?? null;
         console.log(
-          `[createDub] pipeline ok llm=${result.llm} tts=${result.provider} elapsed=${result.elapsedMs}ms`,
+          `[createDub] pipeline ok llm=${result.llm} tts=${result.provider} segs=${result.segments?.length ?? 0} src=${result.transcriptSource ?? "mock"} elapsed=${result.elapsedMs}ms`,
         );
       } else {
         pipelineError = `${result.stage}: ${result.message}`;
@@ -182,7 +187,14 @@ export const createDub = createServerFn({ method: "POST" })
     }
 
     const enrichedSocialKit = socialKit || dubbedAudioUrl || localizedText
-      ? { ...(socialKit ?? {}), dubbed_audio_url: dubbedAudioUrl, localized_text: localizedText, tts_provider: ttsProvider }
+      ? {
+          ...(socialKit ?? {}),
+          dubbed_audio_url: dubbedAudioUrl,
+          localized_text: localizedText,
+          tts_provider: ttsProvider,
+          dubbed_segments: dubbedSegments,
+          transcript_source: transcriptSource,
+        }
       : null;
 
     const { data: inserted, error } = await supabase
