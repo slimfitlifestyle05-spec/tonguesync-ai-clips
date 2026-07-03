@@ -28,9 +28,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 import { toast } from "sonner";
 import { Users, DollarSign, Video, Activity, Loader2, Trash2, UserPlus, Crown, CreditCard, Link2, Check } from "lucide-react";
-import { listAllPostsAdmin, generatePostAdmin, deletePostAdmin, togglePublishedAdmin, getPostAdmin, updatePostAdmin } from "@/lib/blog.functions";
+import { listAllPostsAdmin, generatePostAdmin, deletePostAdmin, togglePublishedAdmin, getPostAdmin, updatePostAdmin, regeneratePostImagesAdmin } from "@/lib/blog.functions";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Sparkles, Pencil } from "lucide-react";
+import { FileText, Sparkles, Pencil, ImageIcon, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/ts-secret-gate-2026")({
@@ -646,6 +646,7 @@ function BlogAdminPanel() {
 function EditPostDialog({ id, onClose, onSaved }: { id: string; onClose: () => void; onSaved: () => void }) {
   const getFn = useServerFn(getPostAdmin);
   const saveFn = useServerFn(updatePostAdmin);
+  const regenFn = useServerFn(regeneratePostImagesAdmin);
   const { data: post, isLoading } = useQuery({
     queryKey: ["admin-blog-post", id],
     queryFn: () => getFn({ data: { id } }),
@@ -658,6 +659,30 @@ function EditPostDialog({ id, onClose, onSaved }: { id: string; onClose: () => v
   const [reading, setReading] = useState(4);
   const [published, setPublished] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [regenBusy, setRegenBusy] = useState<null | "cover" | "inline" | "all">(null);
+  const [updateMd, setUpdateMd] = useState(true);
+  const [hint, setHint] = useState("");
+
+  async function regenerate(mode: "cover" | "inline" | "all") {
+    setRegenBusy(mode);
+    try {
+      const res = await regenFn({ data: { id, mode, updateMarkdown: mode === "cover" ? false : updateMd, hint: hint.trim() || undefined } });
+      if (res.cover_image_url !== undefined && res.cover_image_url !== null) setCover(res.cover_image_url);
+      if (mode !== "cover" && res.updatedMarkdown) setContent(res.content);
+      toast.success(
+        mode === "cover"
+          ? "Cover regenerated"
+          : mode === "inline"
+            ? updateMd ? "Inline images regenerated and inserted" : "New inline images generated (markdown untouched)"
+            : updateMd ? "All images regenerated" : "Cover regenerated (markdown untouched)",
+      );
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Regeneration failed");
+    } finally {
+      setRegenBusy(null);
+    }
+  }
 
   useEffect(() => {
     if (post) {
@@ -726,6 +751,43 @@ function EditPostDialog({ id, onClose, onSaved }: { id: string; onClose: () => v
               {cover ? (
                 <img src={cover} alt="cover" className="mt-2 rounded-lg border border-white/10 max-h-48 object-cover" />
               ) : null}
+            </div>
+            <div className="rounded-xl border border-fuchsia-500/20 bg-fuchsia-500/5 p-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <ImageIcon className="h-4 w-4 text-fuchsia-300" /> AI image regeneration
+              </div>
+              <div>
+                <Label className="text-xs">Direction (optional)</Label>
+                <Input
+                  value={hint}
+                  onChange={(e) => setHint(e.target.value)}
+                  placeholder="e.g. warmer palette, focus on people, minimalist"
+                  className="mt-1 bg-white/5 border-white/10"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch checked={updateMd} onCheckedChange={setUpdateMd} id="regen-update-md" />
+                <Label htmlFor="regen-update-md" className="cursor-pointer text-xs">
+                  Update markdown with new inline images (removes old ones, inserts fresh)
+                </Label>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="secondary" disabled={!!regenBusy} onClick={() => regenerate("cover")}>
+                  {regenBusy === "cover" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+                  Cover only
+                </Button>
+                <Button size="sm" variant="secondary" disabled={!!regenBusy} onClick={() => regenerate("inline")}>
+                  {regenBusy === "inline" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+                  Inline images
+                </Button>
+                <Button size="sm" disabled={!!regenBusy} onClick={() => regenerate("all")} className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold hover:opacity-90">
+                  {regenBusy === "all" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
+                  All images
+                </Button>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Changes save immediately to the database. Toggle off "Update markdown" to keep your current markdown intact — only the cover URL will change.
+              </p>
             </div>
             <div>
               <Label>Excerpt</Label>
