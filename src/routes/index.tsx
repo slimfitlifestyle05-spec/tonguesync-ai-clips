@@ -385,6 +385,7 @@ function Footer() {
           <ul className="space-y-2 text-slate-400">
             <li><Link to="/about" className="hover:text-white transition-colors">{t("link_about")}</Link></li>
             <li><Link to="/contact" className="hover:text-white transition-colors">{t("link_contact")}</Link></li>
+            <li><Link to="/blog" className="hover:text-white transition-colors">Blog</Link></li>
           </ul>
         </div>
       </div>
