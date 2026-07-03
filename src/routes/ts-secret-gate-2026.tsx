@@ -28,9 +28,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 import { toast } from "sonner";
 import { Users, DollarSign, Video, Activity, Loader2, Trash2, UserPlus, Crown, CreditCard, Link2, Check } from "lucide-react";
-import { listAllPostsAdmin, generatePostAdmin, deletePostAdmin, togglePublishedAdmin } from "@/lib/blog.functions";
+import { listAllPostsAdmin, generatePostAdmin, deletePostAdmin, togglePublishedAdmin, getPostAdmin, updatePostAdmin } from "@/lib/blog.functions";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Sparkles } from "lucide-react";
+import { FileText, Sparkles, Pencil } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/ts-secret-gate-2026")({
   ssr: false,
@@ -485,6 +486,7 @@ function BlogAdminPanel() {
   const [audience, setAudience] = useState("");
   const [publish, setPublish] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const { data: posts, isLoading } = useQuery({
     queryKey: ["admin-blog-posts"],
@@ -533,6 +535,16 @@ function BlogAdminPanel() {
 
   return (
     <div className="space-y-6">
+      {editingId ? (
+        <EditPostDialog
+          id={editingId}
+          onClose={() => setEditingId(null)}
+          onSaved={() => {
+            qc.invalidateQueries({ queryKey: ["admin-blog-posts"] });
+            qc.invalidateQueries({ queryKey: ["blog"] });
+          }}
+        />
+      ) : null}
       <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-fuchsia-500/10 to-amber-500/10 p-6 space-y-4">
         <div className="flex items-center gap-2">
           <Sparkles className="h-5 w-5 text-fuchsia-300" />
@@ -591,9 +603,16 @@ function BlogAdminPanel() {
               </thead>
               <tbody>
                 {posts.map((p: any) => (
-                  <tr key={p.id} className="border-b border-white/5">
+                  <tr
+                    key={p.id}
+                    className="border-b border-white/5 cursor-pointer hover:bg-white/5"
+                    onClick={() => setEditingId(p.id)}
+                  >
                     <td className="py-3 pr-4">
-                      <div className="font-medium text-white">{p.title}</div>
+                      <div className="font-medium text-white flex items-center gap-2">
+                        {p.title}
+                        <Pencil className="h-3 w-3 text-slate-500" />
+                      </div>
                       <div className="text-xs text-slate-500">/{p.slug}</div>
                     </td>
                     <td className="py-3 pr-4">
@@ -602,7 +621,10 @@ function BlogAdminPanel() {
                       </span>
                     </td>
                     <td className="py-3 pr-4 text-slate-400">{new Date(p.published_at).toLocaleDateString()}</td>
-                    <td className="py-3 flex gap-2 justify-end">
+                    <td className="py-3 flex gap-2 justify-end" onClick={(e) => e.stopPropagation()}>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingId(p.id)}>
+                        Edit
+                      </Button>
                       <Button size="sm" variant="ghost" onClick={() => toggle(p.id, p.published)}>
                         {p.published ? "Unpublish" : "Publish"}
                       </Button>
@@ -618,5 +640,114 @@ function BlogAdminPanel() {
         )}
       </div>
     </div>
+  );
+}
+
+function EditPostDialog({ id, onClose, onSaved }: { id: string; onClose: () => void; onSaved: () => void }) {
+  const getFn = useServerFn(getPostAdmin);
+  const saveFn = useServerFn(updatePostAdmin);
+  const { data: post, isLoading } = useQuery({
+    queryKey: ["admin-blog-post", id],
+    queryFn: () => getFn({ data: { id } }),
+  });
+  const [title, setTitle] = useState("");
+  const [slug, setSlug] = useState("");
+  const [excerpt, setExcerpt] = useState("");
+  const [content, setContent] = useState("");
+  const [cover, setCover] = useState("");
+  const [reading, setReading] = useState(4);
+  const [published, setPublished] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (post) {
+      setTitle(post.title);
+      setSlug(post.slug);
+      setExcerpt(post.excerpt);
+      setContent(post.content);
+      setCover(post.cover_image_url ?? "");
+      setReading(post.reading_minutes);
+      setPublished(post.published);
+    }
+  }, [post]);
+
+  async function save() {
+    setSaving(true);
+    try {
+      await saveFn({
+        data: {
+          id,
+          title: title.trim(),
+          slug: slug.trim(),
+          excerpt: excerpt.trim(),
+          content,
+          cover_image_url: cover.trim() || null,
+          reading_minutes: Number(reading) || 4,
+          published,
+        },
+      });
+      toast.success("Article saved");
+      onSaved();
+      onClose();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-slate-950 border-white/10 text-white">
+        <DialogHeader>
+          <DialogTitle>Edit article</DialogTitle>
+        </DialogHeader>
+        {isLoading || !post ? (
+          <div className="flex items-center gap-2 text-slate-400 text-sm py-8"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <Label>Title</Label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-1 bg-white/5 border-white/10" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Slug</Label>
+                <Input value={slug} onChange={(e) => setSlug(e.target.value)} className="mt-1 bg-white/5 border-white/10" />
+              </div>
+              <div>
+                <Label>Reading minutes</Label>
+                <Input type="number" value={reading} onChange={(e) => setReading(Number(e.target.value))} className="mt-1 bg-white/5 border-white/10" />
+              </div>
+            </div>
+            <div>
+              <Label>Cover image URL</Label>
+              <Input value={cover} onChange={(e) => setCover(e.target.value)} placeholder="https://…" className="mt-1 bg-white/5 border-white/10" />
+              {cover ? (
+                <img src={cover} alt="cover" className="mt-2 rounded-lg border border-white/10 max-h-48 object-cover" />
+              ) : null}
+            </div>
+            <div>
+              <Label>Excerpt</Label>
+              <Textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} className="mt-1 bg-white/5 border-white/10 min-h-[60px]" />
+            </div>
+            <div>
+              <Label>Content (Markdown)</Label>
+              <Textarea value={content} onChange={(e) => setContent(e.target.value)} className="mt-1 bg-white/5 border-white/10 min-h-[400px] font-mono text-xs" />
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={published} onCheckedChange={setPublished} id="edit-published" />
+              <Label htmlFor="edit-published" className="cursor-pointer">Published</Label>
+            </div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={save} disabled={saving || !post} className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold hover:opacity-90">
+            {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving…</> : "Save changes"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
