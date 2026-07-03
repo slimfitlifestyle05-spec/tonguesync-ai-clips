@@ -163,7 +163,7 @@ export async function runDubbingPipeline(input: {
 }): Promise<PipelineResult> {
   const started = Date.now();
   const settings = await loadPipelineSettings();
-  const { apiKeys, ttsProvider } = settings;
+  const { apiKeys, ttsProvider, cartesiaModel } = settings;
 
   // Translation step — prefer Gemini, fall back to OpenAI.
   let localizedText = "";
@@ -210,6 +210,7 @@ export async function runDubbingPipeline(input: {
         apiKeys.cartesia,
         localizedText,
         input.targetLanguage,
+        cartesiaModel,
       );
       return {
         ok: true,
