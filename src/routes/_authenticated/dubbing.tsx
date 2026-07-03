@@ -258,7 +258,7 @@ function DubbingPage() {
         </form>
 
         {!loading && result && (
-          <aside className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-6 min-w-0">
+          <aside className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-6 min-w-0 h-full flex flex-col">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <div className="text-xs uppercase tracking-wider text-fuchsia-300/80 font-semibold">Result</div>
