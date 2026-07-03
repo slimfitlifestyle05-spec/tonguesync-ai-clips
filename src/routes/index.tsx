@@ -43,6 +43,7 @@ function Index() {
           <LangToggle />
           <ThemeToggle />
           <Link to="/showcase"><Button variant="ghost" className="text-white hover:bg-white/10 hidden sm:inline-flex">Showcase</Button></Link>
+          <Link to="/blog"><Button variant="ghost" className="text-white hover:bg-white/10 hidden sm:inline-flex">Blog</Button></Link>
           <Link to="/auth"><Button variant="ghost" className="text-white hover:bg-white/10">{t("sign_in")}</Button></Link>
           <Link to="/auth"><Button className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold hover:opacity-90">{t("get_started")}</Button></Link>
         </nav>
