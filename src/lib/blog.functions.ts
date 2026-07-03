@@ -125,7 +125,9 @@ Return ONLY a JSON object with these exact keys, no prose before or after:
   "slug": "kebab-case-slug-under-70-chars",
   "excerpt": "One sentence, 140-180 chars, hooks the reader with a specific claim",
   "reading_minutes": 4,
-  "content": "Full article in GitHub-flavored Markdown. Starts with an H1 that matches the title. 700-1100 words. Uses H2 sections, bold for emphasis, bullet lists where they help. Ends with a natural takeaway, not a summary paragraph."
+  "cover_image_prompt": "A short, vivid, photorealistic scene prompt (10-16 words) for the cover image. No text, no logos, cinematic lighting.",
+  "inline_image_prompts": ["Prompt for the first inline image (10-16 words, no text)", "Prompt for the second inline image (10-16 words, no text)"],
+  "content": "Full article in GitHub-flavored Markdown. Starts with an H1 that matches the title. 700-1100 words. Uses H2 sections, bold for emphasis, bullet lists where they help. Include exactly two inline image placeholders written literally as {{IMAGE_1}} and {{IMAGE_2}} on their own line, spaced naturally between sections (never in the first or last paragraph). Ends with a natural takeaway, not a summary paragraph."
 }`;
 
     const user = `Write a blog article for TongueSync AI.
@@ -155,6 +157,8 @@ Constraints:
       slug?: string;
       excerpt: string;
       reading_minutes?: number;
+      cover_image_prompt?: string;
+      inline_image_prompts?: string[];
       content: string;
     };
     try {
@@ -165,9 +169,33 @@ Constraints:
 
     const title = String(parsed.title || "").slice(0, 200);
     const excerpt = String(parsed.excerpt || "").slice(0, 400);
-    const content = String(parsed.content || "").trim();
+    let content = String(parsed.content || "").trim();
     if (!title || !excerpt || content.length < 300) {
       throw new Error("The generated article was incomplete. Please try again.");
+    }
+
+    // Build image URLs (free, no auth) via pollinations.ai
+    const imgUrl = (prompt: string, w = 1200, h = 700) =>
+      `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=${w}&height=${h}&nologo=true&seed=${Math.floor(Math.random() * 1_000_000)}`;
+
+    const coverPrompt = String(parsed.cover_image_prompt || `Editorial cover illustration for: ${title}`).slice(0, 300);
+    const cover_image_url = imgUrl(coverPrompt, 1600, 900);
+
+    const inlinePrompts = Array.isArray(parsed.inline_image_prompts) ? parsed.inline_image_prompts.slice(0, 2) : [];
+    const inline1 = inlinePrompts[0] || `Editorial photo related to: ${title}`;
+    const inline2 = inlinePrompts[1] || `Editorial photo related to: ${title}, second angle`;
+    const md1 = `\n\n![${inline1.slice(0, 120)}](${imgUrl(inline1)})\n\n`;
+    const md2 = `\n\n![${inline2.slice(0, 120)}](${imgUrl(inline2)})\n\n`;
+
+    if (content.includes("{{IMAGE_1}}")) content = content.replace("{{IMAGE_1}}", md1);
+    if (content.includes("{{IMAGE_2}}")) content = content.replace("{{IMAGE_2}}", md2);
+    // Fallback: if AI ignored placeholders, insert one image after the first H2
+    if (!content.includes("pollinations.ai")) {
+      const parts = content.split(/\n(?=## )/);
+      if (parts.length > 1) {
+        parts.splice(1, 0, md1.trim());
+        content = parts.join("\n\n");
+      }
     }
 
     let slug = slugify(parsed.slug || title);
@@ -184,6 +212,7 @@ Constraints:
       title,
       excerpt,
       content,
+      cover_image_url,
       reading_minutes: reading,
       published: data.publish,
       published_at: new Date().toISOString(),
@@ -191,4 +220,61 @@ Constraints:
     if (error) throw new Error(error.message);
 
     return { ok: true, slug, title };
+  });
+
+// ---------- Edit ----------
+export const getPostAdmin = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ id: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { data: row, error } = await context.supabase
+      .from("blog_posts")
+      .select("id, slug, title, excerpt, content, cover_image_url, reading_minutes, published")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("Not found");
+    return row;
+  });
+
+export const updatePostAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      title: z.string().min(1).max(200),
+      slug: z.string().min(1).max(120),
+      excerpt: z.string().min(1).max(400),
+      content: z.string().min(50),
+      cover_image_url: z.string().url().nullable().optional(),
+      reading_minutes: z.number().int().min(1).max(60),
+      published: z.boolean(),
+    }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const nextSlug = slugify(data.slug) || data.slug;
+    // Ensure unique slug (excluding self)
+    const { data: dup } = await context.supabase
+      .from("blog_posts")
+      .select("id")
+      .eq("slug", nextSlug)
+      .neq("id", data.id)
+      .maybeSingle();
+    if (dup) throw new Error("Slug already in use");
+    const { error } = await context.supabase
+      .from("blog_posts")
+      .update({
+        title: data.title,
+        slug: nextSlug,
+        excerpt: data.excerpt,
+        content: data.content,
+        cover_image_url: data.cover_image_url ?? null,
+        reading_minutes: data.reading_minutes,
+        published: data.published,
+      })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true, slug: nextSlug };
   });
