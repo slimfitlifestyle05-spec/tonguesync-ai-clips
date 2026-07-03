@@ -75,7 +75,15 @@ export const getAdminSettings = createServerFn({ method: "GET" })
     (data ?? []).forEach((r) => (map[r.key] = r.value));
     return {
       ga: (typeof map.ga_measurement_id === "string" ? map.ga_measurement_id : "") || "",
-      apiKeys: map.api_keys ?? { openai: "", gemini: "", elevenlabs: "" },
+      apiKeys: {
+        openai: map.api_keys?.openai ?? "",
+        gemini: map.api_keys?.gemini ?? "",
+        elevenlabs: map.api_keys?.elevenlabs ?? "",
+        cartesia: map.api_keys?.cartesia ?? "",
+      },
+      ttsProvider: (typeof map.tts_provider === "string" ? map.tts_provider : "cartesia") as
+        | "cartesia"
+        | "elevenlabs",
       twoFactor: !!map.two_factor_enabled,
     };
   });
@@ -90,8 +98,10 @@ export const saveAdminSettings = createServerFn({ method: "POST" })
           openai: z.string().max(300).optional().default(""),
           gemini: z.string().max(300).optional().default(""),
           elevenlabs: z.string().max(300).optional().default(""),
+          cartesia: z.string().max(300).optional().default(""),
         })
         .optional(),
+      ttsProvider: z.enum(["cartesia", "elevenlabs"]).optional(),
       twoFactor: z.boolean().optional(),
     }).parse(raw)
   )
@@ -103,6 +113,8 @@ export const saveAdminSettings = createServerFn({ method: "POST" })
       updates.push({ key: "ga_measurement_id", value: data.ga, updated_by: context.userId });
     if (data.apiKeys)
       updates.push({ key: "api_keys", value: data.apiKeys, updated_by: context.userId });
+    if (data.ttsProvider !== undefined)
+      updates.push({ key: "tts_provider", value: data.ttsProvider, updated_by: context.userId });
     if (data.twoFactor !== undefined)
       updates.push({ key: "two_factor_enabled", value: data.twoFactor, updated_by: context.userId });
     for (const u of updates) {
