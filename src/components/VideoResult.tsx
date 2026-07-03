@@ -144,6 +144,7 @@ export function VideoResult({ videos, isPro }: { videos: any[]; isPro: boolean }
               <DownloadDubbedButton
                 videoUrl={v.source_url || v.output_url}
                 audioUrl={v.social_kit.dubbed_audio_url}
+                segments={v.social_kit.dubbed_segments ?? null}
                 filename={`${(v.title || "dubbed").replace(/[^\w-]+/g, "_")}.mp4`}
               />
             ) : null}
