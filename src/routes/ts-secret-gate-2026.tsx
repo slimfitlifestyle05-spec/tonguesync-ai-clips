@@ -75,7 +75,13 @@ function AdminDashboard() {
   const getProviders = useServerFn(getPaymentProviders);
   const saveProviders = useServerFn(savePaymentProviders);
   const qc = useQueryClient();
-  const { data: overview } = useQuery({ queryKey: ["admin-overview"], queryFn: () => getOverview(), refetchInterval: 15000 });
+  const { data: overview } = useQuery({
+    queryKey: ["admin-overview"],
+    queryFn: () => getOverview(),
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: false,
+    staleTime: 30_000,
+  });
   const { data: settings } = useQuery({ queryKey: ["admin-settings"], queryFn: () => getSettings() });
   const { data: promo } = useQuery({ queryKey: ["admin-promo"], queryFn: () => getPromo() });
   const { data: users } = useQuery({ queryKey: ["admin-users"], queryFn: () => listUsers() });
@@ -154,7 +160,7 @@ function AdminDashboard() {
         },
       });
       toast.success("Settings saved");
-      qc.invalidateQueries();
+      qc.invalidateQueries({ queryKey: ["admin-settings"] });
     } catch (e: any) { toast.error(e?.message ?? "Save failed"); }
     finally { setSaving(false); }
   }
@@ -223,8 +229,8 @@ function AdminDashboard() {
                   <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} />
                   <YAxis stroke="#94a3b8" fontSize={11} />
                   <Tooltip contentStyle={{ background: "#0f172a", border: "1px solid #334155" }} />
-                  <Line type="monotone" dataKey="views" stroke="#a855f7" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="videos" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="views" stroke="#a855f7" strokeWidth={2} dot={false} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="videos" stroke="#f59e0b" strokeWidth={2} dot={false} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -234,7 +240,7 @@ function AdminDashboard() {
             <div className="h-72">
               <ResponsiveContainer>
                 <PieChart>
-                  <Pie data={overview?.sources?.length ? overview.sources : [{ name: "direct", value: 1 }]} dataKey="value" nameKey="name" outerRadius={80}>
+                  <Pie data={overview?.sources?.length ? overview.sources : [{ name: "direct", value: 1 }]} dataKey="value" nameKey="name" outerRadius={80} isAnimationActive={false}>
                     {(overview?.sources ?? [{ name: "direct", value: 1 }]).map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
                   <Legend />
