@@ -117,12 +117,48 @@ function Dashboard() {
         </div>
 
         <section>
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Video className="h-5 w-5" />Recent generations</h2>
+          <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+            <h2 className="text-lg font-semibold flex items-center gap-2"><Video className="h-5 w-5" />Recent generations</h2>
+            {(videos && videos.length > 0) && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                  <Input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search title, style, region…"
+                    className="pl-8 h-9 w-56 bg-white/5 border-white/10"
+                  />
+                </div>
+                <Select value={kindFilter} onValueChange={(v) => setKindFilter(v as any)}>
+                  <SelectTrigger className="h-9 w-28 bg-white/5 border-white/10"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All types</SelectItem>
+                    <SelectItem value="clip">Clips</SelectItem>
+                    <SelectItem value="dub">Dubs</SelectItem>
+                  </SelectContent>
+                </Select>
+                {languageOptions.length > 0 && (
+                  <Select value={langFilter} onValueChange={setLangFilter}>
+                    <SelectTrigger className="h-9 w-32 bg-white/5 border-white/10"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All languages</SelectItem>
+                      {languageOptions.map((l) => (
+                        <SelectItem key={l} value={l}>{l.toUpperCase()}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
+          </div>
           {(!videos || videos.length === 0) ? (
             <div className="text-slate-400 text-sm">No videos yet. Start with the Clipper or Dubbing card above.</div>
+          ) : filteredVideos.length === 0 ? (
+            <div className="text-slate-400 text-sm">No matches. Try clearing the filters.</div>
           ) : (
             <div className="grid gap-4 md:grid-cols-3">
-              {videos.slice(0, 6).map((v: any) => (
+              {filteredVideos.slice(0, 12).map((v: any) => (
                 <div
                   key={v.id}
                   className="group relative rounded-xl border border-white/10 bg-white/5 overflow-hidden hover:border-fuchsia-400/40 transition"
