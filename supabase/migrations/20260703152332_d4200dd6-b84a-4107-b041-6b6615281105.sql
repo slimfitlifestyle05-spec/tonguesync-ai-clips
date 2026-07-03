@@ -1,0 +1,1 @@
+CREATE POLICY "Public reads payment providers list" ON public.app_settings FOR SELECT TO anon, authenticated USING (key = 'payment_providers');
