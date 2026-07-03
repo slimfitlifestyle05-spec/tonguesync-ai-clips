@@ -302,54 +302,6 @@ function PriceCard({
   );
 }
 
-function TrustBar() {
-  return _TrustBar();
-}
-
-function PromoVideoSection() {
-  const getPromo = useServerFn(getPromoVideo);
-  const { data } = useQuery({ queryKey: ["promo-video"], queryFn: () => getPromo() });
-  if (!data?.url) return null;
-  return (
-    <Reveal>
-      <section className="mx-auto max-w-4xl px-6 pb-16">
-        <div className="rounded-2xl overflow-hidden border border-white/10 bg-black shadow-2xl shadow-fuchsia-500/10">
-          <video src={data.url} controls className="w-full aspect-video" />
-        </div>
-        {data.title ? (
-          <p className="text-center text-sm text-slate-400 mt-3">{data.title}</p>
-        ) : null}
-      </section>
-    </Reveal>
-  );
-}
-
-function _TrustBar() {
-  const { t } = useI18n();
-  return (
-    <section className="mx-auto max-w-6xl px-6 pb-16 text-center">
-      <p className="text-sm text-slate-400 tracking-wide">{t("trust_line")}</p>
-      <div className="mt-5 flex flex-wrap items-center justify-center gap-8 opacity-40">
-        <div className="flex items-center gap-2 text-slate-300">
-          <Smartphone className="h-5 w-5" />
-          <span className="text-xs font-medium tracking-wider uppercase">TikTok</span>
-        </div>
-        <div className="flex items-center gap-2 text-slate-300">
-          <Monitor className="h-5 w-5" />
-          <span className="text-xs font-medium tracking-wider uppercase">YouTube</span>
-        </div>
-        <div className="flex items-center gap-2 text-slate-300">
-          <Video className="h-5 w-5" />
-          <span className="text-xs font-medium tracking-wider uppercase">Reels</span>
-        </div>
-        <div className="flex items-center gap-2 text-slate-300">
-          <Radio className="h-5 w-5" />
-          <span className="text-xs font-medium tracking-wider uppercase">Podcasts</span>
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function BentoGrid() {
   const { t } = useI18n();
