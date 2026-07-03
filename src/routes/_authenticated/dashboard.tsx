@@ -7,9 +7,11 @@ import { LangToggle } from "@/components/LangToggle";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, Crown, Video, ChevronRight, Languages } from "lucide-react";
+import { LogOut, Crown, Video, ChevronRight, Languages, Search } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -29,12 +31,41 @@ function Dashboard() {
   const { data: videos } = useQuery({ queryKey: ["my-videos"], queryFn: () => listVideos() });
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<any | null>(null);
+  const [query, setQuery] = useState("");
+  const [kindFilter, setKindFilter] = useState<"all" | "clip" | "dub">("all");
+  const [langFilter, setLangFilter] = useState<string>("all");
 
   const profile = profileData?.profile;
   const tier = profile?.tier ?? "free";
   const isPro = tier === "pro";
   const usedTotal = isPro ? profile?.monthly_used ?? 0 : (profile?.clips_used ?? 0) + (profile?.dubs_used ?? 0);
   const cap = isPro ? LIMITS.PRO_MONTHLY : LIMITS.FREE_CLIPS + LIMITS.FREE_DUBS;
+
+  const languageOptions = useMemo(() => {
+    const set = new Set<string>();
+    (videos ?? []).forEach((v: any) => {
+      const l = v.target_language || v.language;
+      if (l) set.add(l);
+    });
+    return Array.from(set).sort();
+  }, [videos]);
+
+  const filteredVideos = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return (videos ?? []).filter((v: any) => {
+      if (kindFilter !== "all" && v.kind !== kindFilter) return false;
+      if (langFilter !== "all") {
+        const l = v.target_language || v.language;
+        if (l !== langFilter) return false;
+      }
+      if (!q) return true;
+      return (
+        (v.title || "").toLowerCase().includes(q) ||
+        (v.style || "").toLowerCase().includes(q) ||
+        (v.target_country || "").toLowerCase().includes(q)
+      );
+    });
+  }, [videos, query, kindFilter, langFilter]);
 
   async function signOut() {
     await supabase.auth.signOut();
