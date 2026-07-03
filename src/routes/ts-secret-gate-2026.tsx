@@ -28,6 +28,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 import { toast } from "sonner";
 import { Users, DollarSign, Video, Activity, Loader2, Trash2, UserPlus, Crown, CreditCard, Link2, Check } from "lucide-react";
+import { listAllPostsAdmin, generatePostAdmin, deletePostAdmin, togglePublishedAdmin } from "@/lib/blog.functions";
+import { Textarea } from "@/components/ui/textarea";
+import { FileText, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/ts-secret-gate-2026")({
   ssr: false,
@@ -258,6 +261,7 @@ function AdminDashboard() {
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="promo">Promo Video</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="blog">Blog</TabsTrigger>
           </TabsList>
           <TabsContent value="analytics">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
