@@ -457,6 +457,9 @@ function AdminDashboard() {
               </div>
             </div>
           </TabsContent>
+          <TabsContent value="blog">
+            <BlogAdminPanel />
+          </TabsContent>
         </Tabs>
       </main>
     </div>
@@ -468,6 +471,152 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
     <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
       <div className="flex items-center justify-between text-slate-400 text-xs"><span>{label}</span><span className="opacity-70">{icon}</span></div>
       <div className="text-3xl font-semibold mt-2">{value}</div>
+    </div>
+  );
+}
+
+function BlogAdminPanel() {
+  const qc = useQueryClient();
+  const listFn = useServerFn(listAllPostsAdmin);
+  const genFn = useServerFn(generatePostAdmin);
+  const delFn = useServerFn(deletePostAdmin);
+  const toggleFn = useServerFn(togglePublishedAdmin);
+  const [topic, setTopic] = useState("");
+  const [audience, setAudience] = useState("");
+  const [publish, setPublish] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  const { data: posts, isLoading } = useQuery({
+    queryKey: ["admin-blog-posts"],
+    queryFn: () => listFn(),
+    staleTime: 30_000,
+  });
+
+  async function generate() {
+    if (!topic.trim() || busy) return;
+    setBusy(true);
+    try {
+      const res = await genFn({ data: { topic: topic.trim(), audience: audience.trim() || undefined, publish } });
+      toast.success(`Generated: ${res.title}`);
+      setTopic("");
+      setAudience("");
+      qc.invalidateQueries({ queryKey: ["admin-blog-posts"] });
+      qc.invalidateQueries({ queryKey: ["blog"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Generation failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(id: string) {
+    if (!confirm("Delete this article? This cannot be undone.")) return;
+    try {
+      await delFn({ data: { id } });
+      toast.success("Article deleted");
+      qc.invalidateQueries({ queryKey: ["admin-blog-posts"] });
+      qc.invalidateQueries({ queryKey: ["blog"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    }
+  }
+
+  async function toggle(id: string, published: boolean) {
+    try {
+      await toggleFn({ data: { id, published: !published } });
+      qc.invalidateQueries({ queryKey: ["admin-blog-posts"] });
+      qc.invalidateQueries({ queryKey: ["blog"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Update failed");
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-fuchsia-500/10 to-amber-500/10 p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-5 w-5 text-fuchsia-300" />
+          <h3 className="text-lg font-semibold">Generate a new article with AI</h3>
+        </div>
+        <p className="text-sm text-slate-400">
+          Give a topic. The AI writes a full 700-1100 word article in a human editorial voice, then saves it here.
+        </p>
+        <div className="space-y-3">
+          <div>
+            <Label>Topic *</Label>
+            <Textarea
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="e.g. Why creators should stop over-editing their vertical shorts"
+              className="mt-1 bg-white/5 border-white/10 min-h-[60px]"
+            />
+          </div>
+          <div>
+            <Label>Audience (optional)</Label>
+            <Input
+              value={audience}
+              onChange={(e) => setAudience(e.target.value)}
+              placeholder="e.g. Solo TikTok creators aged 22-35"
+              className="mt-1 bg-white/5 border-white/10"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch checked={publish} onCheckedChange={setPublish} id="publish-now" />
+            <Label htmlFor="publish-now" className="cursor-pointer">Publish immediately</Label>
+          </div>
+          <Button onClick={generate} disabled={busy || !topic.trim()} className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold hover:opacity-90">
+            {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Writing…</> : <><Sparkles className="mr-2 h-4 w-4" /> Generate article</>}
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2"><FileText className="h-5 w-5" /> All articles ({posts?.length ?? 0})</h3>
+        </div>
+        {isLoading ? (
+          <div className="flex items-center gap-2 text-slate-400 text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
+        ) : !posts || posts.length === 0 ? (
+          <p className="text-sm text-slate-400">No articles yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-slate-400 border-b border-white/10">
+                  <th className="py-2 pr-4">Title</th>
+                  <th className="py-2 pr-4">Status</th>
+                  <th className="py-2 pr-4">Published</th>
+                  <th className="py-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {posts.map((p: any) => (
+                  <tr key={p.id} className="border-b border-white/5">
+                    <td className="py-3 pr-4">
+                      <div className="font-medium text-white">{p.title}</div>
+                      <div className="text-xs text-slate-500">/{p.slug}</div>
+                    </td>
+                    <td className="py-3 pr-4">
+                      <span className={p.published ? "text-emerald-300" : "text-slate-500"}>
+                        {p.published ? "Published" : "Draft"}
+                      </span>
+                    </td>
+                    <td className="py-3 pr-4 text-slate-400">{new Date(p.published_at).toLocaleDateString()}</td>
+                    <td className="py-3 flex gap-2 justify-end">
+                      <Button size="sm" variant="ghost" onClick={() => toggle(p.id, p.published)}>
+                        {p.published ? "Unpublish" : "Publish"}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => remove(p.id)} className="text-rose-400 hover:text-rose-300">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
