@@ -298,22 +298,69 @@ function DubbingPage() {
             <Label>Duration (seconds) — Max {maxDur}s</Label>
             <Input type="number" min={5} max={maxDur} value={duration} onChange={(e) => setDuration(parseInt(e.target.value || "0"))} className="bg-white/5 border-white/10 mt-1" />
           </div>
+          <div>
+            <Label className="flex items-center gap-1.5">
+              <Layers className="h-3.5 w-3.5" /> Also dub into (batch)
+              {!isPro && <span className="text-[10px] text-amber-300/80">Pro only 🔒</span>}
+            </Label>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {LANGUAGES.filter((l) => l.code !== targetLanguage).map((l) => {
+                const active = extraLanguages.includes(l.code);
+                return (
+                  <button
+                    key={l.code}
+                    type="button"
+                    disabled={!isPro}
+                    onClick={() =>
+                      setExtraLanguages((prev) => (prev.includes(l.code) ? prev.filter((x) => x !== l.code) : [...prev, l.code]))
+                    }
+                    className={`rounded-full px-2.5 py-1 text-xs border transition ${
+                      active
+                        ? "bg-gradient-to-r from-fuchsia-500/30 to-amber-400/30 border-fuchsia-400/50 text-white"
+                        : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+                    } ${!isPro ? "opacity-50 cursor-not-allowed" : ""}`}
+                  >
+                    {l.label}
+                  </button>
+                );
+              })}
+            </div>
+            {extraLanguages.length > 0 && (
+              <div className="mt-2 text-[10px] text-fuchsia-300">
+                Batch will generate {extraLanguages.length + 1} videos in one run.
+              </div>
+            )}
+          </div>
           {!isPro && <p className="text-xs text-amber-300/80">{t("watermark_notice")} Free: {LIMITS.FREE_DUBS} dubs up to {LIMITS.FREE_DUB_MAX_SECONDS}s each.</p>}
           </div>
           <Button type="submit" disabled={loading} className="mt-4 w-full bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold">
-            {loading ? t("processing") : t("generate")}
+            {loading
+              ? batchProgress
+                ? `Batch ${batchProgress.done}/${batchProgress.total}…`
+                : t("processing")
+              : extraLanguages.length > 0
+              ? `Generate ${extraLanguages.length + 1} dubs`
+              : t("generate")}
           </Button>
         </form>
 
-        {(loading || result) && (
+        {(loading || result || batchResults) && (
           <aside className="rounded-2xl border border-white/10 bg-white/[0.04] p-6 min-w-0 h-full flex flex-col">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <div className="text-xs uppercase tracking-wider text-fuchsia-300/80 font-semibold">Result</div>
-                <h2 className="text-lg font-semibold">{loading ? "Generating your video…" : "Your dubbed video"}</h2>
+                <h2 className="text-lg font-semibold">
+                  {loading
+                    ? batchProgress
+                      ? `Generating ${batchProgress.total} dubs — ${batchProgress.done} done`
+                      : "Generating your video…"
+                    : batchResults
+                    ? `Your ${batchResults.length} dubbed videos`
+                    : "Your dubbed video"}
+                </h2>
               </div>
               {!loading && (
-                <Button type="button" variant="outline" size="sm" onClick={resetAll} className="border-white/15 bg-white/5 hover:bg-white/10 shrink-0">
+                <Button type="button" variant="outline" size="sm" onClick={() => { resetAll(); setBatchResults(null); setExtraLanguages([]); }} className="border-white/15 bg-white/5 hover:bg-white/10 shrink-0">
                   <RotateCcw className="h-4 w-4 mr-1" /> New
                 </Button>
               )}
@@ -329,7 +376,9 @@ function DubbingPage() {
                       <span className="absolute inset-0 rounded-full bg-fuchsia-400/40 blur-lg animate-pulse" />
                     </div>
                     <div className="text-xs text-slate-300 font-medium">Dubbing in progress…</div>
-                    <div className="text-[10px] text-slate-500">This may take a few moments</div>
+                    <div className="text-[10px] text-slate-500">
+                      {batchProgress ? `Language ${batchProgress.done + 1} of ${batchProgress.total}` : "This may take a few moments"}
+                    </div>
                   </div>
                 </div>
                 <div className="p-3 space-y-3">
@@ -348,7 +397,7 @@ function DubbingPage() {
               </div>
             ) : (
               <div className="flex-1">
-                <VideoResult videos={[result]} isPro={isPro} embedded />
+                <VideoResult videos={batchResults ?? [result]} isPro={isPro} embedded />
               </div>
             )}
           </aside>
