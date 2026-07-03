@@ -13,6 +13,9 @@ import {
   inviteUser,
   setUserTier,
   deleteAppUser,
+  getPaymentProviders,
+  savePaymentProviders,
+  PAYMENT_PROVIDERS,
 } from "@/lib/admin.functions";
 import { getMyProfile } from "@/lib/video.functions";
 import { Logo } from "@/components/Logo";
@@ -24,7 +27,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 import { toast } from "sonner";
-import { Users, DollarSign, Video, Activity, Loader2, Trash2, UserPlus, Crown } from "lucide-react";
+import { Users, DollarSign, Video, Activity, Loader2, Trash2, UserPlus, Crown, CreditCard, Link2, Check } from "lucide-react";
 
 export const Route = createFileRoute("/ts-secret-gate-2026")({
   ssr: false,
@@ -69,11 +72,39 @@ function AdminDashboard() {
   const invite = useServerFn(inviteUser);
   const setTier = useServerFn(setUserTier);
   const delUser = useServerFn(deleteAppUser);
+  const getProviders = useServerFn(getPaymentProviders);
+  const saveProviders = useServerFn(savePaymentProviders);
   const qc = useQueryClient();
   const { data: overview } = useQuery({ queryKey: ["admin-overview"], queryFn: () => getOverview(), refetchInterval: 15000 });
   const { data: settings } = useQuery({ queryKey: ["admin-settings"], queryFn: () => getSettings() });
   const { data: promo } = useQuery({ queryKey: ["admin-promo"], queryFn: () => getPromo() });
   const { data: users } = useQuery({ queryKey: ["admin-users"], queryFn: () => listUsers() });
+  const { data: paymentData } = useQuery({ queryKey: ["admin-payments"], queryFn: () => getProviders() });
+
+  const [providers, setProviders] = useState<Array<{ id: string; enabled: boolean; connected: boolean; account?: string }>>([]);
+  useEffect(() => {
+    if (paymentData?.providers) setProviders(paymentData.providers);
+  }, [paymentData]);
+
+  async function toggleProvider(id: string, enabled: boolean) {
+    const next = providers.map((p) => (p.id === id ? { ...p, enabled } : p));
+    setProviders(next);
+    try {
+      await saveProviders({ data: { providers: next as any } });
+      toast.success(enabled ? "Provider shown at checkout" : "Provider hidden from checkout");
+      qc.invalidateQueries({ queryKey: ["admin-payments"] });
+      qc.invalidateQueries({ queryKey: ["public-payments"] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Save failed");
+    }
+  }
+
+  function connectProvider(id: string, label: string) {
+    toast(`${label}: connection UI coming next`, {
+      description: "Toggle it on and the button appears at checkout — wire real keys later.",
+      icon: <Link2 className="h-4 w-4 text-fuchsia-400" />,
+    });
+  }
 
   const [ga, setGa] = useState("");
   const [openai, setOpenai] = useState("");
@@ -218,6 +249,7 @@ function AdminDashboard() {
             <TabsTrigger value="analytics">Google Analytics</TabsTrigger>
             <TabsTrigger value="api">API Keys</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
+            <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="promo">Promo Video</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
           </TabsList>
