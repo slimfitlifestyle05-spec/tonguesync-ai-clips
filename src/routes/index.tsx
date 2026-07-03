@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { LangToggle } from "@/components/LangToggle";
 import { useI18n } from "@/lib/i18n";
-import { Check, Sparkles, ShieldCheck, Wand2, Languages, Rocket, Play, Volume2, Zap, Brain, Mic, Monitor, Smartphone, Video, Radio } from "lucide-react";
+import { Check, Sparkles, ShieldCheck, Wand2, Languages, Rocket, Play, Volume2, Zap, Brain, Mic } from "lucide-react";
 import { FeatureCard, ClipperVisual, DubbingVisual } from "@/components/FeatureShowcase";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { TrustBar } from "@/components/TrustBar";
 import { Reveal } from "@/components/Reveal";
 import { SocialProofToast } from "@/components/SocialProofToast";
 import { useServerFn } from "@tanstack/react-start";
@@ -59,7 +60,7 @@ function Index() {
         </div>
       </Reveal>
 
-      <Reveal delay={80}><TrustBar /></Reveal>
+      <Reveal delay={80}><TrustBar isDark={isDark} /></Reveal>
 
       <PromoVideoSection />
 
@@ -302,9 +303,6 @@ function PriceCard({
   );
 }
 
-function TrustBar() {
-  return _TrustBar();
-}
 
 function PromoVideoSection() {
   const getPromo = useServerFn(getPromoVideo);
@@ -321,33 +319,6 @@ function PromoVideoSection() {
         ) : null}
       </section>
     </Reveal>
-  );
-}
-
-function _TrustBar() {
-  const { t } = useI18n();
-  return (
-    <section className="mx-auto max-w-6xl px-6 pb-16 text-center">
-      <p className="text-sm text-slate-400 tracking-wide">{t("trust_line")}</p>
-      <div className="mt-5 flex flex-wrap items-center justify-center gap-8 opacity-40">
-        <div className="flex items-center gap-2 text-slate-300">
-          <Smartphone className="h-5 w-5" />
-          <span className="text-xs font-medium tracking-wider uppercase">TikTok</span>
-        </div>
-        <div className="flex items-center gap-2 text-slate-300">
-          <Monitor className="h-5 w-5" />
-          <span className="text-xs font-medium tracking-wider uppercase">YouTube</span>
-        </div>
-        <div className="flex items-center gap-2 text-slate-300">
-          <Video className="h-5 w-5" />
-          <span className="text-xs font-medium tracking-wider uppercase">Reels</span>
-        </div>
-        <div className="flex items-center gap-2 text-slate-300">
-          <Radio className="h-5 w-5" />
-          <span className="text-xs font-medium tracking-wider uppercase">Podcasts</span>
-        </div>
-      </div>
-    </section>
   );
 }
 
