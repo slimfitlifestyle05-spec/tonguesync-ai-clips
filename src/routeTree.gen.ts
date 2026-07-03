@@ -19,6 +19,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as AuthenticatedDubbingRouteImport } from './routes/_authenticated/dubbing'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedClipperRouteImport } from './routes/_authenticated/clipper'
@@ -73,6 +74,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => BlogRoute,
+} as any)
 const AuthenticatedDubbingRoute = AuthenticatedDubbingRouteImport.update({
   id: '/dubbing',
   path: '/dubbing',
@@ -99,7 +105,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
-  '/blog': typeof BlogRoute
+  '/blog': typeof BlogRouteWithChildren
   '/contact': typeof ContactRoute
   '/privacy': typeof PrivacyRoute
   '/showcase': typeof ShowcaseRoute
@@ -108,13 +114,14 @@ export interface FileRoutesByFullPath {
   '/clipper': typeof AuthenticatedClipperRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/dubbing': typeof AuthenticatedDubbingRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/action/$videoId': typeof AuthenticatedActionVideoIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
-  '/blog': typeof BlogRoute
+  '/blog': typeof BlogRouteWithChildren
   '/contact': typeof ContactRoute
   '/privacy': typeof PrivacyRoute
   '/showcase': typeof ShowcaseRoute
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   '/clipper': typeof AuthenticatedClipperRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/dubbing': typeof AuthenticatedDubbingRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/action/$videoId': typeof AuthenticatedActionVideoIdRoute
 }
 export interface FileRoutesById {
@@ -131,7 +139,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/auth': typeof AuthRoute
-  '/blog': typeof BlogRoute
+  '/blog': typeof BlogRouteWithChildren
   '/contact': typeof ContactRoute
   '/privacy': typeof PrivacyRoute
   '/showcase': typeof ShowcaseRoute
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/_authenticated/clipper': typeof AuthenticatedClipperRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/dubbing': typeof AuthenticatedDubbingRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/_authenticated/action/$videoId': typeof AuthenticatedActionVideoIdRoute
 }
 export interface FileRouteTypes {
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/clipper'
     | '/dashboard'
     | '/dubbing'
+    | '/blog/$slug'
     | '/action/$videoId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/clipper'
     | '/dashboard'
     | '/dubbing'
+    | '/blog/$slug'
     | '/action/$videoId'
   id:
     | '__root__'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clipper'
     | '/_authenticated/dashboard'
     | '/_authenticated/dubbing'
+    | '/blog/$slug'
     | '/_authenticated/action/$videoId'
   fileRoutesById: FileRoutesById
 }
@@ -196,7 +208,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AboutRoute: typeof AboutRoute
   AuthRoute: typeof AuthRoute
-  BlogRoute: typeof BlogRoute
+  BlogRoute: typeof BlogRouteWithChildren
   ContactRoute: typeof ContactRoute
   PrivacyRoute: typeof PrivacyRoute
   ShowcaseRoute: typeof ShowcaseRoute
@@ -276,6 +288,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof BlogRoute
+    }
     '/_authenticated/dubbing': {
       id: '/_authenticated/dubbing'
       path: '/dubbing'
@@ -324,12 +343,22 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface BlogRouteChildren {
+  BlogSlugRoute: typeof BlogSlugRoute
+}
+
+const BlogRouteChildren: BlogRouteChildren = {
+  BlogSlugRoute: BlogSlugRoute,
+}
+
+const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AboutRoute: AboutRoute,
   AuthRoute: AuthRoute,
-  BlogRoute: BlogRoute,
+  BlogRoute: BlogRouteWithChildren,
   ContactRoute: ContactRoute,
   PrivacyRoute: PrivacyRoute,
   ShowcaseRoute: ShowcaseRoute,
