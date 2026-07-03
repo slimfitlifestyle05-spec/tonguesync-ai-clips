@@ -151,6 +151,39 @@ export const createDub = createServerFn({ method: "POST" })
     const transcript = mockTranscript(profile.dubs_used + Date.now());
     const socialKit = tier === "pro" ? (await import("./premium")).generateSocialKit(transcript) : null;
 
+    // Ultra-fast Gemini/OpenAI -> Cartesia Sonic pipeline. Best-effort: on
+    // failure we still return a video record but surface the error to the UI.
+    let pipelineError: string | null = null;
+    let dubbedAudioUrl: string | null = null;
+    let localizedText: string | null = null;
+    let ttsProvider: "cartesia" | "elevenlabs" | null = null;
+    try {
+      const { runDubbingPipeline } = await import("./dubbing-pipeline.server");
+      const result = await runDubbingPipeline({
+        transcript,
+        targetLanguage: data.targetLanguage,
+        targetCountry: data.targetCountry,
+      });
+      if (result.ok) {
+        dubbedAudioUrl = result.audioDataUrl;
+        localizedText = result.localizedText;
+        ttsProvider = result.provider;
+        console.log(
+          `[createDub] pipeline ok llm=${result.llm} tts=${result.provider} elapsed=${result.elapsedMs}ms`,
+        );
+      } else {
+        pipelineError = `${result.stage}: ${result.message}`;
+        console.warn("[createDub] pipeline error:", pipelineError);
+      }
+    } catch (e: any) {
+      pipelineError = e?.message ?? "Pipeline crashed";
+      console.error("[createDub] pipeline crashed:", e);
+    }
+
+    const enrichedSocialKit = socialKit || dubbedAudioUrl || localizedText
+      ? { ...(socialKit ?? {}), dubbed_audio_url: dubbedAudioUrl, localized_text: localizedText, tts_provider: ttsProvider }
+      : null;
+
     const { data: inserted, error } = await supabase
       .from("videos")
       .insert({
@@ -163,7 +196,7 @@ export const createDub = createServerFn({ method: "POST" })
         target_language: data.targetLanguage,
         target_country: data.targetCountry,
         watermarked: tier === "free",
-        social_kit: socialKit,
+        social_kit: enrichedSocialKit,
         status: "ready",
         duration_seconds: data.durationSeconds,
       })
@@ -178,7 +211,7 @@ export const createDub = createServerFn({ method: "POST" })
         updated_at: new Date().toISOString(),
       })
       .eq("id", userId);
-    return { video: inserted };
+    return { video: inserted, pipelineError };
   });
 
 export const upgradeToPro = createServerFn({ method: "POST" })

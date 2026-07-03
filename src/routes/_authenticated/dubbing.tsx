@@ -120,7 +120,13 @@ function DubbingPage() {
       if ((res as any).error === "duration") { toast.error(`Max ${(res as any).maxDur}s on your plan.`); return; }
       setResult((res as any).video);
       qc.invalidateQueries();
-      toast.success("Dubbed!");
+      const pipelineError = (res as any).pipelineError as string | null | undefined;
+      if (pipelineError) {
+        console.warn("[dubbing] pipeline error:", pipelineError);
+        toast.warning(`Dubbed with fallback voice. ${pipelineError}`, { duration: 6000 });
+      } else {
+        toast.success("Dubbed!");
+      }
     } catch (err: any) {
       toast.error(err?.message ?? "Failed");
     } finally {

@@ -79,6 +79,8 @@ function AdminDashboard() {
   const [openai, setOpenai] = useState("");
   const [gemini, setGemini] = useState("");
   const [elevenlabs, setElevenlabs] = useState("");
+  const [cartesia, setCartesia] = useState("");
+  const [ttsProvider, setTtsProvider] = useState<"cartesia" | "elevenlabs">("cartesia");
   const [twoFactor, setTwoFactor] = useState(false);
   const [saving, setSaving] = useState(false);
   const [promoUrl, setPromoUrl] = useState("");
@@ -93,6 +95,8 @@ function AdminDashboard() {
       setOpenai(settings.apiKeys?.openai ?? "");
       setGemini(settings.apiKeys?.gemini ?? "");
       setElevenlabs(settings.apiKeys?.elevenlabs ?? "");
+      setCartesia((settings.apiKeys as any)?.cartesia ?? "");
+      setTtsProvider((settings as any).ttsProvider ?? "cartesia");
       setTwoFactor(!!settings.twoFactor);
     }
   }, [settings]);
@@ -107,7 +111,14 @@ function AdminDashboard() {
   async function saveAll() {
     setSaving(true);
     try {
-      await save({ data: { ga, apiKeys: { openai, gemini, elevenlabs }, twoFactor } });
+      await save({
+        data: {
+          ga,
+          apiKeys: { openai, gemini, elevenlabs, cartesia },
+          ttsProvider,
+          twoFactor,
+        },
+      });
       toast.success("Settings saved");
       qc.invalidateQueries();
     } catch (e: any) { toast.error(e?.message ?? "Save failed"); }
@@ -219,10 +230,35 @@ function AdminDashboard() {
           </TabsContent>
           <TabsContent value="api">
             <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
-              <p className="text-xs text-slate-400">Keys are encrypted-at-rest in the backend and used server-side only. Never rendered to end users.</p>
+              <div>
+                <h3 className="font-semibold">API Integrations</h3>
+                <p className="text-xs text-slate-400 mt-1">Keys are stored server-side and used only by the dubbing pipeline. Never rendered to end users.</p>
+              </div>
+              <div>
+                <Label>Text-to-Speech provider</Label>
+                <select
+                  value={ttsProvider}
+                  onChange={(e) => setTtsProvider(e.target.value as "cartesia" | "elevenlabs")}
+                  className="mt-1 w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 text-sm"
+                >
+                  <option value="cartesia">Cartesia (Sonic model) \u2014 recommended</option>
+                  <option value="elevenlabs">ElevenLabs (multilingual)</option>
+                </select>
+                <p className="text-xs text-slate-400 mt-1">
+                  Cartesia routes dubbing through the flagship <span className="text-fuchsia-300">Sonic</span> model for ultra-low latency voice generation.
+                </p>
+              </div>
+              <div>
+                <Label>Cartesia API Key</Label>
+                <Input type="password" value={cartesia} onChange={(e) => setCartesia(e.target.value)} placeholder="sk_car_\u2026" className="bg-white/5 border-white/10 mt-1" />
+              </div>
               <div><Label>OpenAI API Key</Label><Input type="password" value={openai} onChange={(e) => setOpenai(e.target.value)} placeholder="sk-\u2026" className="bg-white/5 border-white/10 mt-1" /></div>
               <div><Label>Google Gemini API Key</Label><Input type="password" value={gemini} onChange={(e) => setGemini(e.target.value)} placeholder="AIza\u2026" className="bg-white/5 border-white/10 mt-1" /></div>
-              <div><Label>ElevenLabs API Key</Label><Input type="password" value={elevenlabs} onChange={(e) => setElevenlabs(e.target.value)} placeholder="\u2026" className="bg-white/5 border-white/10 mt-1" /></div>
+              <div><Label>ElevenLabs API Key (fallback)</Label><Input type="password" value={elevenlabs} onChange={(e) => setElevenlabs(e.target.value)} placeholder="\u2026" className="bg-white/5 border-white/10 mt-1" /></div>
+              <div className="rounded-lg border border-white/10 bg-black/30 p-3 text-xs text-slate-400 space-y-1">
+                <div><span className="text-slate-300 font-medium">Pipeline:</span> Gemini/OpenAI translates the transcript into the target dialect, then streams straight into Cartesia Sonic for instant dubbing.</div>
+                <div>Missing keys or quota errors are logged to the server console and surfaced in the dubbing UI.</div>
+              </div>
               <Button onClick={saveAll} disabled={saving}>Save changes</Button>
             </div>
           </TabsContent>
