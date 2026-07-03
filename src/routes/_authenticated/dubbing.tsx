@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LANGUAGES, REGIONS, STYLE_TEMPLATES } from "@/lib/premium";
 import { useI18n } from "@/lib/i18n";
-import { ArrowLeft, Globe2, Lock, RotateCcw, UploadCloud, X, Loader2 } from "lucide-react";
+import { ArrowLeft, Globe2, Lock, RotateCcw, UploadCloud, X, Loader2, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
@@ -55,6 +55,9 @@ function DubbingPage() {
   const [duration, setDuration] = useState(20);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any | null>(null);
+  const [batchResults, setBatchResults] = useState<any[] | null>(null);
+  const [extraLanguages, setExtraLanguages] = useState<string[]>([]);
+  const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const hydrated = useRef(false);
 
@@ -122,27 +125,46 @@ function DubbingPage() {
     e.preventDefault();
     setLoading(true);
     setResult(null);
+    setBatchResults(null);
     try {
       const sourceUrl = file ? `upload://${file.name}` : source;
-      const [res] = await Promise.all([
-        dub({ data: { title, sourceUrl, targetLanguage, targetCountry, style, durationSeconds: duration } }),
-        new Promise((r) => setTimeout(r, 4200)),
-      ]);
-      if ((res as any).error === "limit") { setUpgradeOpen(true); return; }
-      if ((res as any).error === "duration") { toast.error(`Max ${(res as any).maxDur}s on your plan.`); return; }
-      setResult((res as any).video);
-      qc.invalidateQueries();
-      const pipelineError = (res as any).pipelineError as string | null | undefined;
-      if (pipelineError) {
-        console.warn("[dubbing] pipeline error:", pipelineError);
-        toast.warning(`Dubbed with fallback voice. ${pipelineError}`, { duration: 6000 });
-      } else {
-        toast.success("Dubbed!");
+      const targets = [targetLanguage, ...extraLanguages.filter((l) => l !== targetLanguage)];
+      const isBatch = targets.length > 1;
+      if (isBatch && !isPro) {
+        toast.error("Multi-language batch dub is a Pro feature");
+        setUpgradeOpen(true);
+        return;
       }
+      if (isBatch) setBatchProgress({ done: 0, total: targets.length });
+      const results: any[] = [];
+      let firstError: string | null = null;
+      for (let i = 0; i < targets.length; i++) {
+        const lang = targets[i];
+        const [res] = await Promise.all([
+          dub({ data: { title: isBatch ? `${title} — ${lang.toUpperCase()}` : title, sourceUrl, targetLanguage: lang, targetCountry, style, durationSeconds: duration } }),
+          i === 0 ? new Promise((r) => setTimeout(r, 4200)) : Promise.resolve(),
+        ]);
+        if ((res as any).error === "limit") { setUpgradeOpen(true); return; }
+        if ((res as any).error === "duration") { toast.error(`Max ${(res as any).maxDur}s on your plan.`); return; }
+        results.push((res as any).video);
+        const pipelineError = (res as any).pipelineError as string | null | undefined;
+        if (pipelineError && !firstError) firstError = pipelineError;
+        if (isBatch) setBatchProgress({ done: i + 1, total: targets.length });
+      }
+      if (isBatch) {
+        setBatchResults(results);
+        toast.success(`Dubbed in ${results.length} languages`);
+      } else {
+        setResult(results[0]);
+        if (firstError) toast.warning(`Dubbed with fallback voice. ${firstError}`, { duration: 6000 });
+        else toast.success("Dubbed!");
+      }
+      qc.invalidateQueries();
     } catch (err: any) {
       toast.error(err?.message ?? "Failed");
     } finally {
       setLoading(false);
+      setBatchProgress(null);
     }
   }
 
