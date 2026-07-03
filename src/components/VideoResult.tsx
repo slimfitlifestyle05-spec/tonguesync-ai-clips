@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Download, Lock, Sparkles, Loader2, Wand2, Check } from "lucide-react";
+import { Download, Lock, Sparkles, Loader2, Wand2, Check, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
+import { MagicPreviewModal } from "@/components/MagicPreviewModal";
 
 const KIT_STAGES = [
   { label: "Reading transcript…", boundary: 30 },
@@ -106,9 +107,11 @@ function SocialKitPanel({ kit, isPro }: { kit: any; isPro: boolean }) {
 
 export function VideoResult({ videos, isPro }: { videos: any[]; isPro: boolean }) {
   const { t } = useI18n();
+  const [magicVideo, setMagicVideo] = useState<any | null>(null);
   if (!videos?.length) return null;
   const cols = videos.length === 1 ? "md:grid-cols-1 max-w-sm mx-auto" : videos.length === 2 ? "md:grid-cols-2" : "md:grid-cols-3";
   return (
+    <>
     <div className={`mt-8 grid gap-4 ${cols}`}>
       {videos.map((v) => (
         <div key={v.id} className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
@@ -120,13 +123,27 @@ export function VideoResult({ videos, isPro }: { videos: any[]; isPro: boolean }
           </div>
           <div className="p-3 space-y-3">
             <div className="font-medium text-sm truncate">{v.title}</div>
-            <a href={v.output_url} download>
-              <Button size="sm" className="w-full"><Download className="h-4 w-4 mr-1" />{t("download")}</Button>
-            </a>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setMagicVideo(v)}
+                className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold hover:opacity-90"
+              >
+                <Play className="h-4 w-4 mr-1" /> View Magic
+              </Button>
+              <a href={v.output_url} download>
+                <Button size="sm" variant="outline" className="w-full bg-white/5 border-white/10 hover:bg-white/10">
+                  <Download className="h-4 w-4 mr-1" />{t("download")}
+                </Button>
+              </a>
+            </div>
             <SocialKitPanel kit={v.social_kit} isPro={isPro} />
           </div>
         </div>
       ))}
     </div>
+    <MagicPreviewModal open={!!magicVideo} onOpenChange={(o) => !o && setMagicVideo(null)} video={magicVideo} />
+    </>
   );
 }
