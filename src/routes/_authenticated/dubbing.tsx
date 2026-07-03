@@ -144,7 +144,7 @@ function DubbingPage() {
           <Link to="/dashboard"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-1" />{t("back")}</Button></Link>
         </div>
       </header>
-      <main className="mx-auto max-w-4xl px-6 py-10">
+      <main className={`mx-auto px-6 py-10 transition-all ${result && !loading ? "max-w-6xl" : "max-w-4xl"}`}>
         <div className="mb-8 flex items-center gap-3">
           <div className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-to-br from-fuchsia-500 to-amber-400 text-black"><Globe2 className="h-5 w-5" /></div>
           <div>
@@ -153,7 +153,8 @@ function DubbingPage() {
           </div>
         </div>
 
-        <form onSubmit={submit} className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
+        <div className={`grid gap-6 ${result && !loading ? "lg:grid-cols-2 items-start" : "grid-cols-1"}`}>
+        <form onSubmit={submit} className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4 min-w-0">
           <div>
             <Label>{t("title_placeholder")}</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={200} className="bg-white/5 border-white/10 mt-1" />
@@ -256,18 +257,23 @@ function DubbingPage() {
           </Button>
         </form>
 
-        <ProcessingProgress active={loading} stages={DUB_STAGES} boundaries={DUB_BOUNDARIES} duration={4200} skeletonCount={1} />
-
         {!loading && result && (
-          <div className="mt-6 space-y-3">
-            <div className="flex justify-end">
-              <Button type="button" variant="outline" size="sm" onClick={resetAll} className="border-white/15 bg-white/5 hover:bg-white/10">
-                <RotateCcw className="h-4 w-4 mr-1" /> New video
+          <aside className="rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-6 min-w-0">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-xs uppercase tracking-wider text-fuchsia-300/80 font-semibold">Result</div>
+                <h2 className="text-lg font-semibold">Your dubbed video</h2>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={resetAll} className="border-white/15 bg-white/5 hover:bg-white/10 shrink-0">
+                <RotateCcw className="h-4 w-4 mr-1" /> New
               </Button>
             </div>
             <VideoResult videos={[result]} isPro={isPro} />
-          </div>
+          </aside>
         )}
+        </div>
+
+        <ProcessingProgress active={loading} stages={DUB_STAGES} boundaries={DUB_BOUNDARIES} duration={4200} skeletonCount={1} />
       </main>
 
       <UpgradeModal open={upgradeOpen} onOpenChange={setUpgradeOpen} />
