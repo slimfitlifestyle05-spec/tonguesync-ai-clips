@@ -106,14 +106,21 @@ function SocialKitPanel({ kit, isPro }: { kit: any; isPro: boolean }) {
   );
 }
 
-export function VideoResult({ videos, isPro }: { videos: any[]; isPro: boolean }) {
+export function VideoResult({ videos, isPro, embedded = false }: { videos: any[]; isPro: boolean; embedded?: boolean }) {
   const { t } = useI18n();
   const [magicVideo, setMagicVideo] = useState<any | null>(null);
   if (!videos?.length) return null;
-  const cols = videos.length === 1 ? "md:grid-cols-1 max-w-sm mx-auto" : videos.length === 2 ? "md:grid-cols-2" : "md:grid-cols-3";
+  const cols = embedded
+    ? "grid-cols-1"
+    : videos.length === 1
+    ? "md:grid-cols-1 max-w-sm mx-auto"
+    : videos.length === 2
+    ? "md:grid-cols-2"
+    : "md:grid-cols-3";
+  const wrapCls = embedded ? `grid gap-4 ${cols}` : `mt-8 grid gap-4 ${cols}`;
   return (
     <>
-    <div className={`mt-8 grid gap-4 ${cols}`}>
+    <div className={wrapCls}>
       {videos.map((v) => (
         <div key={v.id} className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
           <div className="relative">
