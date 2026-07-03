@@ -81,6 +81,7 @@ function AdminDashboard() {
   const [elevenlabs, setElevenlabs] = useState("");
   const [cartesia, setCartesia] = useState("");
   const [ttsProvider, setTtsProvider] = useState<"cartesia" | "elevenlabs">("cartesia");
+  const [cartesiaModel, setCartesiaModel] = useState<"sonic-2" | "sonic-turbo" | "sonic">("sonic-2");
   const [twoFactor, setTwoFactor] = useState(false);
   const [saving, setSaving] = useState(false);
   const [promoUrl, setPromoUrl] = useState("");
@@ -97,6 +98,7 @@ function AdminDashboard() {
       setElevenlabs(settings.apiKeys?.elevenlabs ?? "");
       setCartesia((settings.apiKeys as any)?.cartesia ?? "");
       setTtsProvider((settings as any).ttsProvider ?? "cartesia");
+      setCartesiaModel(((settings as any).cartesiaModel as any) ?? "sonic-2");
       setTwoFactor(!!settings.twoFactor);
     }
   }, [settings]);
@@ -116,6 +118,7 @@ function AdminDashboard() {
           ga,
           apiKeys: { openai, gemini, elevenlabs, cartesia },
           ttsProvider,
+          cartesiaModel,
           twoFactor,
         },
       });
@@ -248,6 +251,21 @@ function AdminDashboard() {
                   Cartesia routes dubbing through the flagship <span className="text-fuchsia-300">Sonic</span> model for ultra-low latency voice generation.
                 </p>
               </div>
+              {ttsProvider === "cartesia" ? (
+                <div>
+                  <Label>Cartesia model</Label>
+                  <select
+                    value={cartesiaModel}
+                    onChange={(e) => setCartesiaModel(e.target.value as "sonic-2" | "sonic-turbo" | "sonic")}
+                    className="mt-1 w-full rounded-md bg-white/5 border border-white/10 px-3 py-2 text-sm"
+                  >
+                    <option value="sonic-2">Sonic 2 \u2014 flagship quality (recommended)</option>
+                    <option value="sonic-turbo">Sonic Turbo \u2014 ~40ms latency, fastest</option>
+                    <option value="sonic">Sonic (legacy)</option>
+                  </select>
+                  <p className="text-xs text-slate-400 mt-1">Sonic 2 is Cartesia's newest premium model. Switch to Sonic Turbo when raw speed matters more than fidelity.</p>
+                </div>
+              ) : null}
               <div>
                 <Label>Cartesia API Key</Label>
                 <Input type="password" value={cartesia} onChange={(e) => setCartesia(e.target.value)} placeholder="sk_car_\u2026" className="bg-white/5 border-white/10 mt-1" />
