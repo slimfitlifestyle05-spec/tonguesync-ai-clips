@@ -366,7 +366,7 @@ Generate one cover prompt and exactly two inline image prompts that complement t
       }
     }
 
-    const update: Record<string, unknown> = {};
+    const update: { cover_image_url?: string | null; content?: string } = {};
     if (newCover !== row.cover_image_url) update.cover_image_url = newCover;
     if (data.updateMarkdown && newContent !== row.content) update.content = newContent;
     if (Object.keys(update).length) {
