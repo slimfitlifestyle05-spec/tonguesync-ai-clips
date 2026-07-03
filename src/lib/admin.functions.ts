@@ -228,3 +228,111 @@ export const deleteAppUser = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// ─────────────────────────── Payment providers ──────────────────────────
+// The catalog of visitor-facing payment methods. Admin can toggle any of
+// them on; the actual API keys / merchant accounts get wired up later via
+// Lovable Cloud secrets. No live processing runs from these settings — the
+// UI just shows/hides the buttons at checkout.
+
+export const PAYMENT_PROVIDERS = [
+  { id: "stripe", label: "Stripe", note: "International cards" },
+  { id: "paypal", label: "PayPal", note: "Global wallet" },
+  { id: "fawry", label: "Fawry", note: "Egypt cash & cards" },
+  { id: "vodafone_cash", label: "Vodafone Cash", note: "Egypt mobile wallet" },
+  { id: "instapay", label: "InstaPay", note: "Egypt instant transfer" },
+] as const;
+
+export type PaymentProviderId = (typeof PAYMENT_PROVIDERS)[number]["id"];
+
+type PaymentProviderState = {
+  id: PaymentProviderId;
+  enabled: boolean;
+  connected: boolean;
+  account?: string;
+};
+
+function normalizeProviders(raw: unknown): PaymentProviderState[] {
+  const arr = Array.isArray(raw) ? (raw as any[]) : [];
+  return PAYMENT_PROVIDERS.map((p) => {
+    const found = arr.find((x) => x?.id === p.id);
+    return {
+      id: p.id,
+      enabled: !!found?.enabled,
+      connected: !!found?.connected,
+      account: typeof found?.account === "string" ? found.account : "",
+    };
+  });
+}
+
+export const getPaymentProviders = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await requireAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
+      .from("app_settings")
+      .select("value")
+      .eq("key", "payment_providers")
+      .maybeSingle();
+    return {
+      catalog: PAYMENT_PROVIDERS,
+      providers: normalizeProviders(data?.value),
+    };
+  });
+
+export const savePaymentProviders = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z
+      .object({
+        providers: z
+          .array(
+            z.object({
+              id: z.enum(["stripe", "paypal", "fawry", "vodafone_cash", "instapay"]),
+              enabled: z.boolean(),
+              connected: z.boolean().optional().default(false),
+              account: z.string().max(120).optional().default(""),
+            }),
+          )
+          .max(20),
+      })
+      .parse(raw),
+  )
+  .handler(async ({ context, data }) => {
+    await requireAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("app_settings").upsert(
+      {
+        key: "payment_providers",
+        value: data.providers,
+        updated_by: context.userId,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" },
+    );
+    return { ok: true };
+  });
+
+// Public — used by the checkout / upgrade modal to render provider buttons.
+// Reads only the enabled flag; no secrets ever leave the server.
+export const getEnabledPaymentProviders = createServerFn({ method: "GET" }).handler(async () => {
+  const { createClient } = await import("@supabase/supabase-js");
+  const client = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
+    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+  });
+  const { data } = await client
+    .from("app_settings")
+    .select("value")
+    .eq("key", "payment_providers")
+    .maybeSingle();
+  const providers = normalizeProviders(data?.value)
+    .filter((p) => p.enabled)
+    .map((p) => ({
+      id: p.id,
+      label: PAYMENT_PROVIDERS.find((x) => x.id === p.id)!.label,
+      note: PAYMENT_PROVIDERS.find((x) => x.id === p.id)!.note,
+      connected: p.connected,
+    }));
+  return { providers };
+});
