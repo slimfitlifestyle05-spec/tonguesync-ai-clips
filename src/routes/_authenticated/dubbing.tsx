@@ -29,11 +29,16 @@ const DUB_BOUNDARIES = [30, 70, 100];
 
 export const Route = createFileRoute("/_authenticated/dubbing")({
   head: () => ({ meta: [{ title: "Cultural AI Dubbing \u2014 TongueSync AI" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    source: typeof search.source === "string" ? search.source : undefined,
+    title: typeof search.title === "string" ? search.title : undefined,
+  }),
   component: DubbingPage,
 });
 
 function DubbingPage() {
   const { t } = useI18n();
+  const search = Route.useSearch();
   const getProfile = useServerFn(getMyProfile);
   const dub = useServerFn(createDub);
   const qc = useQueryClient();
@@ -75,6 +80,13 @@ function DubbingPage() {
           toast.success("Restored your last dubbing session");
         }
       }
+      // Search-param prefill wins over cached session for re-dub deep links
+      if (search.source) {
+        setSource(search.source);
+        setFile(null);
+      }
+      if (search.title) setTitle(`${search.title} — re-dub`);
+      if (search.source) toast("Re-dub: source prefilled — pick a new language and go");
       hydrated.current = true;
     });
   }, []);

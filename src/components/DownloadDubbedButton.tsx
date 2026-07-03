@@ -1,11 +1,26 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, Loader2, X, Sparkles } from "lucide-react";
+import { Download, Loader2, X, Sparkles, Play, Pause, Subtitles } from "lucide-react";
 import { toast } from "sonner";
 
 type Segment = { start: number; end: number; text?: string; audioDataUrl: string };
 
 type Phase = "idle" | "loading-core" | "fetching" | "mixing" | "done";
+
+function toSrtTime(seconds: number) {
+  const s = Math.max(0, seconds);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.floor(s % 60);
+  const ms = Math.floor((s - Math.floor(s)) * 1000);
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")},${String(ms).padStart(3, "0")}`;
+}
+
+function segmentsToSrt(segments: Segment[]) {
+  return segments
+    .map((s, i) => `${i + 1}\n${toSrtTime(s.start)} --> ${toSrtTime(s.end)}\n${(s.text ?? "").replace(/\r?\n/g, " ")}\n`)
+    .join("\n");
+}
 
 /**
  * Client-side muxer with:
@@ -14,6 +29,11 @@ type Phase = "idle" | "loading-core" | "fetching" | "mixing" | "done";
  *   - optional per-segment lip-sync: each dubbed sentence is placed at its
  *     exact source timestamp via `adelay`, then mixed over the ducked
  *     original — so the new voice lands on the original speaker's mouth.
+ *   - optional burn-in subtitles from segments (SRT generated in memory).
+ *   - EBU R128 loudness normalization on every mix so exports match the
+ *     -16 LUFS streaming target.
+ *   - inline synced preview player (source video + dubbed audio) so users
+ *     review the result before spending time on the full mux.
  */
 export function DownloadDubbedButton({
   videoUrl,
@@ -29,9 +49,16 @@ export function DownloadDubbedButton({
   const [phase, setPhase] = useState<Phase>("idle");
   const [pct, setPct] = useState(0);
   const [label, setLabel] = useState("");
+  const [burnSubs, setBurnSubs] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewPlaying, setPreviewPlaying] = useState(false);
+  const previewVideoRef = useRef<HTMLVideoElement | null>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const ffmpegRef = useRef<any>(null);
   const abortRef = useRef<AbortController | null>(null);
   const canceledRef = useRef(false);
+
+  const hasSegments = Array.isArray(segments) && segments.length > 0;
 
   function reset() {
     setPhase("idle");
@@ -84,6 +111,7 @@ export function DownloadDubbedButton({
     canceledRef.current = false;
     abortRef.current = new AbortController();
     const signal = abortRef.current.signal;
+    const wantBurn = burnSubs && hasSegments;
 
     try {
       // 1) Load ffmpeg.wasm with real download progress on the core files.
@@ -133,15 +161,25 @@ export function DownloadDubbedButton({
         audioTracks.push({ file: "dub.mp3", delayMs: 0 });
       }
 
+      // Write SRT for burn-in when the user asked and we have segments.
+      if (wantBurn) {
+        const srt = segmentsToSrt(segments!);
+        await ffmpeg.writeFile("subs.srt", new TextEncoder().encode(srt));
+      }
+
       // 3) Mix with ffmpeg — progress driven by ffmpeg's own progress event.
       setPhase("mixing");
-      setLabel(useSegments ? `Mixing ${audioTracks.length}-segment lip-sync…` : "Mixing dubbed audio…");
+      setLabel(
+        (useSegments ? `Mixing ${audioTracks.length}-segment lip-sync` : "Mixing dubbed audio") +
+          (wantBurn ? " + burning subtitles…" : "…"),
+      );
       ffmpeg.on("progress", ({ progress }) => {
         setPct(80 + Math.min(19, Math.round(progress * 19)));
       });
 
       // Build filter graph: duck original + delay each dubbed track to its
-      // segment start, then amix. `normalize=0` keeps voice at full level.
+      // segment start, then amix + EBU R128 loudness normalize (-16 LUFS,
+      // -1.5 dBTP — the modern streaming target).
       const inputs: string[] = ["-i", "in.mp4"];
       audioTracks.forEach((t) => inputs.push("-i", t.file));
       const filterParts: string[] = ["[0:a]volume=0.15[bg]"];
@@ -153,14 +191,33 @@ export function DownloadDubbedButton({
         filterParts.push(`[${idx}:a]adelay=${delay}|${delay},volume=1.6[${lbl}]`);
         mixLabels.push(`[${lbl}]`);
       });
-      filterParts.push(`${mixLabels.join("")}amix=inputs=${mixLabels.length}:duration=first:dropout_transition=0:normalize=0[aout]`);
+      filterParts.push(
+        `${mixLabels.join("")}amix=inputs=${mixLabels.length}:duration=first:dropout_transition=0:normalize=0[amix]`,
+        `[amix]loudnorm=I=-16:LRA=11:TP=-1.5[aout]`,
+      );
+
+      // Video map: fast stream-copy by default; re-encode with libx264 when
+      // burning subtitles (subtitles filter needs a video re-encode).
+      const videoArgs = wantBurn
+        ? [
+            "-filter_complex",
+            filterParts.join(";") +
+              `;[0:v]subtitles=subs.srt:force_style='Fontname=Arial,Fontsize=22,PrimaryColour=&Hffffff&,OutlineColour=&H80000000&,BorderStyle=3,Outline=1,Shadow=0,MarginV=40'[vout]`,
+            "-map", "[vout]",
+            "-c:v", "libx264",
+            "-preset", "veryfast",
+            "-crf", "20",
+          ]
+        : [
+            "-filter_complex", filterParts.join(";"),
+            "-map", "0:v",
+            "-c:v", "copy",
+          ];
 
       await ffmpeg.exec([
         ...inputs,
-        "-filter_complex", filterParts.join(";"),
-        "-map", "0:v",
+        ...videoArgs,
         "-map", "[aout]",
-        "-c:v", "copy",
         "-c:a", "aac",
         "-b:a", "192k",
         "-shortest",
@@ -180,7 +237,9 @@ export function DownloadDubbedButton({
       URL.revokeObjectURL(url);
       setPct(100);
       setPhase("done");
-      toast.success(useSegments ? "Lip-synced dubbed video ready" : "Dubbed video ready");
+      toast.success(
+        (useSegments ? "Lip-synced" : "Dubbed") + (wantBurn ? " + subtitled" : "") + " video ready",
+      );
       setTimeout(reset, 1200);
     } catch (e: any) {
       if (canceledRef.current || e?.name === "AbortError") { reset(); return; }
@@ -190,12 +249,83 @@ export function DownloadDubbedButton({
     }
   }
 
+  // Preview: play source video muted + dubbed audio in sync.
+  async function togglePreview() {
+    const v = previewVideoRef.current;
+    const a = previewAudioRef.current;
+    if (!v || !a) return;
+    if (previewPlaying) {
+      v.pause();
+      a.pause();
+      setPreviewPlaying(false);
+      return;
+    }
+    v.currentTime = 0;
+    a.currentTime = 0;
+    v.muted = true;
+    try {
+      await Promise.all([v.play(), a.play()]);
+      setPreviewPlaying(true);
+    } catch {
+      toast.error("Preview blocked by browser");
+    }
+  }
+
   if (!audioUrl) return null;
   const busy = phase !== "idle" && phase !== "done";
   const hasLipSync = Array.isArray(segments) && segments.length > 1;
 
   return (
     <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setPreviewOpen((v) => !v)}
+          disabled={busy || !videoUrl}
+          className="flex-1 inline-flex items-center justify-center gap-1 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 px-2.5 py-1.5 text-xs font-medium"
+        >
+          <Play className="h-3.5 w-3.5" /> {previewOpen ? "Hide preview" : "Preview before export"}
+        </button>
+        {hasSegments ? (
+          <label className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={burnSubs}
+              onChange={(e) => setBurnSubs(e.target.checked)}
+              disabled={busy}
+              className="h-3 w-3 accent-emerald-500"
+            />
+            <Subtitles className="h-3.5 w-3.5" /> Burn subtitles
+          </label>
+        ) : null}
+      </div>
+
+      {previewOpen && videoUrl ? (
+        <div className="rounded-lg border border-white/10 bg-black overflow-hidden">
+          <div className="relative">
+            <video ref={previewVideoRef} src={videoUrl} className="w-full aspect-[9/16] object-cover" muted playsInline />
+            <audio
+              ref={previewAudioRef}
+              src={audioUrl}
+              onEnded={() => setPreviewPlaying(false)}
+              onPause={() => setPreviewPlaying(false)}
+            />
+            <button
+              type="button"
+              onClick={togglePreview}
+              className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/40 transition"
+            >
+              <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-black">
+                {previewPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
+              </span>
+            </button>
+          </div>
+          <div className="p-2 text-[10px] text-slate-400 text-center">
+            Source video (muted) + dubbed audio · a rough preview of the final mix
+          </div>
+        </div>
+      ) : null}
+
       <Button
         size="sm"
         onClick={handleClick}

@@ -13,6 +13,9 @@ import {
   inviteUser,
   setUserTier,
   deleteAppUser,
+  getPaymentProviders,
+  savePaymentProviders,
+  PAYMENT_PROVIDERS,
 } from "@/lib/admin.functions";
 import { getMyProfile } from "@/lib/video.functions";
 import { Logo } from "@/components/Logo";
@@ -24,7 +27,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 import { toast } from "sonner";
-import { Users, DollarSign, Video, Activity, Loader2, Trash2, UserPlus, Crown } from "lucide-react";
+import { Users, DollarSign, Video, Activity, Loader2, Trash2, UserPlus, Crown, CreditCard, Link2, Check } from "lucide-react";
 
 export const Route = createFileRoute("/ts-secret-gate-2026")({
   ssr: false,
@@ -69,11 +72,39 @@ function AdminDashboard() {
   const invite = useServerFn(inviteUser);
   const setTier = useServerFn(setUserTier);
   const delUser = useServerFn(deleteAppUser);
+  const getProviders = useServerFn(getPaymentProviders);
+  const saveProviders = useServerFn(savePaymentProviders);
   const qc = useQueryClient();
   const { data: overview } = useQuery({ queryKey: ["admin-overview"], queryFn: () => getOverview(), refetchInterval: 15000 });
   const { data: settings } = useQuery({ queryKey: ["admin-settings"], queryFn: () => getSettings() });
   const { data: promo } = useQuery({ queryKey: ["admin-promo"], queryFn: () => getPromo() });
   const { data: users } = useQuery({ queryKey: ["admin-users"], queryFn: () => listUsers() });
+  const { data: paymentData } = useQuery({ queryKey: ["admin-payments"], queryFn: () => getProviders() });
+
+  const [providers, setProviders] = useState<Array<{ id: string; enabled: boolean; connected: boolean; account?: string }>>([]);
+  useEffect(() => {
+    if (paymentData?.providers) setProviders(paymentData.providers);
+  }, [paymentData]);
+
+  async function toggleProvider(id: string, enabled: boolean) {
+    const next = providers.map((p) => (p.id === id ? { ...p, enabled } : p));
+    setProviders(next);
+    try {
+      await saveProviders({ data: { providers: next as any } });
+      toast.success(enabled ? "Provider shown at checkout" : "Provider hidden from checkout");
+      qc.invalidateQueries({ queryKey: ["admin-payments"] });
+      qc.invalidateQueries({ queryKey: ["public-payments"] });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Save failed");
+    }
+  }
+
+  function connectProvider(id: string, label: string) {
+    toast(`${label}: connection UI coming next`, {
+      description: "Toggle it on and the button appears at checkout — wire real keys later.",
+      icon: <Link2 className="h-4 w-4 text-fuchsia-400" />,
+    });
+  }
 
   const [ga, setGa] = useState("");
   const [openai, setOpenai] = useState("");
@@ -218,6 +249,7 @@ function AdminDashboard() {
             <TabsTrigger value="analytics">Google Analytics</TabsTrigger>
             <TabsTrigger value="api">API Keys</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
+            <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="promo">Promo Video</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
           </TabsList>
@@ -290,6 +322,51 @@ function AdminDashboard() {
                 <Switch checked={twoFactor} onCheckedChange={setTwoFactor} />
               </label>
               <Button onClick={saveAll} disabled={saving}>Save changes</Button>
+            </div>
+          </TabsContent>
+          <TabsContent value="payments">
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
+              <div>
+                <h3 className="font-semibold flex items-center gap-2"><CreditCard className="h-4 w-4" /> Payment providers</h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Toggle a provider on to make its button appear at checkout. The provider stays fully <span className="text-amber-300">inactive</span> until you connect real credentials — click <span className="text-fuchsia-300">Connect</span> next to it when you're ready to wire it up.
+                </p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {providers.map((p) => {
+                  const meta = PAYMENT_PROVIDERS.find((x) => x.id === p.id)!;
+                  return (
+                    <div key={p.id} className="rounded-xl border border-white/10 bg-black/30 p-4 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{meta.label}</span>
+                          {p.connected ? (
+                            <span className="inline-flex items-center gap-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] px-1.5 py-0.5 font-semibold">
+                              <Check className="h-2.5 w-2.5" /> CONNECTED
+                            </span>
+                          ) : (
+                            <span className="rounded bg-white/10 text-slate-400 text-[10px] px-1.5 py-0.5 font-semibold">NOT CONNECTED</span>
+                          )}
+                        </div>
+                        <div className="text-xs text-slate-500 mt-0.5">{meta.note}</div>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => connectProvider(p.id, meta.label)}
+                          className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 hover:bg-white/10 px-2.5 py-1 text-xs"
+                        >
+                          <Link2 className="h-3 w-3" /> {p.connected ? "Reconnect" : "Connect"}
+                        </button>
+                        <Switch checked={p.enabled} onCheckedChange={(v) => toggleProvider(p.id, v)} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="text-[11px] text-slate-500 pt-2 border-t border-white/5">
+                A toggled-on provider without connected credentials shows on checkout but won't complete a real charge — perfect for capturing interest and wiring the integration afterwards.
+              </div>
             </div>
           </TabsContent>
           <TabsContent value="promo">
