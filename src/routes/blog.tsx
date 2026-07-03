@@ -3,6 +3,7 @@ import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { listPublishedPosts } from "@/lib/blog.functions";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowRight, Clock } from "lucide-react";
 
 const postsQuery = queryOptions({
@@ -27,9 +28,34 @@ export const Route = createFileRoute("/blog")({
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(postsQuery),
   component: BlogIndex,
+  pendingComponent: BlogSkeleton,
+  pendingMs: 0,
   errorComponent: ({ error }) => <ErrorComponent error={error} />,
   notFoundComponent: () => <div className="p-10 text-center text-white">No posts yet.</div>,
 });
+
+function BlogSkeleton() {
+  return (
+    <div className="min-h-screen bg-slate-950 text-white">
+      <div className="mx-auto max-w-6xl px-6 py-16">
+        <Skeleton className="h-4 w-40 bg-white/10" />
+        <Skeleton className="mt-4 h-12 w-3/4 bg-white/10" />
+        <Skeleton className="mt-3 h-5 w-1/2 bg-white/10" />
+        <Skeleton className="mt-12 h-56 w-full rounded-2xl bg-white/5" />
+        <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="rounded-xl border border-white/10 bg-white/5 p-6">
+              <Skeleton className="h-6 w-3/4 bg-white/10" />
+              <Skeleton className="mt-3 h-4 w-full bg-white/10" />
+              <Skeleton className="mt-2 h-4 w-5/6 bg-white/10" />
+              <Skeleton className="mt-6 h-4 w-1/3 bg-white/10" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function BlogIndex() {
   const { data: posts } = useSuspenseQuery(postsQuery);
