@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LANGUAGES, REGIONS, STYLE_TEMPLATES } from "@/lib/premium";
 import { useI18n } from "@/lib/i18n";
-import { ArrowLeft, Globe2, Lock, RotateCcw, UploadCloud, X } from "lucide-react";
+import { ArrowLeft, Globe2, Lock, RotateCcw, UploadCloud, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
