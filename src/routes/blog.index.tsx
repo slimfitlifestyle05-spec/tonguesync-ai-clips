@@ -12,7 +12,7 @@ const postsQuery = queryOptions({
   staleTime: 60_000,
 });
 
-export const Route = createFileRoute("/blog")({
+export const Route = createFileRoute("/blog/")({
   head: () => ({
     meta: [
       { title: "The TongueSync Blog — AI dubbing, voice cloning, and video localization" },
