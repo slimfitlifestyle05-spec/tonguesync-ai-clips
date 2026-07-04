@@ -1,0 +1,1 @@
+ALTER TABLE public.community_ideas ADD COLUMN IF NOT EXISTS youtube_video_url TEXT;
