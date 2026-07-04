@@ -22,6 +22,7 @@ type ChannelCtx = {
   topics?: string;
   audience?: string;
   language?: string;
+  country?: string;
   skipped?: boolean;
 };
 
@@ -91,6 +92,7 @@ export function SupportChat() {
             topics: remote.topics ?? undefined,
             audience: remote.audience ?? undefined,
             language: remote.language ?? undefined,
+              country: remote.country ?? undefined,
             skipped: false,
           };
           setChannel(val);
@@ -144,7 +146,8 @@ export function SupportChat() {
             niche: channel.niche || null,
             topics: channel.topics || null,
             audience: channel.audience || null,
-            language: channel.language || (isAr ? "Arabic" : "English"),
+            language: channel.language || null,
+            country: channel.country || null,
           }
         : null;
       const res = await askAi({ data: { messages: next, channelContext: channelPayload, uiLanguage: isAr ? "ar" : "en" } });
@@ -176,6 +179,7 @@ export function SupportChat() {
       topics: chDraft.topics?.trim() || undefined,
       audience: chDraft.audience?.trim() || undefined,
       language: chDraft.language?.trim() || undefined,
+      country: chDraft.country?.trim() || undefined,
       skipped: false,
     };
     setChannel(cleaned);
@@ -191,7 +195,8 @@ export function SupportChat() {
             niche: cleaned.niche ?? null,
             topics: cleaned.topics ?? null,
             audience: cleaned.audience ?? null,
-            language: cleaned.language ?? (isAr ? "Arabic" : "English"),
+            language: cleaned.language ?? null,
+            country: cleaned.country ?? null,
           },
         });
       }
@@ -344,6 +349,34 @@ export function SupportChat() {
                       placeholder={isAr ? "الجمهور المستهدف (اختياري)" : "Target audience (optional)"}
                       className="w-full rounded-md border border-white/10 bg-slate-800 px-2 py-1.5 text-[12px] text-white placeholder:text-slate-500 focus:border-fuchsia-400 focus:outline-none"
                     />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        dir={dir}
+                        value={chDraft.country ?? ""}
+                        onChange={(e) => setChDraft((d) => ({ ...d, country: e.target.value }))}
+                        placeholder={isAr ? "بلد القناة (مثال: مصر، USA)" : "Channel country (e.g. USA, Egypt)"}
+                        className="rounded-md border border-white/10 bg-slate-800 px-2 py-1.5 text-[12px] text-white placeholder:text-slate-500 focus:border-fuchsia-400 focus:outline-none"
+                      />
+                      <select
+                        dir={dir}
+                        value={chDraft.language ?? ""}
+                        onChange={(e) => setChDraft((d) => ({ ...d, language: e.target.value || undefined }))}
+                        className="rounded-md border border-white/10 bg-slate-800 px-2 py-1.5 text-[12px] text-white focus:border-fuchsia-400 focus:outline-none"
+                      >
+                        <option value="">{isAr ? "لغة المحتوى (تلقائي)" : "Content language (auto)"}</option>
+                        <option value="English">English</option>
+                        <option value="Arabic">Arabic / العربية</option>
+                        <option value="Spanish">Spanish / Español</option>
+                        <option value="French">French / Français</option>
+                        <option value="Portuguese">Portuguese / Português</option>
+                        <option value="German">German / Deutsch</option>
+                        <option value="Hindi">Hindi / हिन्दी</option>
+                        <option value="Turkish">Turkish / Türkçe</option>
+                        <option value="Indonesian">Indonesian</option>
+                        <option value="Russian">Russian / Русский</option>
+                        <option value="Japanese">Japanese / 日本語</option>
+                      </select>
+                    </div>
                     <div className="flex flex-wrap gap-2 pt-1">
                       <Button size="sm" onClick={saveChannel} className="h-8 bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold">
                         {isAr ? "حفظ وتفعيل" : "Save & activate"}

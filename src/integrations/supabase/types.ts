@@ -211,6 +211,7 @@ export type Database = {
       profiles: {
         Row: {
           audience: string | null
+          channel_country: string | null
           clips_used: number
           content_language: string | null
           created_at: string
@@ -228,6 +229,7 @@ export type Database = {
         }
         Insert: {
           audience?: string | null
+          channel_country?: string | null
           clips_used?: number
           content_language?: string | null
           created_at?: string
@@ -245,6 +247,7 @@ export type Database = {
         }
         Update: {
           audience?: string | null
+          channel_country?: string | null
           clips_used?: number
           content_language?: string | null
           created_at?: string
