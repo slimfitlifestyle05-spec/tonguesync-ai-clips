@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { LangToggle } from "@/components/LangToggle";
 import { useI18n } from "@/lib/i18n";
-import { Check, Sparkles, ShieldCheck, Wand2, Languages, Rocket, Play, Volume2, Zap, Brain, Mic } from "lucide-react";
+import { Check, Sparkles, ShieldCheck, Wand2, Languages, Rocket, Play, Volume2, Zap, Brain, Mic, LayoutDashboard } from "lucide-react";
 import { FeatureCard, ClipperVisual, DubbingVisual } from "@/components/FeatureShowcase";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -15,6 +15,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { getPromoVideo } from "@/lib/admin.functions";
 import { getShowcaseVideos } from "@/lib/showcase-videos.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -23,6 +24,17 @@ export const Route = createFileRoute("/")({
 function Index() {
   const { t } = useI18n();
   const [isDark, setIsDark] = useState(true);
+  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (mounted) setSignedIn(!!data.session);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (mounted) setSignedIn(!!session);
+    });
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
+  }, []);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const apply = () => setIsDark(document.documentElement.classList.contains("dark") || !document.documentElement.classList.contains("light"));
@@ -54,8 +66,18 @@ function Index() {
             <Sparkles className="h-3.5 w-3.5 text-fuchsia-300" />
             AI Coach
           </Button>
-          <Link to="/auth"><Button variant="ghost" className="text-white hover:bg-white/10">{t("sign_in")}</Button></Link>
-          <Link to="/auth"><Button className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold hover:opacity-90">{t("get_started")}</Button></Link>
+          {signedIn ? (
+            <Link to="/dashboard">
+              <Button className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold hover:opacity-90">
+                <LayoutDashboard className="h-4 w-4 mr-1" /> Dashboard
+              </Button>
+            </Link>
+          ) : (
+            <>
+              <Link to="/auth"><Button variant="ghost" className="text-white hover:bg-white/10">{t("sign_in")}</Button></Link>
+              <Link to="/auth"><Button className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold hover:opacity-90">{t("get_started")}</Button></Link>
+            </>
+          )}
         </nav>
       </header>
 
