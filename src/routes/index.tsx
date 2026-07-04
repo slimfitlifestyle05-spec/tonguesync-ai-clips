@@ -402,7 +402,7 @@ function Footer() {
           <ul className="space-y-2 text-slate-400">
             <li><Link to="/clipper" className="hover:text-white transition-colors">{t("link_ai_clipper")}</Link></li>
             <li><Link to="/dubbing" className="hover:text-white transition-colors">{t("link_cultural_dubber")}</Link></li>
-            <li><Link to="/" className="hover:text-white transition-colors">{t("link_pricing")}</Link></li>
+            <li><Link to="/pricing" className="hover:text-white transition-colors">{t("link_pricing")}</Link></li>
           </ul>
         </div>
         <div>
