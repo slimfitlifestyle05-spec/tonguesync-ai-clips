@@ -222,6 +222,35 @@ const ar: Dict = {
 
 const dicts: Record<Lang, Dict> = { en, ar };
 
+// Arabic-speaking country codes (ISO 3166-1 alpha-2)
+const AR_COUNTRIES = new Set([
+  "EG","SA","AE","MA","DZ","IQ","SD","YE","SY","TN","JO","LY","LB","PS","OM","KW","MR","QA","BH","DJ","KM","SO",
+]);
+
+function detectVisitorLang(): Lang {
+  if (typeof navigator === "undefined") return "en";
+  // 1) Browser language list
+  const langs: string[] = [];
+  if (Array.isArray(navigator.languages)) langs.push(...navigator.languages);
+  if (navigator.language) langs.push(navigator.language);
+  for (const l of langs) {
+    const lower = l.toLowerCase();
+    if (lower.startsWith("ar")) return "ar";
+  }
+  // 2) Timezone hint (e.g. Africa/Cairo, Asia/Riyadh)
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    const arTz = /Cairo|Riyadh|Dubai|Baghdad|Damascus|Amman|Beirut|Kuwait|Qatar|Bahrain|Muscat|Tunis|Algiers|Casablanca|Tripoli|Khartoum|Gaza|Hebron|Sanaa|Nouakchott/i;
+    if (arTz.test(tz)) return "ar";
+  } catch {}
+  // 3) Locale region
+  try {
+    const region = new Intl.Locale(navigator.language).maximize().region;
+    if (region && AR_COUNTRIES.has(region)) return "ar";
+  } catch {}
+  return "en";
+}
+
 type Ctx = { lang: Lang; setLang: (l: Lang) => void; t: (k: keyof typeof en) => string; dir: "ltr" | "rtl" };
 const I18nCtx = createContext<Ctx>({ lang: "en", setLang: () => {}, t: (k) => en[k as string] ?? String(k), dir: "ltr" });
 
