@@ -118,7 +118,7 @@ export const supportChat = createServerFn({ method: "POST" })
         { role: "system", content: `USER_CONTEXT: tier=${tier}, credits_left_today=${dailyLimit - used - 1}/${dailyLimit}` },
         ...data.messages,
       ],
-      { model: "google/gemini-3-flash-preview", temperature: 0.6, maxTokens: 1200 },
+      { model: "google/gemini-2.5-pro", temperature: 0.6, maxTokens: 1600 },
     );
 
     // Increment usage (upsert)
