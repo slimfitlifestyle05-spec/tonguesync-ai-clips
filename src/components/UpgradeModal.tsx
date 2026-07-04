@@ -17,16 +17,16 @@ export function UpgradeModal({ open, onOpenChange }: { open: boolean; onOpenChan
           <DialogDescription className="text-center">{t("limit_reached_desc")}</DialogDescription>
         </DialogHeader>
         <ul className="text-sm space-y-2 py-2">
-          <li>\u2728 30 videos / month</li>
-          <li>\ud83c\udfa8 All premium caption styles + auto emojis</li>
-          <li>\ud83d\ude80 No watermark</li>
-          <li>\ud83d\udcc8 AI Social Kit (titles, description, hashtags)</li>
+          <li>✨ 30 videos / month</li>
+          <li>🎨 All premium caption styles + auto emojis</li>
+          <li>🚀 No watermark</li>
+          <li>📈 AI Social Kit (titles, description, hashtags)</li>
         </ul>
         <DialogFooter className="sm:justify-center gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>{t("close")}</Button>
           <Link to="/pricing" onClick={() => onOpenChange(false)}>
             <Button className="bg-gradient-to-r from-fuchsia-600 to-amber-500 hover:opacity-90">
-              <Crown className="h-4 w-4 mr-1" /> {t("upgrade")} \u2014 $10{t("per_month")}
+              <Crown className="h-4 w-4 mr-1" /> {t("upgrade")} — $10{t("per_month")}
             </Button>
           </Link>
         </DialogFooter>
