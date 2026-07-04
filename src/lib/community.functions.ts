@@ -24,6 +24,7 @@ export type CommunityIdea = {
   thumbnail_signed_url: string | null;
   pdf_url: string | null;
   pdf_signed_url: string | null;
+  youtube_video_url: string | null;
   votes: number;
   is_published: boolean;
   created_at: string;
@@ -54,6 +55,7 @@ async function mapIdeas(client: ReturnType<typeof serverPublicClient>, rows: any
       pdf_url: r.pdf_url,
       thumbnail_signed_url: await signAsset(client, r.thumbnail_url),
       pdf_signed_url: await signAsset(client, r.pdf_url),
+      youtube_video_url: r.youtube_video_url ?? null,
       votes: r.votes,
       is_published: r.is_published,
       created_at: r.created_at,
@@ -97,6 +99,7 @@ const CreateInput = z.object({
   cta: z.string().trim().max(400).nullable().optional(),
   thumbnail_url: z.string().trim().max(500).nullable().optional(),
   pdf_url: z.string().trim().max(500).nullable().optional(),
+  youtube_video_url: z.string().trim().max(500).nullable().optional(),
   is_published: z.boolean().default(true),
 });
 
