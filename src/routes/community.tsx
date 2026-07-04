@@ -37,6 +37,7 @@ import {
   MessageSquare,
   Info,
   Crown,
+  Sparkles,
 } from "lucide-react";
 
 export const Route = createFileRoute("/community")({
@@ -331,6 +332,23 @@ function IdeaCard({
             </Button>
           )}
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            const niche = idea.category || idea.title;
+            const topics = [idea.title, ...(idea.tags ?? [])].filter(Boolean).join(", ");
+            const prefill = `I need help choosing a niche for a new channel ${niche}. I'm looking at the "${idea.title}" playbook — walk me through Phases 1-4 (Identity, Competitive Reality, Keyword Table, Cinematic Retention Script) for THIS exact niche.`;
+            window.dispatchEvent(
+              new CustomEvent("tonguesync:open-ai-coach", {
+                detail: { niche, topics, prefill },
+              }),
+            );
+          }}
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-fuchsia-400/40 bg-gradient-to-r from-fuchsia-500 via-violet-500 to-amber-400 px-4 py-2.5 text-sm font-bold text-black shadow-lg shadow-fuchsia-500/30 transition hover:opacity-90"
+        >
+          <Sparkles className="h-4 w-4" />
+          Ask AI Coach about this niche
+        </button>
       </div>
     </article>
   );
