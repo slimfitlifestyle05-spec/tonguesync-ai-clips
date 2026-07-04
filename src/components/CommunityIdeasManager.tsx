@@ -2,10 +2,11 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  listCommunityIdeas,
+  listCommunityIdeasAdmin,
   createCommunityIdea,
   updateCommunityIdea,
   deleteCommunityIdea,
+  resetCommunityVotes,
   isAdminCheck,
   type CommunityIdea,
 } from "@/lib/community.functions";
@@ -18,28 +19,66 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { FileText, Upload, Loader2, Trash2, Pencil, Plus, Sparkles, ImageIcon } from "lucide-react";
+import { FileText, Upload, Loader2, Trash2, Pencil, Plus, Sparkles, ImageIcon, Heart, Eye, EyeOff, RotateCcw } from "lucide-react";
 
 export function CommunityIdeasManager() {
   const qc = useQueryClient();
-  const list = useServerFn(listCommunityIdeas);
+  const list = useServerFn(listCommunityIdeasAdmin);
   const admin = useServerFn(isAdminCheck);
   const del = useServerFn(deleteCommunityIdea);
+  const update = useServerFn(updateCommunityIdea);
+  const resetVotes = useServerFn(resetCommunityVotes);
 
-  const ideasQ = useQuery({ queryKey: ["community-ideas"], queryFn: () => list() });
   const adminQ = useQuery({ queryKey: ["is-admin"], queryFn: () => admin(), retry: false });
   const isAdmin = adminQ.data?.isAdmin === true;
+  const ideasQ = useQuery({
+    queryKey: ["community-ideas-admin"],
+    queryFn: () => list(),
+    enabled: isAdmin,
+    retry: false,
+  });
 
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<CommunityIdea | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  const refetch = () => qc.invalidateQueries({ queryKey: ["community-ideas"] });
+  const refetch = () => {
+    qc.invalidateQueries({ queryKey: ["community-ideas-admin"] });
+    qc.invalidateQueries({ queryKey: ["community-ideas"] });
+  };
 
   const deleteM = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
     onSuccess: () => { toast.success("Deleted"); refetch(); },
     onError: (e: any) => toast.error(e?.message ?? "Delete failed"),
   });
+
+  async function togglePublished(idea: CommunityIdea) {
+    setBusyId(idea.id);
+    try {
+      await update({ data: { id: idea.id, is_published: !idea.is_published } });
+      toast.success(idea.is_published ? "Unpublished" : "Published");
+      refetch();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Update failed");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function onResetVotes(idea: CommunityIdea) {
+    if (!confirm(`Reset likes for "${idea.title}" back to 0?`)) return;
+    setBusyId(idea.id);
+    try {
+      await resetVotes({ data: { id: idea.id } });
+      toast.success("Likes reset to 0");
+      refetch();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Reset failed");
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   if (adminQ.isLoading) return <Skeleton className="h-32 bg-white/5" />;
   if (!isAdmin) return null;
@@ -90,10 +129,31 @@ export function CommunityIdeasManager() {
                   <Badge variant="outline" className="border-white/20 text-slate-300 text-[10px]">{idea.category}</Badge>
                   {!idea.is_published ? <Badge className="bg-slate-700 text-slate-200 text-[10px]">Draft</Badge> : null}
                   {idea.pdf_signed_url ? <Badge className="bg-fuchsia-500/20 text-fuchsia-200 text-[10px]"><FileText className="h-3 w-3 mr-1" />PDF</Badge> : null}
+                  <Badge className="bg-rose-500/20 text-rose-200 text-[10px]"><Heart className="h-3 w-3 mr-1 fill-rose-300 text-rose-300" />{idea.votes} {idea.votes === 1 ? "like" : "likes"}</Badge>
                 </div>
                 <div className="text-xs text-slate-400 truncate">{idea.description}</div>
               </div>
               <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={busyId === idea.id}
+                  className={idea.is_published ? "text-emerald-300 hover:bg-emerald-500/10" : "text-slate-400 hover:bg-white/10"}
+                  title={idea.is_published ? "Unpublish (hide from public)" : "Publish (show to public)"}
+                  onClick={() => togglePublished(idea)}
+                >
+                  {busyId === idea.id ? <Loader2 className="h-4 w-4 animate-spin" /> : idea.is_published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={busyId === idea.id || idea.votes === 0}
+                  className="text-rose-300 hover:bg-rose-500/10"
+                  title="Reset likes to 0"
+                  onClick={() => onResetVotes(idea)}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
                 <Button size="sm" variant="ghost" className="text-slate-300 hover:bg-white/10" onClick={() => { setEditing(idea); setCreating(false); }}>
                   <Pencil className="h-4 w-4" />
                 </Button>
