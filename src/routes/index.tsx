@@ -46,6 +46,14 @@ function Index() {
           <Link to="/showcase"><Button variant="ghost" className="text-white hover:bg-white/10 hidden sm:inline-flex">Showcase</Button></Link>
           <Link to="/community"><Button variant="ghost" className="text-white hover:bg-white/10 hidden sm:inline-flex">Viral Ideas</Button></Link>
           <Link to="/blog"><Button variant="ghost" className="text-white hover:bg-white/10 hidden sm:inline-flex">Blog</Button></Link>
+          <Button
+            variant="ghost"
+            onClick={() => window.dispatchEvent(new CustomEvent("tonguesync:open-ai-coach"))}
+            className="hidden sm:inline-flex items-center gap-1.5 text-white hover:bg-white/10"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-fuchsia-300" />
+            AI Coach
+          </Button>
           <Link to="/auth"><Button variant="ghost" className="text-white hover:bg-white/10">{t("sign_in")}</Button></Link>
           <Link to="/auth"><Button className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold hover:opacity-90">{t("get_started")}</Button></Link>
         </nav>
