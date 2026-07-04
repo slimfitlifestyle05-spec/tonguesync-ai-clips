@@ -19,6 +19,7 @@ import {
   Mail,
   Info,
   Sparkles,
+  Users,
 } from "lucide-react";
 
 type Cmd = {
@@ -34,6 +35,7 @@ const items: Cmd[] = [
   { label: "AI Dubbing", to: "/dubbing", icon: <Languages className="h-4 w-4" />, keywords: "translate voice" },
   { label: "Dashboard", to: "/dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
   { label: "Showcase", to: "/showcase", icon: <Sparkles className="h-4 w-4" /> },
+  { label: "Community", to: "/community", icon: <Users className="h-4 w-4" />, keywords: "ideas trending shorts pdf playbook" },
   { label: "Blog", to: "/blog", icon: <BookOpen className="h-4 w-4" /> },
   { label: "About", to: "/about", icon: <Info className="h-4 w-4" /> },
   { label: "Contact", to: "/contact", icon: <Mail className="h-4 w-4" /> },

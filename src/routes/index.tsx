@@ -43,6 +43,7 @@ function Index() {
           <LangToggle />
           <ThemeToggle />
           <Link to="/showcase"><Button variant="ghost" className="text-white hover:bg-white/10 hidden sm:inline-flex">Showcase</Button></Link>
+          <Link to="/community"><Button variant="ghost" className="text-white hover:bg-white/10 hidden sm:inline-flex">Community</Button></Link>
           <Link to="/blog"><Button variant="ghost" className="text-white hover:bg-white/10 hidden sm:inline-flex">Blog</Button></Link>
           <Link to="/auth"><Button variant="ghost" className="text-white hover:bg-white/10">{t("sign_in")}</Button></Link>
           <Link to="/auth"><Button className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold hover:opacity-90">{t("get_started")}</Button></Link>
@@ -387,6 +388,7 @@ function Footer() {
             <li><Link to="/about" className="hover:text-white transition-colors">{t("link_about")}</Link></li>
             <li><Link to="/contact" className="hover:text-white transition-colors">{t("link_contact")}</Link></li>
             <li><Link to="/blog" className="hover:text-white transition-colors">Blog</Link></li>
+            <li><Link to="/community" className="hover:text-white transition-colors">Community</Link></li>
           </ul>
         </div>
       </div>
