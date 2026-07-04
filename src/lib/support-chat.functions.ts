@@ -198,7 +198,7 @@ All keyword tables, title formulas, and ideas MUST match this niche AND be writt
         { role: "system", content: `USER_CONTEXT: tier=${tier}, credits_left_today=${creditsLeft}/${dailyLimit}` },
         ...data.messages,
       ],
-      { model: "google/gemini-2.5-pro", temperature: 0.6, maxTokens: 1600 },
+      { model: "google/gemini-3.1-pro-preview", temperature: 0.6, maxTokens: 2400 },
     );
 
     return {
