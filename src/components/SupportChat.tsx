@@ -264,7 +264,58 @@ export function SupportChat() {
 
   function reset() {
     setMessages([WELCOME]);
+    setCurrentConvId(null);
     try { window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+  }
+
+  function newConversation() {
+    setMessages([WELCOME]);
+    setCurrentConvId(null);
+    setHistoryOpen(false);
+    try { window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    setTimeout(() => inputRef.current?.focus(), 60);
+  }
+
+  async function loadConversation(id: string) {
+    try {
+      setLoadingHistory(true);
+      const conv = await getConvFn({ data: { id } });
+      if (!conv) return;
+      setMessages(
+        conv.messages.length > 0
+          ? conv.messages.map((m) => ({ role: m.role, content: m.content }))
+          : [WELCOME],
+      );
+      setCurrentConvId(conv.id);
+      if (conv.niche || conv.topics) {
+        const restored: ChannelCtx = {
+          ...(channel && !channel.skipped ? channel : {}),
+          niche: conv.niche ?? channel?.niche,
+          topics: conv.topics ?? channel?.topics,
+          skipped: false,
+        };
+        setChannel(restored);
+        setChDraft(restored);
+        try { window.localStorage.setItem(CHANNEL_KEY, JSON.stringify(restored)); } catch { /* ignore */ }
+      }
+      setHistoryOpen(false);
+      setTimeout(() => {
+        if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        inputRef.current?.focus();
+      }, 60);
+    } catch { /* ignore */ }
+    finally { setLoadingHistory(false); }
+  }
+
+  async function removeConversation(id: string) {
+    try {
+      await deleteConvFn({ data: { id } });
+      setConversations((cur) => cur.filter((c) => c.id !== id));
+      if (currentConvId === id) {
+        setCurrentConvId(null);
+        setMessages([WELCOME]);
+      }
+    } catch { /* ignore */ }
   }
 
   async function saveChannel() {
