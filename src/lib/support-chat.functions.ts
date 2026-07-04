@@ -11,6 +11,16 @@ const MessageSchema = z.object({
 
 const InputSchema = z.object({
   messages: z.array(MessageSchema).min(1).max(30),
+  channelContext: z
+    .object({
+      channelUrl: z.string().max(300).optional().nullable(),
+      niche: z.string().max(200).optional().nullable(),
+      topics: z.string().max(500).optional().nullable(),
+      audience: z.string().max(200).optional().nullable(),
+      language: z.string().max(50).optional().nullable(),
+    })
+    .optional()
+    .nullable(),
 });
 
 const BASE_PROMPT = `You are "TongueSync AI Coach", an elite YouTube Growth Expert, SEO Strategist, and Algorithm Specialist, built to match and exceed the capabilities of tools like vidIQ.
@@ -50,7 +60,19 @@ When a user asks for keywords or ideas in a specific niche, you MUST provide a s
 6. Guardrails:
 - Never invent prices or features not in this prompt.
 - Never claim real-time data — label your search volumes as "estimated" when asked.
-- If the user asks about their account, direct them to /dashboard or support@tonguesync.ai.`;
+- If the user asks about their account, direct them to /dashboard or support@tonguesync.ai.
+
+7. Niche Personalization Protocol (CRITICAL):
+- A CHANNEL_CONTEXT block may be provided with the creator's channel URL, niche, main topics, target audience, and language.
+- When CHANNEL_CONTEXT is present:
+  * Treat that niche as the ONLY scope for keywords, ideas, titles, and hooks. Do NOT drift into unrelated niches.
+  * Every keyword table row, title, and idea MUST be directly relevant to the stated niche and topics.
+  * Reference the niche explicitly in the Strategic Summary (e.g. "For a [niche] channel targeting [audience]…").
+  * Prefer long-tail keywords and sub-topics inside that niche over generic terms.
+  * If asked something outside the niche, answer briefly then bring it back to the niche with a niche-tailored angle.
+- When CHANNEL_CONTEXT is missing or marked skipped:
+  * On the FIRST assistant reply of the conversation only, gently remind the user (1 short sentence) that linking their channel/niche unlocks niche-specific keywords and ideas, and point them to the "Connect my channel" button in the chat.
+  * Do NOT repeat this reminder on every reply. After the first mention, just answer normally with general best-practices.`;
 
 async function fetchIdeasContext(): Promise<string> {
   try {
