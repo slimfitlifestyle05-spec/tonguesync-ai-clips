@@ -107,6 +107,83 @@ export type Database = {
         }
         Relationships: []
       }
+      community_idea_votes: {
+        Row: {
+          created_at: string
+          idea_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          idea_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          idea_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_idea_votes_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "community_ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_ideas: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          cta: string | null
+          description: string
+          hook: string | null
+          id: string
+          is_published: boolean
+          pdf_url: string | null
+          tags: string[]
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+          votes: number
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          cta?: string | null
+          description: string
+          hook?: string | null
+          id?: string
+          is_published?: boolean
+          pdf_url?: string | null
+          tags?: string[]
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+          votes?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          cta?: string | null
+          description?: string
+          hook?: string | null
+          id?: string
+          is_published?: boolean
+          pdf_url?: string | null
+          tags?: string[]
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          votes?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           clips_used: number
