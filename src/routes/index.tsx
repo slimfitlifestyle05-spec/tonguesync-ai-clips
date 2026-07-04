@@ -14,6 +14,8 @@ import { SocialProofToast } from "@/components/SocialProofToast";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { getPromoVideo } from "@/lib/admin.functions";
+import { getShowcaseVideos } from "@/lib/showcase-videos.functions";
+import { useI18n as useI18nLang } from "@/lib/i18n";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -147,7 +149,22 @@ function Index() {
 
 function BeforeAfterSection() {
   const { t } = useI18n();
-  const [isLocalized, setIsLocalized] = useState(false);
+  const { lang } = useI18nLang();
+  const fetchShowcase = useServerFn(getShowcaseVideos);
+  const { data: showcase } = useQuery({
+    queryKey: ["showcase-videos"],
+    queryFn: () => fetchShowcase(),
+    staleTime: 5 * 60_000,
+  });
+  const arUrl = showcase?.ar_url ?? null;
+  const enUrl = showcase?.en_url ?? null;
+  // Default view: match visitor's UI language; fall back to whichever video exists.
+  const [isLocalized, setIsLocalized] = useState(lang === "ar");
+  useEffect(() => { setIsLocalized(lang === "ar"); }, [lang]);
+  const activeUrl = isLocalized ? (arUrl ?? enUrl) : (enUrl ?? arUrl);
+  const activeCaption = isLocalized
+    ? (showcase?.ar_caption ?? t("ba_caption_ar"))
+    : (showcase?.en_caption ?? t("ba_caption_en"));
   return (
     <section className="mx-auto max-w-5xl px-6 pb-24">
       <div className="text-center mb-10">
@@ -161,23 +178,30 @@ function BeforeAfterSection() {
       </div>
       <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 to-slate-950 p-6 md:p-8 shadow-2xl">
         <div className="relative aspect-video rounded-2xl overflow-hidden bg-gradient-to-br from-fuchsia-950/50 via-slate-900 to-amber-950/30 border border-white/5">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center">
-              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-white/10 backdrop-blur border border-white/20 mb-4">
-                <Play className="h-7 w-7 text-white ml-1" fill="currentColor" />
-              </div>
-              <div className="text-2xl font-semibold">
-                {isLocalized ? t("ba_caption_ar") : t("ba_caption_en")}
-              </div>
-              <div className="mt-2 text-sm text-slate-400 flex items-center justify-center gap-2">
-                <Volume2 className="h-4 w-4" />
-                {isLocalized ? t("ba_lang_local") : t("ba_lang_orig")}
+          {activeUrl ? (
+            <video
+              key={activeUrl}
+              src={activeUrl}
+              poster={showcase?.poster_url ?? undefined}
+              controls
+              playsInline
+              preload="metadata"
+              className="absolute inset-0 h-full w-full object-cover bg-black"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center">
+                <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-white/10 backdrop-blur border border-white/20 mb-4">
+                  <Play className="h-7 w-7 text-white ml-1" fill="currentColor" />
+                </div>
+                <div className="text-2xl font-semibold">{activeCaption}</div>
+                <div className="mt-2 text-sm text-slate-400 flex items-center justify-center gap-2">
+                  <Volume2 className="h-4 w-4" />
+                  {isLocalized ? t("ba_lang_local") : t("ba_lang_orig")}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="absolute bottom-4 left-4 right-4 h-1 rounded-full bg-white/10 overflow-hidden">
-            <div className="h-full w-2/5 bg-gradient-to-r from-fuchsia-400 to-amber-300" />
-          </div>
+          )}
         </div>
         <div className="mt-6 flex justify-center">
           <div className="inline-flex items-center rounded-full border border-white/10 bg-slate-900/80 p-1 backdrop-blur">
