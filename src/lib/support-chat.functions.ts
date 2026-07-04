@@ -18,6 +18,7 @@ const InputSchema = z.object({
       topics: z.string().max(500).optional().nullable(),
       audience: z.string().max(200).optional().nullable(),
       language: z.string().max(50).optional().nullable(),
+      country: z.string().max(80).optional().nullable(),
     })
     .optional()
     .nullable(),
@@ -31,7 +32,12 @@ Your core mission is to help content creators grow their channels by providing d
 1. Persona & Tone:
 - Act as an encouraging, data-backed, and highly strategic YouTube consultant.
 - Keep responses organized, using bullet points and clear headings.
-- LANGUAGE RULE (strict): match the UI_LANGUAGE system message. If UI_LANGUAGE=ar → reply fully in Arabic (Modern Standard Arabic + light dialect for hooks), keep technical terms in English between parentheses (e.g. "نسبة النقر (CTR)"). If UI_LANGUAGE=en → reply fully in English. If UI_LANGUAGE is missing, mirror the language of the LAST user message.
+- LANGUAGE RULE (strict, priority order):
+  1. If CHANNEL_CONTEXT provides a content language, ALWAYS reply in THAT language (this is the creator's audience language — keywords, titles, ideas, and prose must all match it).
+  2. Else, if CHANNEL_CONTEXT provides a country, infer the primary content language from it (e.g. USA/UK/Canada/Australia → English; Egypt/Saudi/UAE/Morocco → Arabic; France → French; Brazil → Portuguese; etc.) and reply in that language.
+  3. Else, fall back to UI_LANGUAGE (ar → Arabic; en → English).
+  4. Else, mirror the language of the LAST user message.
+  When replying in Arabic, keep short technical terms in English between parentheses (e.g. "نسبة النقر (CTR)").
 - Never start with filler like "Certainly!" or "بالتأكيد!" — go straight to the value.
 - Do not reveal you are powered by any specific model. Introduce yourself as "TongueSync AI Coach".
 
@@ -145,14 +151,15 @@ export const supportChat = createServerFn({ method: "POST" })
     const channelContextMsg = ctx && (ctx.channelUrl || ctx.niche || ctx.topics)
       ? `CHANNEL_CONTEXT (use this as the ONLY niche scope for keywords, ideas and titles):
 - Channel URL: ${ctx.channelUrl || "(not provided)"}
+- Channel country: ${ctx.country || "(not provided)"}
+- Content language of the channel: ${ctx.language || "(not provided — infer from country)"}
 - Niche: ${ctx.niche || "(not provided)"}
 - Main topics / seed keywords: ${ctx.topics || "(not provided)"}
 - Target audience: ${ctx.audience || "(general)"}
-- Content language: ${ctx.language || "(auto)"}
-All keyword tables, title formulas, and ideas MUST match this niche.`
+All keyword tables, title formulas, and ideas MUST match this niche AND be written in the channel's content language (rule 1 or 2 above).`
       : `CHANNEL_CONTEXT: (skipped by user — no channel linked yet). On your FIRST reply only, add one short sentence encouraging them to click "Connect my channel" in the chat to unlock niche-specific keywords and ideas. After that, answer normally.`;
     const uiLang = data.uiLanguage ?? "en";
-    const uiLangMsg = `UI_LANGUAGE: ${uiLang} — reply strictly in ${uiLang === "ar" ? "Arabic (MSA + light dialect for hooks; technical terms in English in parentheses)" : "English"}. All section headings and table column labels must be in this language, even if CHANNEL_CONTEXT is in a different language.`;
+    const uiLangMsg = `UI_LANGUAGE: ${uiLang} — this is a FALLBACK only. If CHANNEL_CONTEXT provides a content language or a country, use that instead (see LANGUAGE RULE priority). All section headings and table column labels must be in the FINAL chosen language.`;
     const reply = await lovableChat(
       [
         { role: "system", content: BASE_PROMPT },
