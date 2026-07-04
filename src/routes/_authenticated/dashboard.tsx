@@ -19,6 +19,7 @@ import { FeatureCard, ClipperVisual, DubbingVisual } from "@/components/FeatureS
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { CommunityIdeasManager } from "@/components/CommunityIdeasManager";
 import { ShowcaseVideosAdmin } from "@/components/ShowcaseVideosAdmin";
+import { YoutubeChannelSetting } from "@/components/YoutubeChannelSetting";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard \u2014 TongueSync AI" }] }),
@@ -82,9 +83,11 @@ function Dashboard() {
         <div className="flex items-center gap-2">
           <LangToggle />
           {!isPro && (
-            <Button onClick={() => setUpgradeOpen(true)} className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold">
-              <Crown className="h-4 w-4 mr-1" /> {t("upgrade")}
-            </Button>
+            <Link to="/pricing">
+              <Button className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold">
+                <Crown className="h-4 w-4 mr-1" /> {t("upgrade")}
+              </Button>
+            </Link>
           )}
           <Button variant="ghost" size="sm" onClick={signOut}><LogOut className="h-4 w-4 mr-1" />{t("sign_out")}</Button>
         </div>
@@ -107,6 +110,8 @@ function Dashboard() {
         <OnboardingTour profile={profile} />
 
         <ShowcaseVideosAdmin />
+
+        <YoutubeChannelSetting />
 
         <CommunityIdeasManager />
 
