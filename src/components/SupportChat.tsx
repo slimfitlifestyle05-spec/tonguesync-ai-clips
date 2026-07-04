@@ -124,13 +124,35 @@ export function SupportChat() {
     }
   }, [open]);
 
-  // Allow external triggers (e.g. top nav) to open the coach
+  // Allow external triggers (e.g. top nav, viral-ideas page) to open the coach.
+  // Payload can seed a niche + prefill the first user message.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const handler = () => setOpen(true);
-    window.addEventListener("tonguesync:open-ai-coach", handler);
-    return () => window.removeEventListener("tonguesync:open-ai-coach", handler);
-  }, []);
+    const handler = (ev: Event) => {
+      setOpen(true);
+      const detail = (ev as CustomEvent).detail as
+        | { niche?: string; topics?: string; prefill?: string }
+        | undefined;
+      if (!detail) return;
+      if (detail.niche || detail.topics) {
+        const seeded: ChannelCtx = {
+          ...(channel && !channel.skipped ? channel : {}),
+          niche: detail.niche || channel?.niche,
+          topics: detail.topics || channel?.topics,
+          skipped: false,
+        };
+        setChannel(seeded);
+        setChDraft(seeded);
+        try { window.localStorage.setItem(CHANNEL_KEY, JSON.stringify(seeded)); } catch { /* ignore */ }
+      }
+      if (detail.prefill) {
+        setInput(detail.prefill);
+        setTimeout(() => inputRef.current?.focus(), 120);
+      }
+    };
+    window.addEventListener("tonguesync:open-ai-coach", handler as EventListener);
+    return () => window.removeEventListener("tonguesync:open-ai-coach", handler as EventListener);
+  }, [channel]);
 
   async function send() {
     const text = input.trim();
