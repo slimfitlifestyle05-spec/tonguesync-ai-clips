@@ -11,7 +11,7 @@ import {
   type ConversationSummary,
 } from "@/lib/ai-coach-history.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { X, Send, Sparkles, Loader2, Bot, Youtube, Pencil, History, Plus, Trash2, MessageCircle } from "lucide-react";
+import { X, Send, Sparkles, Loader2, Bot, Youtube, Pencil, History, Plus, Trash2, MessageCircle, Maximize2, Minimize2 } from "lucide-react";
 import { Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
@@ -45,6 +45,7 @@ export function SupportChat() {
   const { dir, lang } = useI18n();
   const isAr = lang === "ar";
   const [open, setOpen] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([WELCOME]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
@@ -402,8 +403,10 @@ export function SupportChat() {
         <div
           dir={dir}
           className={
-            "fixed bottom-5 z-40 flex h-[560px] max-h-[calc(100vh-2rem)] w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl shadow-fuchsia-500/20 " +
-            (isAr ? "left-5" : "right-5")
+            fullscreen
+              ? "fixed inset-0 z-50 flex h-screen w-screen flex-col overflow-hidden border border-white/10 bg-slate-950 shadow-2xl"
+              : "fixed bottom-5 z-40 flex h-[560px] max-h-[calc(100vh-2rem)] w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl shadow-fuchsia-500/20 " +
+                (isAr ? "left-5" : "right-5")
           }
         >
           {/* Header */}
@@ -458,6 +461,14 @@ export function SupportChat() {
                 aria-label="Reset conversation"
               >
                 {isAr ? "مسح" : "Reset"}
+              </button>
+              <button
+                onClick={() => setFullscreen((v) => !v)}
+                className="rounded p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
+                aria-label={fullscreen ? (isAr ? "تصغير" : "Exit fullscreen") : (isAr ? "ملء الشاشة" : "Fullscreen")}
+                title={fullscreen ? (isAr ? "تصغير" : "Exit fullscreen") : (isAr ? "ملء الشاشة" : "Fullscreen")}
+              >
+                {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
               </button>
               <button
                 onClick={() => setOpen(false)}
