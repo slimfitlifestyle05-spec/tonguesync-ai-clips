@@ -231,6 +231,11 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     if (typeof window === "undefined") return;
     const saved = window.localStorage.getItem("ts_lang") as Lang | null;
     if (saved === "en" || saved === "ar") setLangState(saved);
+    else {
+      // Auto-detect: Arabic visitors get 'ar', everyone else 'en'
+      const detected = detectVisitorLang();
+      setLangState(detected);
+    }
   }, []);
   useEffect(() => {
     if (typeof document === "undefined") return;
