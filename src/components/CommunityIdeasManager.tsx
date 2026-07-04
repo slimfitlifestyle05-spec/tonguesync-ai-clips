@@ -21,7 +21,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { FileText, Upload, Loader2, Trash2, Pencil, Plus, Sparkles, ImageIcon, Heart, Eye, EyeOff, RotateCcw } from "lucide-react";
 import { Youtube } from "lucide-react";
-import { getYoutubeChannel, setYoutubeChannel } from "@/lib/admin.functions";
 
 export function CommunityIdeasManager() {
   const qc = useQueryClient();
@@ -87,7 +86,6 @@ export function CommunityIdeasManager() {
 
   return (
     <section className="rounded-2xl border border-amber-300/20 bg-amber-500/5 p-5">
-      <YoutubeChannelSetting />
       <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
         <div>
           <div className="text-sm font-semibold text-amber-200 flex items-center gap-2"><Sparkles className="h-4 w-4" /> Viral Ideas</div>
@@ -350,68 +348,6 @@ function IdeaForm({ existing, onSaved }: { existing?: CommunityIdea; onSaved: ()
         {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
         {existing ? "Save changes" : "Publish idea"}
       </Button>
-    </form>
-  );
-}
-
-function YoutubeChannelSetting() {
-  const qc = useQueryClient();
-  const load = useServerFn(getYoutubeChannel);
-  const save = useServerFn(setYoutubeChannel);
-  const q = useQuery({ queryKey: ["yt-channel"], queryFn: () => load() });
-  const [url, setUrl] = useState("");
-  const [handle, setHandle] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
-
-  if (q.data && !hydrated) {
-    setUrl(q.data.url ?? "");
-    setHandle(q.data.handle ?? "");
-    setHydrated(true);
-  }
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      await save({ data: { url: url.trim(), handle: handle.trim() } });
-      toast.success("YouTube channel saved");
-      qc.invalidateQueries({ queryKey: ["yt-channel"] });
-      qc.invalidateQueries({ queryKey: ["yt-channel-public"] });
-    } catch (err: any) {
-      toast.error(err?.message ?? "Save failed");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <form onSubmit={submit} className="mb-5 rounded-xl border border-red-400/20 bg-red-500/5 p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Youtube className="h-4 w-4 text-red-400" />
-        <div className="text-sm font-semibold text-red-200">Site YouTube channel</div>
-      </div>
-      <p className="text-xs text-slate-400 mb-3">
-        Add your channel link once. It will show as a "Subscribe" CTA on the Viral Ideas page, and later gate PDF downloads (subscribe + watch ≥ 50% + like + comment).
-      </p>
-      <div className="grid gap-3 md:grid-cols-[1fr_180px_auto]">
-        <Input
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://www.youtube.com/@yourchannel"
-          className="bg-white/5 border-white/10"
-        />
-        <Input
-          value={handle}
-          onChange={(e) => setHandle(e.target.value)}
-          placeholder="@handle (optional)"
-          className="bg-white/5 border-white/10"
-        />
-        <Button type="submit" disabled={saving} className="bg-red-500 hover:bg-red-500/90 text-white font-semibold">
-          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-          Save channel
-        </Button>
-      </div>
     </form>
   );
 }

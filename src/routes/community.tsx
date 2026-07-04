@@ -36,6 +36,7 @@ import {
   ThumbsUp,
   MessageSquare,
   Info,
+  Crown,
 } from "lucide-react";
 
 export const Route = createFileRoute("/community")({
@@ -133,6 +134,19 @@ function CommunityPage() {
             <Button size="sm" className="bg-red-600 text-white hover:bg-red-500">Subscribe</Button>
           </a>
         ) : null}
+
+        <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-fuchsia-400/25 bg-gradient-to-r from-fuchsia-500/10 via-pink-500/5 to-amber-400/10 p-4 md:flex-row md:items-center md:justify-between">
+          <div className="text-sm text-slate-200">
+            <div className="font-semibold text-white">Need more videos or AI Coach credits?</div>
+            <div className="text-slate-400 text-xs">Pro unlocks 30 videos/month, 50 AI Coach credits/day, and all viral PDF playbooks.</div>
+          </div>
+          <Link to="/pricing">
+            <Button className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold hover:opacity-90 whitespace-nowrap">
+              <Crown className="h-4 w-4 mr-1" /> Upgrade to Pro
+            </Button>
+          </Link>
+        </div>
+
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
