@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
 import { supportChat } from "@/lib/support-chat.functions";
-import { X, Send, Sparkles, Loader2, Bot } from "lucide-react";
+import { X, Send, Sparkles, Loader2, Bot, Youtube, Pencil } from "lucide-react";
 import { Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
@@ -12,6 +12,17 @@ import { useI18n } from "@/lib/i18n";
 type Msg = { role: "user" | "assistant"; content: string };
 
 const STORAGE_KEY = "tonguesync_support_chat_v1";
+const CHANNEL_KEY = "tonguesync_ai_coach_channel_v1";
+
+type ChannelCtx = {
+  channelUrl?: string;
+  niche?: string;
+  topics?: string;
+  audience?: string;
+  language?: string;
+  skipped?: boolean;
+};
+
 const WELCOME: Msg = {
   role: "assistant",
   content:
@@ -29,6 +40,9 @@ export function SupportChat() {
   const [pending, setPending] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [meta, setMeta] = useState<CoachMeta>(null);
+  const [channel, setChannel] = useState<ChannelCtx | null>(null);
+  const [showChannelForm, setShowChannelForm] = useState(false);
+  const [chDraft, setChDraft] = useState<ChannelCtx>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const askAi = useServerFn(supportChat);
@@ -41,6 +55,16 @@ export function SupportChat() {
       if (raw) {
         const parsed = JSON.parse(raw) as Msg[];
         if (Array.isArray(parsed) && parsed.length > 0) setMessages(parsed);
+      }
+    } catch { /* ignore */ }
+    try {
+      const rawC = window.localStorage.getItem(CHANNEL_KEY);
+      if (rawC) {
+        const parsed = JSON.parse(rawC) as ChannelCtx;
+        if (parsed && typeof parsed === "object") {
+          setChannel(parsed);
+          setChDraft(parsed);
+        }
       }
     } catch { /* ignore */ }
     setHydrated(true);
@@ -82,7 +106,16 @@ export function SupportChat() {
     setInput("");
     setPending(true);
     try {
-      const res = await askAi({ data: { messages: next } });
+      const channelPayload = channel && !channel.skipped
+        ? {
+            channelUrl: channel.channelUrl || null,
+            niche: channel.niche || null,
+            topics: channel.topics || null,
+            audience: channel.audience || null,
+            language: channel.language || (isAr ? "Arabic" : "English"),
+          }
+        : null;
+      const res = await askAi({ data: { messages: next, channelContext: channelPayload } });
       const { reply, creditsLeft, dailyLimit, tier } = res;
       setMeta({ creditsLeft, dailyLimit, tier });
       setMessages((cur) => [...cur, { role: "assistant", content: reply }]);
@@ -103,6 +136,34 @@ export function SupportChat() {
     setMessages([WELCOME]);
     try { window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
   }
+
+  function saveChannel() {
+    const cleaned: ChannelCtx = {
+      channelUrl: chDraft.channelUrl?.trim() || undefined,
+      niche: chDraft.niche?.trim() || undefined,
+      topics: chDraft.topics?.trim() || undefined,
+      audience: chDraft.audience?.trim() || undefined,
+      language: chDraft.language?.trim() || undefined,
+      skipped: false,
+    };
+    setChannel(cleaned);
+    try { window.localStorage.setItem(CHANNEL_KEY, JSON.stringify(cleaned)); } catch { /* ignore */ }
+    setShowChannelForm(false);
+  }
+  function skipChannel() {
+    const val: ChannelCtx = { skipped: true };
+    setChannel(val);
+    try { window.localStorage.setItem(CHANNEL_KEY, JSON.stringify(val)); } catch { /* ignore */ }
+    setShowChannelForm(false);
+  }
+  function clearChannel() {
+    setChannel(null);
+    setChDraft({});
+    try { window.localStorage.removeItem(CHANNEL_KEY); } catch { /* ignore */ }
+  }
+
+  const needsChannelPrompt = !channel; // never asked yet
+  const hasNiche = !!(channel && !channel.skipped && (channel.niche || channel.topics));
 
   return (
     <>
@@ -177,6 +238,105 @@ export function SupportChat() {
 
           {/* Messages */}
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4 text-sm">
+            {/* Channel-linking onboarding card */}
+            {(needsChannelPrompt || showChannelForm) && (
+              <div dir={dir} className="rounded-xl border border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/10 via-slate-900 to-amber-400/10 p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-red-500/90 text-white">
+                    <Youtube className="h-4 w-4" />
+                  </div>
+                  <div className="text-[13px] font-semibold text-white">
+                    {isAr ? "اربط قناتك يوتيوب" : "Connect your YouTube channel"}
+                  </div>
+                </div>
+                <p className="text-[11px] leading-relaxed text-slate-300 mb-3">
+                  {isAr
+                    ? "لما تربط قناتك، المدرب يفهم النيتش بتاعك ويديك كلمات مفتاحية وأفكار وعناوين مخصوصة لقناتك بس. تقدر تتخطى الخطوة دي، بس النتايج بتبقى عامة."
+                    : "Linking your channel lets the coach understand your niche and reply with keywords, titles and ideas tailored to YOUR channel only. You can skip, but replies will stay generic."}
+                </p>
+                {!showChannelForm ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={() => { setChDraft(channel ?? {}); setShowChannelForm(true); }} className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold h-8">
+                      <Youtube className="h-3.5 w-3.5 mr-1" /> {isAr ? "اربط قناتي" : "Connect my channel"}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={skipChannel} className="h-8 text-slate-300 hover:text-white">
+                      {isAr ? "تخطي الخطوة" : "Skip for now"}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      dir={dir}
+                      value={chDraft.channelUrl ?? ""}
+                      onChange={(e) => setChDraft((d) => ({ ...d, channelUrl: e.target.value }))}
+                      placeholder={isAr ? "رابط القناة (اختياري) — https://youtube.com/@…" : "Channel URL (optional) — https://youtube.com/@…"}
+                      className="w-full rounded-md border border-white/10 bg-slate-800 px-2 py-1.5 text-[12px] text-white placeholder:text-slate-500 focus:border-fuchsia-400 focus:outline-none"
+                    />
+                    <input
+                      dir={dir}
+                      value={chDraft.niche ?? ""}
+                      onChange={(e) => setChDraft((d) => ({ ...d, niche: e.target.value }))}
+                      placeholder={isAr ? "النيتش (مثال: تكنولوجيا، طبخ، ألعاب، تسويق…)" : "Your niche (e.g. tech, cooking, gaming, marketing…)"}
+                      className="w-full rounded-md border border-white/10 bg-slate-800 px-2 py-1.5 text-[12px] text-white placeholder:text-slate-500 focus:border-fuchsia-400 focus:outline-none"
+                    />
+                    <input
+                      dir={dir}
+                      value={chDraft.topics ?? ""}
+                      onChange={(e) => setChDraft((d) => ({ ...d, topics: e.target.value }))}
+                      placeholder={isAr ? "كلمات مفتاحية أساسية / مواضيع (فصل بينهم بفاصلة)" : "Seed keywords / main topics (comma separated)"}
+                      className="w-full rounded-md border border-white/10 bg-slate-800 px-2 py-1.5 text-[12px] text-white placeholder:text-slate-500 focus:border-fuchsia-400 focus:outline-none"
+                    />
+                    <input
+                      dir={dir}
+                      value={chDraft.audience ?? ""}
+                      onChange={(e) => setChDraft((d) => ({ ...d, audience: e.target.value }))}
+                      placeholder={isAr ? "الجمهور المستهدف (اختياري)" : "Target audience (optional)"}
+                      className="w-full rounded-md border border-white/10 bg-slate-800 px-2 py-1.5 text-[12px] text-white placeholder:text-slate-500 focus:border-fuchsia-400 focus:outline-none"
+                    />
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <Button size="sm" onClick={saveChannel} className="h-8 bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold">
+                        {isAr ? "حفظ وتفعيل" : "Save & activate"}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setShowChannelForm(false)} className="h-8 text-slate-300 hover:text-white">
+                        {isAr ? "إلغاء" : "Cancel"}
+                      </Button>
+                      {!needsChannelPrompt && (
+                        <Button size="sm" variant="ghost" onClick={skipChannel} className="h-8 text-slate-400 hover:text-white">
+                          {isAr ? "تخطي" : "Skip"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Active niche chip */}
+            {hasNiche && !showChannelForm && (
+              <div dir={dir} className="flex items-center justify-between gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/5 px-2.5 py-1.5 text-[11px] text-emerald-200">
+                <div className="truncate">
+                  <span className="font-semibold">{isAr ? "النيتش:" : "Niche:"}</span>{" "}
+                  <span className="text-emerald-100">{channel?.niche || channel?.topics}</span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button onClick={() => { setChDraft(channel ?? {}); setShowChannelForm(true); }} className="rounded p-1 text-emerald-200 hover:bg-white/10" aria-label="Edit niche">
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                  <button onClick={clearChannel} className="rounded px-1.5 py-0.5 text-[10px] text-slate-300 hover:bg-white/10">
+                    {isAr ? "مسح" : "Clear"}
+                  </button>
+                </div>
+              </div>
+            )}
+            {channel?.skipped && !showChannelForm && (
+              <div dir={dir} className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] text-slate-300">
+                <span>{isAr ? "لسة مربطتش قناتك — الردود عامة" : "Channel not linked — replies are generic"}</span>
+                <button onClick={() => { setChDraft({}); setShowChannelForm(true); }} className="rounded px-1.5 py-0.5 text-[10px] text-fuchsia-300 hover:bg-white/10">
+                  {isAr ? "اربط الآن" : "Connect now"}
+                </button>
+              </div>
+            )}
+
             {messages.map((m, i) => (
               <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"} dir={dir}>
                 <div
