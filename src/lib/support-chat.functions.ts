@@ -124,10 +124,21 @@ export const supportChat = createServerFn({ method: "POST" })
 
     const { lovableChat } = await import("@/lib/ai-gateway.server");
     const ideasContext = await fetchIdeasContext();
+    const ctx = data.channelContext;
+    const channelContextMsg = ctx && (ctx.channelUrl || ctx.niche || ctx.topics)
+      ? `CHANNEL_CONTEXT (use this as the ONLY niche scope for keywords, ideas and titles):
+- Channel URL: ${ctx.channelUrl || "(not provided)"}
+- Niche: ${ctx.niche || "(not provided)"}
+- Main topics / seed keywords: ${ctx.topics || "(not provided)"}
+- Target audience: ${ctx.audience || "(general)"}
+- Content language: ${ctx.language || "(auto)"}
+All keyword tables, title formulas, and ideas MUST match this niche.`
+      : `CHANNEL_CONTEXT: (skipped by user — no channel linked yet). On your FIRST reply only, add one short sentence encouraging them to click "Connect my channel" in the chat to unlock niche-specific keywords and ideas. After that, answer normally.`;
     const reply = await lovableChat(
       [
         { role: "system", content: BASE_PROMPT },
         { role: "system", content: ideasContext },
+        { role: "system", content: channelContextMsg },
         { role: "system", content: `USER_CONTEXT: tier=${tier}, credits_left_today=${creditsLeft}/${dailyLimit}` },
         ...data.messages,
       ],
