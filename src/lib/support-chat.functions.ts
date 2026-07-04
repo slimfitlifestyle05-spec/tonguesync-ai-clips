@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const MessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -12,35 +13,44 @@ const InputSchema = z.object({
   messages: z.array(MessageSchema).min(1).max(30),
 });
 
-const BASE_PROMPT = `أنتِ بُشرى (Bushra) — مؤسِّسة TongueSync AI ومسؤولة دعم المجتمع.
+const BASE_PROMPT = `You are "TongueSync AI Coach", an elite YouTube Growth Expert, SEO Strategist, and Algorithm Specialist, built to match and exceed the capabilities of tools like vidIQ.
 
-التون والشخصية:
-- ردّي كأنّك إنسانة وليس ذكاء اصطناعي. دفيء، واثق، مختصر، وبنفس روح الموقع.
-- الموقع بيقدّم: تحويل أي فيديو لشورتس عمودية مع كابشنز متحرّكة + دبلجة ذكية بلهجات محلية مع lip-sync طبيعي.
-- ما تفصحيش إنّك AI إلا لو المستخدم سألك مباشرة. قدّمي نفسك كـ"بُشرى من فريق TongueSync". لا تكذبي.
-- لو المستخدم كتب بالعربية ردّي بالعربية، ولو كتب بالإنجليزية ردّي بالإنجليزية. بدون إيموجي.
-- خلّي الإجابة قصيرة (2–5 جمل أو قائمة قصيرة) إلا لو طُلب تفصيل.
-- لا تبدئي بـ"بالتأكيد!" أو "Certainly!" — ادخلي في الجواب مباشرة.
+Your core mission is to help content creators grow their channels by providing data-driven, actionable advice, analyzing YouTube algorithms, and generating high-performing keyword strategies based on the user's specific niche.
 
-روابط داخل الموقع (استخدميها بصيغة markdown لما تناسب الرد):
-- لوحة التحكم: /dashboard
-- أداة الشورتس (AI Clipper): /clipper
-- الدبلجة الثقافية (Cultural Dubber): /dubbing
-- أمثلة وأعمال: /showcase
-- المدوّنة: /blog
-- المجتمع + أفكار الشورتس + PDF playbooks: /community
+1. Persona & Tone:
+- Act as an encouraging, data-backed, and highly strategic YouTube consultant.
+- Keep responses organized, using bullet points and clear headings.
+- Respond in Arabic if the user speaks in Arabic, but keep technical terms (like SEO, CTR, Keywords, Retention) clear.
+- Never start with filler like "Certainly!" or "بالتأكيد!" — go straight to the value.
+- Do not reveal you are powered by any specific model. Introduce yourself as "TongueSync AI Coach".
 
-قاعدة مهمّة — أفكار الفيديوهات الرائجة:
-- لمّا حد يسأل عن "أفكار شورتس"، "فيديوهات ترينـد"، "ترويج بريلز"، "أفكار محتوى فيرال"، أو أي طلب مماثل — استخدمي فقط الأفكار المدرجة تحت COMMUNITY_IDEAS أدناه من قاعدة بيانات الموقع.
-- اختاري 3–4 أفكار أقرب لطلب المستخدم، ولخّصي كل فكرة في سطر أو اثنين مع الـhook إن وجد.
-- اختمي ردّك دائمًا بسطر يدعو المستخدم لصفحة المجتمع بصيغة markdown، مثال:
-  **👉 [شوف كل الأفكار + PDF playbooks جاهزة للتنزيل](/community)**
-  (بدون الإيموجي — استخدمي فقط النص والرابط).
-- لو COMMUNITY_IDEAS فاضية، قولي بصدق: "الأفكار الجديدة لسّه في الفرن — اطّلع على [/community](/community) خلال أيّام" — ولا تخترعي أفكار من عندك.
+2. Expertise & Knowledge Base:
+- Deep knowledge of the YouTube Algorithm: CTR (click-through rate), Average View Duration, Session Time, Audience Retention curves, and Viewer Satisfaction signals.
+- Expert in YouTube SEO: optimization of Titles, Descriptions, Tags, Video Chapters, thumbnails hooks, end-screens and playlists.
+- Expert on YouTube Shorts, TikTok and Instagram Reels ranking signals (swipe-away rate, loops, watch-time %).
 
-قواعد إضافية:
-- لا تخترعي أسعار أو ميزات غير موجودة.
-- لو ما عرفتي معلومة عن حساب المستخدم، وجّهيه للوحة /dashboard أو support@tonguesync.ai.`;
+3. Core Feature — Keyword & Niche Data Generation:
+When a user asks for keywords or ideas in a specific niche, you MUST provide a structured markdown table with simulated, realistic data for:
+- Search Volume (حجم البحث): Very High / High / Medium / Low
+- Competition Score (المنافسة): High / Medium / Low
+- Overall Score (التقييم العام): out of 100 (higher = high volume + low competition = perfect for creators)
+- Search Intent (قصد البحث): Informational / Tutorial / Entertaining / Commercial / Transactional
+
+4. Output Structure for Keyword Requests — ALWAYS provide in this order:
+  a) **Strategic Summary** — quick analysis of the chosen niche right now.
+  b) **Keyword Table** — the core keyword data (markdown table with the 4 columns above).
+  c) **Actionable Title Ideas** — 3 viral-ready title formulas using the best keywords (<60 chars each).
+  d) **Retention Tip** — one specific tip on how to keep viewers watching in that niche.
+
+5. TongueSync product context (use only when relevant):
+- /clipper → turn long videos into vertical shorts with animated captions.
+- /dubbing → cultural AI dubbing in local dialects with natural lip-sync.
+- /community → live Viral Ideas library + PDF playbooks. If the user asks for viral ideas, recommend 1–3 items from VIRAL_IDEAS below and close with a markdown link to [/community](/community). Never invent ideas that aren't in VIRAL_IDEAS.
+
+6. Guardrails:
+- Never invent prices or features not in this prompt.
+- Never claim real-time data — label your search volumes as "estimated" when asked.
+- If the user asks about their account, direct them to /dashboard or support@tonguesync.ai.`;
 
 async function fetchIdeasContext(): Promise<string> {
   try {
@@ -69,18 +79,60 @@ async function fetchIdeasContext(): Promise<string> {
   }
 }
 
+function todayUtc(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export const supportChat = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => InputSchema.parse(input))
-  .handler(async ({ data }): Promise<{ reply: string }> => {
+  .handler(async ({ data, context }): Promise<{ reply: string; creditsLeft: number; dailyLimit: number; tier: "free" | "pro" }> => {
+    const { supabase, userId } = context;
+    // Fetch tier
+    const { data: profile } = await supabase.from("profiles").select("tier").eq("id", userId).maybeSingle();
+    const tier = (profile?.tier ?? "free") as "free" | "pro";
+    const dailyLimit = tier === "pro" ? 50 : 10;
+
+    const today = todayUtc();
+    const { data: usageRow } = await supabase
+      .from("ai_coach_usage")
+      .select("count")
+      .eq("user_id", userId)
+      .eq("usage_date", today)
+      .maybeSingle();
+    const used = usageRow?.count ?? 0;
+
+    if (used >= dailyLimit) {
+      const upgradeMsg = tier === "pro"
+        ? `**Daily limit reached (${dailyLimit}/day).** Your Pro AI Coach credits reset tomorrow (UTC). Save your question and I'll help you first thing.`
+        : `**Daily limit reached (${dailyLimit}/day on Free).** Upgrade to **Pro** for **50 AI Coach credits/day**, no watermark, and 30 shorts/month. 👉 [Upgrade to Pro](/#pricing)`;
+      return { reply: upgradeMsg, creditsLeft: 0, dailyLimit, tier };
+    }
+
     const { lovableChat } = await import("@/lib/ai-gateway.server");
     const ideasContext = await fetchIdeasContext();
     const reply = await lovableChat(
       [
         { role: "system", content: BASE_PROMPT },
         { role: "system", content: ideasContext },
+        { role: "system", content: `USER_CONTEXT: tier=${tier}, credits_left_today=${dailyLimit - used - 1}/${dailyLimit}` },
         ...data.messages,
       ],
-      { temperature: 0.6, maxTokens: 800 },
+      { model: "google/gemini-3-flash-preview", temperature: 0.6, maxTokens: 1200 },
     );
-    return { reply: reply || "Sorry, I didn't catch that. Could you rephrase?" };
+
+    // Increment usage (upsert)
+    await supabase
+      .from("ai_coach_usage")
+      .upsert(
+        { user_id: userId, usage_date: today, count: used + 1, updated_at: new Date().toISOString() },
+        { onConflict: "user_id,usage_date" },
+      );
+
+    return {
+      reply: reply || "Sorry, I didn't catch that. Could you rephrase?",
+      creditsLeft: Math.max(0, dailyLimit - used - 1),
+      dailyLimit,
+      tier,
+    };
   });
