@@ -38,13 +38,13 @@ import {
 export const Route = createFileRoute("/community")({
   head: () => ({
     meta: [
-      { title: "Community \u2014 Trending short video ideas | TongueSync AI" },
+      { title: "Community — Trending short video ideas | TongueSync AI" },
       {
         name: "description",
         content:
           "Trending short-form video ideas from the TongueSync community, with step-by-step PDF playbooks you can download and run today.",
       },
-      { property: "og:title", content: "TongueSync Community \u2014 Trending short ideas" },
+      { property: "og:title", content: "TongueSync Community — Trending short ideas" },
       {
         property: "og:description",
         content: "Fresh short video ideas + PDF playbooks curated by the TongueSync team.",
@@ -85,7 +85,7 @@ function CommunityPage() {
           Trending short video ideas
         </h1>
         <p className="mt-4 text-slate-300 text-lg max-w-2xl mx-auto">
-          Fresh ideas curated by the TongueSync team \u2014 with downloadable PDF playbooks that walk you through exactly how to make each one.
+          Fresh ideas curated by the TongueSync team — with downloadable PDF playbooks that walk you through exactly how to make each one.
         </p>
       </section>
 
@@ -104,7 +104,7 @@ function CommunityPage() {
           </div>
         ) : (ideasQ.data ?? []).length === 0 ? (
           <div className="mx-auto max-w-md rounded-2xl border border-white/10 bg-white/5 p-10 text-center text-slate-300">
-            No ideas yet. Check back soon \u2014 we drop new ones every week.
+            No ideas yet. Check back soon — we drop new ones every week.
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -165,7 +165,7 @@ function IdeaCard({
           ))}
         </div>
         <h3 className="text-lg font-semibold leading-snug text-white">{idea.title}</h3>
-        {idea.hook ? <p className="text-sm text-amber-200/90 italic">\u201c{idea.hook}\u201d</p> : null}
+        {idea.hook ? <p className="text-sm text-amber-200/90 italic">“{idea.hook}”</p> : null}
         <p className="text-sm text-slate-300 line-clamp-4 whitespace-pre-wrap">{idea.description}</p>
         {idea.cta ? <p className="text-xs text-slate-400"><span className="text-slate-500">CTA:</span> {idea.cta}</p> : null}
         <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
