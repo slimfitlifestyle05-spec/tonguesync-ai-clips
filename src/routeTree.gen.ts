@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TsSecretGate2026RouteImport } from './routes/ts-secret-gate-2026'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ShowcaseRouteImport } from './routes/showcase'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ContactRouteImport } from './routes/contact'
@@ -37,6 +38,11 @@ const TsSecretGate2026Route = TsSecretGate2026RouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShowcaseRoute = ShowcaseRouteImport.update({
@@ -133,6 +139,7 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/privacy': typeof PrivacyRoute
   '/showcase': typeof ShowcaseRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/ts-secret-gate-2026': typeof TsSecretGate2026Route
   '/clipper': typeof AuthenticatedClipperRoute
@@ -153,6 +160,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/privacy': typeof PrivacyRoute
   '/showcase': typeof ShowcaseRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/ts-secret-gate-2026': typeof TsSecretGate2026Route
   '/clipper': typeof AuthenticatedClipperRoute
@@ -175,6 +183,7 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/privacy': typeof PrivacyRoute
   '/showcase': typeof ShowcaseRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/ts-secret-gate-2026': typeof TsSecretGate2026Route
   '/_authenticated/clipper': typeof AuthenticatedClipperRoute
@@ -197,6 +206,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/privacy'
     | '/showcase'
+    | '/sitemap.xml'
     | '/terms'
     | '/ts-secret-gate-2026'
     | '/clipper'
@@ -217,6 +227,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/privacy'
     | '/showcase'
+    | '/sitemap.xml'
     | '/terms'
     | '/ts-secret-gate-2026'
     | '/clipper'
@@ -238,6 +249,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/privacy'
     | '/showcase'
+    | '/sitemap.xml'
     | '/terms'
     | '/ts-secret-gate-2026'
     | '/_authenticated/clipper'
@@ -260,6 +272,7 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   PrivacyRoute: typeof PrivacyRoute
   ShowcaseRoute: typeof ShowcaseRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
   TsSecretGate2026Route: typeof TsSecretGate2026Route
   BlogSlugRoute: typeof BlogSlugRoute
@@ -283,6 +296,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/showcase': {
@@ -433,6 +453,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   PrivacyRoute: PrivacyRoute,
   ShowcaseRoute: ShowcaseRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
   TsSecretGate2026Route: TsSecretGate2026Route,
   BlogSlugRoute: BlogSlugRoute,
