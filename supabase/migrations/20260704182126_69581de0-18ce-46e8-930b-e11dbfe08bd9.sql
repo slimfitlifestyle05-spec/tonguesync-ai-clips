@@ -1,0 +1,6 @@
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS youtube_channel_url TEXT,
+  ADD COLUMN IF NOT EXISTS niche TEXT,
+  ADD COLUMN IF NOT EXISTS topics TEXT,
+  ADD COLUMN IF NOT EXISTS audience TEXT,
+  ADD COLUMN IF NOT EXISTS content_language TEXT;
