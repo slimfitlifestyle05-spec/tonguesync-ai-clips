@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
+import { Link } from "@tanstack/react-router";
 import { supportChat } from "@/lib/support-chat.functions";
 import { X, Send, Sparkles, Loader2, Bot } from "lucide-react";
+import { Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useI18n } from "@/lib/i18n";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -18,6 +21,8 @@ const WELCOME: Msg = {
 type CoachMeta = { creditsLeft: number; dailyLimit: number; tier: "free" | "pro" } | null;
 
 export function SupportChat() {
+  const { dir, lang } = useI18n();
+  const isAr = lang === "ar";
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([WELCOME]);
   const [input, setInput] = useState("");
@@ -107,22 +112,34 @@ export function SupportChat() {
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Open AI Coach"
-          className="group fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/90 py-2 pl-2 pr-4 shadow-2xl shadow-fuchsia-500/30 backdrop-blur transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-fuchsia-300 focus:ring-offset-2 focus:ring-offset-slate-950"
+          dir={dir}
+          className={
+            "group fixed bottom-5 z-40 flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/90 py-2 shadow-2xl shadow-fuchsia-500/30 backdrop-blur transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-fuchsia-300 focus:ring-offset-2 focus:ring-offset-slate-950 " +
+            (isAr ? "left-5 pr-2 pl-4 flex-row-reverse" : "right-5 pl-2 pr-4")
+          }
         >
           <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 via-violet-500 to-amber-400 text-black">
             <Bot className="h-5 w-5" strokeWidth={2.25} />
             <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-950" />
           </span>
-          <span className="flex flex-col items-start leading-tight">
+          <span className={"flex flex-col leading-tight " + (isAr ? "items-end text-right" : "items-start text-left")}>
             <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-fuchsia-300">AI Coach</span>
-            <span className="text-[11px] text-slate-300 group-hover:text-white">Ask about YouTube SEO</span>
+            <span className="text-[11px] text-slate-300 group-hover:text-white">
+              {isAr ? "اسأل عن سيو يوتيوب" : "Ask about YouTube SEO"}
+            </span>
           </span>
         </button>
       )}
 
       {/* Chat panel */}
       {open && (
-        <div className="fixed bottom-5 right-5 z-40 flex h-[560px] max-h-[calc(100vh-2rem)] w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl shadow-fuchsia-500/20">
+        <div
+          dir={dir}
+          className={
+            "fixed bottom-5 z-40 flex h-[560px] max-h-[calc(100vh-2rem)] w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl shadow-fuchsia-500/20 " +
+            (isAr ? "left-5" : "right-5")
+          }
+        >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-white/10 bg-gradient-to-r from-fuchsia-500/20 to-amber-400/20 px-4 py-3">
             <div className="flex items-center gap-2 text-white">
@@ -130,11 +147,13 @@ export function SupportChat() {
                 <Sparkles className="h-4 w-4 text-black" />
               </div>
               <div className="leading-tight">
-                <div className="text-sm font-semibold">AI Coach &middot; TongueSync</div>
+                <div className="text-sm font-semibold">AI Coach {isAr ? "•" : "·"} TongueSync</div>
                 <div className="text-[11px] text-emerald-300">
                   {meta
-                    ? `${meta.tier === "pro" ? "Pro" : "Free"} · ${meta.creditsLeft}/${meta.dailyLimit} credits left today`
-                    : "Online · YouTube SEO + Algorithm"}
+                    ? (isAr
+                        ? `${meta.tier === "pro" ? "احترافي" : "مجاني"} · باقي ${meta.creditsLeft}/${meta.dailyLimit} كريدت اليوم`
+                        : `${meta.tier === "pro" ? "Pro" : "Free"} · ${meta.creditsLeft}/${meta.dailyLimit} credits left today`)
+                    : (isAr ? "متصل · سيو يوتيوب + الخوارزميات" : "Online · YouTube SEO + Algorithm")}
                 </div>
               </div>
             </div>
@@ -144,7 +163,7 @@ export function SupportChat() {
                 className="rounded px-2 py-1 text-[11px] text-slate-400 hover:bg-white/10 hover:text-white"
                 aria-label="Reset conversation"
               >
-                Reset
+                {isAr ? "مسح" : "Reset"}
               </button>
               <button
                 onClick={() => setOpen(false)}
@@ -159,12 +178,12 @@ export function SupportChat() {
           {/* Messages */}
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4 text-sm">
             {messages.map((m, i) => (
-              <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
+              <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"} dir={dir}>
                 <div
                   className={
                     m.role === "user"
-                      ? "max-w-[80%] rounded-2xl rounded-tr-sm bg-gradient-to-br from-fuchsia-500 to-amber-400 px-3 py-2 text-black"
-                      : "max-w-[85%] rounded-2xl rounded-tl-sm bg-white/5 px-3 py-2 text-slate-100"
+                      ? "max-w-[80%] rounded-2xl bg-gradient-to-br from-fuchsia-500 to-amber-400 px-3 py-2 text-black " + (isAr ? "rounded-tl-sm" : "rounded-tr-sm")
+                      : "max-w-[85%] rounded-2xl bg-white/5 px-3 py-2 text-slate-100 " + (isAr ? "rounded-tr-sm" : "rounded-tl-sm")
                   }
                 >
                   {m.role === "assistant" ? (
@@ -178,13 +197,35 @@ export function SupportChat() {
               </div>
             ))}
             {pending && (
-              <div className="flex justify-start">
-                <div className="flex items-center gap-2 rounded-2xl rounded-tl-sm bg-white/5 px-3 py-2 text-slate-400">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  <span className="text-xs">AI Coach is typing…</span>
+              <div className="flex justify-start" dir={dir}>
+                <div className={"flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2 text-slate-300 " + (isAr ? "rounded-tr-sm" : "rounded-tl-sm")}>
+                  <span className="flex items-center gap-1" aria-hidden>
+                    <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-300 animate-bounce [animation-delay:-0.3s]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-300 animate-bounce [animation-delay:-0.15s]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-fuchsia-300 animate-bounce" />
+                  </span>
+                  <span className="text-xs">{isAr ? "المدرب بيكتب…" : "AI Coach is typing…"}</span>
                 </div>
               </div>
             )}
+
+            {meta && meta.creditsLeft <= 0 ? (
+              <div className="rounded-xl border border-amber-400/30 bg-gradient-to-r from-fuchsia-500/15 to-amber-400/15 p-3 text-xs" dir={dir}>
+                <div className="font-semibold text-amber-200 mb-1">
+                  {isAr ? "خلص الكريدت اليومي 🎯" : "You're out of daily credits 🎯"}
+                </div>
+                <div className="text-slate-300 mb-2">
+                  {isAr
+                    ? `الترقية للاحترافي بتديك 50 سؤال/يوم + 30 فيديو/شهر + كل ستايلات الكابشن.`
+                    : `Upgrade to Pro for 50 questions/day + 30 videos/month + all caption styles.`}
+                </div>
+                <Link to="/pricing" onClick={() => setOpen(false)} className="inline-block">
+                  <Button size="sm" className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold">
+                    <Crown className="h-3.5 w-3.5 mr-1" /> {isAr ? "ترقية إلى Pro" : "Upgrade to Pro"}
+                  </Button>
+                </Link>
+              </div>
+            ) : null}
           </div>
 
           {/* Composer */}
@@ -194,6 +235,7 @@ export function SupportChat() {
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                dir={dir}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -201,7 +243,7 @@ export function SupportChat() {
                   }
                 }}
                 rows={1}
-                placeholder="Ask for viral ideas, titles, tags, hashtags…"
+                placeholder={isAr ? "اسأل عن أفكار فيروسية، عناوين، تاجات، هاشتاجات…" : "Ask for viral ideas, titles, tags, hashtags…"}
                 className="max-h-32 min-h-[40px] flex-1 resize-none rounded-lg border border-white/10 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-fuchsia-400 focus:outline-none"
                 disabled={pending}
               />
@@ -212,11 +254,11 @@ export function SupportChat() {
                 className="h-10 w-10 shrink-0 bg-gradient-to-br from-fuchsia-500 to-amber-400 text-black hover:opacity-90"
                 aria-label="Send message"
               >
-                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className={"h-4 w-4 " + (isAr ? "scale-x-[-1]" : "")} />}
               </Button>
             </div>
             <p className="mt-2 text-center text-[10px] text-slate-500">
-              Powered by AI &middot; may occasionally be inaccurate
+              {isAr ? "مدعوم بالذكاء الاصطناعي · قد يخطئ أحيانًا" : "Powered by AI · may occasionally be inaccurate"}
             </p>
           </div>
         </div>
