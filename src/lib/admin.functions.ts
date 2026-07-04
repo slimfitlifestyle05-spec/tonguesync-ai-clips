@@ -152,6 +152,36 @@ export const getPromoVideo = createServerFn({ method: "GET" }).handler(async () 
   return { url: v?.url ?? "", title: v?.title ?? "" };
 });
 
+/** Public: fetch the site's YouTube channel link (shown on Viral Ideas). */
+export const getYoutubeChannel = createServerFn({ method: "GET" }).handler(async () => {
+  const { createClient } = await import("@supabase/supabase-js");
+  const client = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
+    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+  });
+  const { data } = await client.from("app_settings").select("value").eq("key", "youtube_channel").maybeSingle();
+  const v = data?.value as { url?: string; handle?: string } | null;
+  return { url: v?.url ?? "", handle: v?.handle ?? "" };
+});
+
+/** Admin: set the site's YouTube channel link. */
+export const setYoutubeChannel = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: unknown) =>
+    z.object({
+      url: z.string().trim().max(500).refine((v) => v === "" || /^https?:\/\//i.test(v), "Must be a URL").or(z.literal("")),
+      handle: z.string().trim().max(120).optional().default(""),
+    }).parse(raw)
+  )
+  .handler(async ({ context, data }) => {
+    await requireAdmin(context);
+    const supabaseAdmin = context.supabase;
+    await supabaseAdmin.from("app_settings").upsert(
+      { key: "youtube_channel", value: { url: data.url, handle: data.handle }, updated_by: context.userId, updated_at: new Date().toISOString() },
+      { onConflict: "key" }
+    );
+    return { ok: true };
+  });
+
 export const setPromoVideo = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((raw: unknown) =>
