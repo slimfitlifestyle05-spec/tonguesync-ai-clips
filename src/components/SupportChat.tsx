@@ -232,6 +232,7 @@ export function SupportChat() {
     setChannel(val);
     try { window.localStorage.setItem(CHANNEL_KEY, JSON.stringify(val)); } catch { /* ignore */ }
     setShowChannelForm(false);
+    setSeededFromIdeas(false);
   }
   async function clearChannel() {
     setChannel(null);
