@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
 import { supportChat } from "@/lib/support-chat.functions";
+import { getChannelContext, saveChannelContext, clearChannelContext } from "@/lib/channel-context.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { X, Send, Sparkles, Loader2, Bot, Youtube, Pencil } from "lucide-react";
 import { Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46,6 +48,9 @@ export function SupportChat() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const askAi = useServerFn(supportChat);
+  const loadChannel = useServerFn(getChannelContext);
+  const saveChannelFn = useServerFn(saveChannelContext);
+  const clearChannelFn = useServerFn(clearChannelContext);
 
   // Hydrate from localStorage after mount (SSR-safe)
   useEffect(() => {
@@ -69,6 +74,33 @@ export function SupportChat() {
     } catch { /* ignore */ }
     setHydrated(true);
   }, []);
+
+  // If signed in, prefer server-stored channel context (survives across devices/visits)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: sess } = await supabase.auth.getSession();
+        if (!sess.session) return;
+        const remote = await loadChannel({});
+        if (cancelled) return;
+        if (remote) {
+          const val: ChannelCtx = {
+            channelUrl: remote.channelUrl ?? undefined,
+            niche: remote.niche ?? undefined,
+            topics: remote.topics ?? undefined,
+            audience: remote.audience ?? undefined,
+            language: remote.language ?? undefined,
+            skipped: false,
+          };
+          setChannel(val);
+          setChDraft(val);
+          try { window.localStorage.setItem(CHANNEL_KEY, JSON.stringify(val)); } catch { /* ignore */ }
+        }
+      } catch { /* ignore — anonymous or offline */ }
+    })();
+    return () => { cancelled = true; };
+  }, [loadChannel]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -115,7 +147,7 @@ export function SupportChat() {
             language: channel.language || (isAr ? "Arabic" : "English"),
           }
         : null;
-      const res = await askAi({ data: { messages: next, channelContext: channelPayload } });
+      const res = await askAi({ data: { messages: next, channelContext: channelPayload, uiLanguage: isAr ? "ar" : "en" } });
       const { reply, creditsLeft, dailyLimit, tier } = res;
       setMeta({ creditsLeft, dailyLimit, tier });
       setMessages((cur) => [...cur, { role: "assistant", content: reply }]);
@@ -137,7 +169,7 @@ export function SupportChat() {
     try { window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
   }
 
-  function saveChannel() {
+  async function saveChannel() {
     const cleaned: ChannelCtx = {
       channelUrl: chDraft.channelUrl?.trim() || undefined,
       niche: chDraft.niche?.trim() || undefined,
@@ -149,6 +181,21 @@ export function SupportChat() {
     setChannel(cleaned);
     try { window.localStorage.setItem(CHANNEL_KEY, JSON.stringify(cleaned)); } catch { /* ignore */ }
     setShowChannelForm(false);
+    // Persist to server for signed-in users (best-effort)
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      if (sess.session) {
+        await saveChannelFn({
+          data: {
+            channelUrl: cleaned.channelUrl ?? null,
+            niche: cleaned.niche ?? null,
+            topics: cleaned.topics ?? null,
+            audience: cleaned.audience ?? null,
+            language: cleaned.language ?? (isAr ? "Arabic" : "English"),
+          },
+        });
+      }
+    } catch { /* ignore — will retry next save */ }
   }
   function skipChannel() {
     const val: ChannelCtx = { skipped: true };
@@ -156,10 +203,14 @@ export function SupportChat() {
     try { window.localStorage.setItem(CHANNEL_KEY, JSON.stringify(val)); } catch { /* ignore */ }
     setShowChannelForm(false);
   }
-  function clearChannel() {
+  async function clearChannel() {
     setChannel(null);
     setChDraft({});
     try { window.localStorage.removeItem(CHANNEL_KEY); } catch { /* ignore */ }
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      if (sess.session) await clearChannelFn({});
+    } catch { /* ignore */ }
   }
 
   const needsChannelPrompt = !channel; // never asked yet

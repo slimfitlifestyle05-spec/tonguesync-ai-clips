@@ -210,7 +210,9 @@ export type Database = {
       }
       profiles: {
         Row: {
+          audience: string | null
           clips_used: number
+          content_language: string | null
           created_at: string
           dubs_used: number
           email: string | null
@@ -218,11 +220,16 @@ export type Database = {
           id: string
           monthly_period_start: string
           monthly_used: number
+          niche: string | null
           tier: Database["public"]["Enums"]["subscription_tier"]
+          topics: string | null
           updated_at: string
+          youtube_channel_url: string | null
         }
         Insert: {
+          audience?: string | null
           clips_used?: number
+          content_language?: string | null
           created_at?: string
           dubs_used?: number
           email?: string | null
@@ -230,11 +237,16 @@ export type Database = {
           id: string
           monthly_period_start?: string
           monthly_used?: number
+          niche?: string | null
           tier?: Database["public"]["Enums"]["subscription_tier"]
+          topics?: string | null
           updated_at?: string
+          youtube_channel_url?: string | null
         }
         Update: {
+          audience?: string | null
           clips_used?: number
+          content_language?: string | null
           created_at?: string
           dubs_used?: number
           email?: string | null
@@ -242,8 +254,11 @@ export type Database = {
           id?: string
           monthly_period_start?: string
           monthly_used?: number
+          niche?: string | null
           tier?: Database["public"]["Enums"]["subscription_tier"]
+          topics?: string | null
           updated_at?: string
+          youtube_channel_url?: string | null
         }
         Relationships: []
       }
