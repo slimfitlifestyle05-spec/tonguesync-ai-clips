@@ -11,7 +11,7 @@ import {
   type ConversationSummary,
 } from "@/lib/ai-coach-history.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { X, Send, Sparkles, Loader2, Bot, Youtube, Pencil, History, Plus, Trash2, MessageCircle } from "lucide-react";
+import { X, Send, Sparkles, Loader2, Bot, Youtube, Pencil, History, Plus, Trash2, MessageCircle, Maximize2, Minimize2 } from "lucide-react";
 import { Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
@@ -45,6 +45,7 @@ export function SupportChat() {
   const { dir, lang } = useI18n();
   const isAr = lang === "ar";
   const [open, setOpen] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([WELCOME]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
