@@ -193,3 +193,39 @@ export const isAdminCheck = createServerFn({ method: "GET" })
       .maybeSingle();
     return { isAdmin: Boolean(data) };
   });
+
+/** Admin-only listing that includes drafts (unpublished). */
+export const listCommunityIdeasAdmin = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<CommunityIdea[]> => {
+    await assertAdmin(context);
+    const { data, error } = await context.supabase
+      .from("community_ideas")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    const client = serverPublicClient();
+    return mapIdeas(client, data ?? []);
+  });
+
+/** Reset the vote count for an idea back to zero (also clears vote rows). */
+export const resetCommunityVotes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => z.object({ id: z.string().uuid() }).parse(v))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    // Delete vote rows first — the sync_community_votes trigger updates the counter.
+    const { error: delErr } = await context.supabase
+      .from("community_idea_votes")
+      .delete()
+      .eq("idea_id", data.id);
+    if (delErr) throw new Error(delErr.message);
+    // Safety net: force counter to 0 in case any drift exists.
+    const { error: updErr } = await context.supabase
+      .from("community_ideas")
+      .update({ votes: 0 })
+      .eq("id", data.id);
+    if (updErr) throw new Error(updErr.message);
+    return { ok: true };
+  });
