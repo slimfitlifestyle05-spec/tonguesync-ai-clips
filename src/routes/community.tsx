@@ -8,6 +8,7 @@ import {
   getMyVotes,
   type CommunityIdea,
 } from "@/lib/community.functions";
+import { getYoutubeChannel } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/Logo";
 import { LangToggle } from "@/components/LangToggle";
@@ -31,6 +32,10 @@ import {
   Lock,
   PlayCircle,
   X,
+  Youtube,
+  ThumbsUp,
+  MessageSquare,
+  Info,
 } from "lucide-react";
 
 export const Route = createFileRoute("/community")({
@@ -59,6 +64,10 @@ function CommunityPage() {
 
   const ideasQ = useQuery({ queryKey: ["community-ideas"], queryFn: () => list() });
   const votesQ = useQuery({ queryKey: ["community-my-votes"], queryFn: () => votes(), retry: false });
+  const ytChannel = useServerFn(getYoutubeChannel);
+  const channelQ = useQuery({ queryKey: ["yt-channel-public"], queryFn: () => ytChannel() });
+  const channelUrl = channelQ.data?.url ?? "";
+  const channelHandle = channelQ.data?.handle ?? "";
 
   const myVotes = new Set(votesQ.data ?? []);
 
@@ -105,6 +114,25 @@ function CommunityPage() {
       </header>
 
       <section className="mx-auto max-w-6xl px-6 pt-4 pb-10">
+        {channelUrl ? (
+          <a
+            href={channelUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-red-500/30 bg-gradient-to-r from-red-600/15 via-red-500/10 to-transparent px-4 py-3 transition hover:border-red-400/60"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-red-600 text-white">
+                <Youtube className="h-5 w-5" />
+              </div>
+              <div className="leading-tight">
+                <div className="text-sm font-semibold text-white">Subscribe on YouTube{channelHandle ? ` · ${channelHandle}` : ""}</div>
+                <div className="text-[11px] text-slate-300">Soon: subscribe + like + watch ≥ 50% to unlock every PDF playbook.</div>
+              </div>
+            </div>
+            <Button size="sm" className="bg-red-600 text-white hover:bg-red-500">Subscribe</Button>
+          </a>
+        ) : null}
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -167,6 +195,7 @@ function CommunityPage() {
                 index={i}
                 voted={myVotes.has(idea.id)}
                 signedIn={signedIn}
+                channelUrl={channelUrl}
                 onChange={() => {
                   qc.invalidateQueries({ queryKey: ["community-ideas"] });
                   qc.invalidateQueries({ queryKey: ["community-my-votes"] });
@@ -185,12 +214,14 @@ function IdeaCard({
   index,
   voted,
   signedIn,
+  channelUrl,
   onChange,
 }: {
   idea: CommunityIdea;
   index: number;
   voted: boolean;
   signedIn: boolean;
+  channelUrl: string;
   onChange: () => void;
 }) {
   const vote = useServerFn(toggleCommunityVote);
@@ -202,7 +233,9 @@ function IdeaCard({
   });
 
   const vol = String(index + 1).padStart(2, "0");
-  const videoUrl = idea.cta && /^https?:\/\//i.test(idea.cta) ? idea.cta : null;
+  const videoUrl = idea.youtube_video_url && /^https?:\/\//i.test(idea.youtube_video_url)
+    ? idea.youtube_video_url
+    : (idea.cta && /^https?:\/\//i.test(idea.cta) ? idea.cta : null);
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur transition hover:border-fuchsia-400/40">
@@ -234,11 +267,29 @@ function IdeaCard({
       </div>
       <div className="flex flex-1 flex-col gap-3 p-5">
         <h3 className="text-base font-semibold leading-snug text-white line-clamp-2">{idea.title}</h3>
+        {idea.youtube_video_url ? (
+          <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-2.5 py-2 text-[11px] text-slate-300">
+            <div className="flex items-center gap-1.5 text-red-300 font-medium">
+              <Info className="h-3 w-3" /> To unlock the PDF:
+            </div>
+            <ul className="mt-1 grid grid-cols-3 gap-1 text-slate-400">
+              <li className="flex items-center gap-1"><Youtube className="h-3 w-3 text-red-400" /> Subscribe</li>
+              <li className="flex items-center gap-1"><ThumbsUp className="h-3 w-3 text-red-400" /> Like</li>
+              <li className="flex items-center gap-1"><MessageSquare className="h-3 w-3 text-red-400" /> Comment</li>
+            </ul>
+          </div>
+        ) : null}
         <div className="mt-auto grid grid-cols-2 gap-2 pt-1">
           {videoUrl ? (
             <a href={videoUrl} target="_blank" rel="noreferrer" className="contents">
+              <Button variant="outline" className="w-full border-red-500/30 bg-red-500/10 text-white hover:bg-red-500/20">
+                <Youtube className="h-4 w-4 mr-1 text-red-400" /> Watch on YouTube
+              </Button>
+            </a>
+          ) : channelUrl ? (
+            <a href={channelUrl} target="_blank" rel="noreferrer" className="contents">
               <Button variant="outline" className="w-full border-white/10 bg-white/5 text-white hover:bg-white/10">
-                <PlayCircle className="h-4 w-4 mr-1" /> Watch Video
+                <Youtube className="h-4 w-4 mr-1 text-red-400" /> Subscribe
               </Button>
             </a>
           ) : (

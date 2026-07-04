@@ -1,0 +1,1 @@
+CREATE POLICY "Public reads youtube channel" ON public.app_settings FOR SELECT TO anon, authenticated USING (key = 'youtube_channel');
