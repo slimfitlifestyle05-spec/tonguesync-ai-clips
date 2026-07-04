@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { FeatureCard, ClipperVisual, DubbingVisual } from "@/components/FeatureShowcase";
 import { OnboardingTour } from "@/components/OnboardingTour";
 import { CommunityIdeasManager } from "@/components/CommunityIdeasManager";
+import { ShowcaseVideosAdmin } from "@/components/ShowcaseVideosAdmin";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard \u2014 TongueSync AI" }] }),
@@ -104,6 +105,8 @@ function Dashboard() {
         </div>
 
         <OnboardingTour profile={profile} />
+
+        <ShowcaseVideosAdmin />
 
         <CommunityIdeasManager />
 
