@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+Disallow: /auth
+Disallow: /dashboard
+Disallow: /clipper
+Disallow: /dubbing
+Disallow: /action/
+Disallow: /ts-secret-gate-2026
+
+Sitemap: https://tonguesync-ai-clips.lovable.app/sitemap.xml

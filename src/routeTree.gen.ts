@@ -19,6 +19,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CompareIndexRouteImport } from './routes/compare.index'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as CompareRaskRouteImport } from './routes/compare.rask'
 import { Route as CompareHeygenRouteImport } from './routes/compare.heygen'
@@ -75,6 +76,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareIndexRoute = CompareIndexRouteImport.update({
+  id: '/compare/',
+  path: '/compare/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlogIndexRoute = BlogIndexRouteImport.update({
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/compare/heygen': typeof CompareHeygenRoute
   '/compare/rask': typeof CompareRaskRoute
   '/blog/': typeof BlogIndexRoute
+  '/compare/': typeof CompareIndexRoute
   '/action/$videoId': typeof AuthenticatedActionVideoIdRoute
 }
 export interface FileRoutesByTo {
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/compare/heygen': typeof CompareHeygenRoute
   '/compare/rask': typeof CompareRaskRoute
   '/blog': typeof BlogIndexRoute
+  '/compare': typeof CompareIndexRoute
   '/action/$videoId': typeof AuthenticatedActionVideoIdRoute
 }
 export interface FileRoutesById {
@@ -176,6 +184,7 @@ export interface FileRoutesById {
   '/compare/heygen': typeof CompareHeygenRoute
   '/compare/rask': typeof CompareRaskRoute
   '/blog/': typeof BlogIndexRoute
+  '/compare/': typeof CompareIndexRoute
   '/_authenticated/action/$videoId': typeof AuthenticatedActionVideoIdRoute
 }
 export interface FileRouteTypes {
@@ -197,6 +206,7 @@ export interface FileRouteTypes {
     | '/compare/heygen'
     | '/compare/rask'
     | '/blog/'
+    | '/compare/'
     | '/action/$videoId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -216,6 +226,7 @@ export interface FileRouteTypes {
     | '/compare/heygen'
     | '/compare/rask'
     | '/blog'
+    | '/compare'
     | '/action/$videoId'
   id:
     | '__root__'
@@ -236,6 +247,7 @@ export interface FileRouteTypes {
     | '/compare/heygen'
     | '/compare/rask'
     | '/blog/'
+    | '/compare/'
     | '/_authenticated/action/$videoId'
   fileRoutesById: FileRoutesById
 }
@@ -254,6 +266,7 @@ export interface RootRouteChildren {
   CompareHeygenRoute: typeof CompareHeygenRoute
   CompareRaskRoute: typeof CompareRaskRoute
   BlogIndexRoute: typeof BlogIndexRoute
+  CompareIndexRoute: typeof CompareIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -326,6 +339,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare/': {
+      id: '/compare/'
+      path: '/compare'
+      fullPath: '/compare/'
+      preLoaderRoute: typeof CompareIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog/': {
@@ -419,6 +439,7 @@ const rootRouteChildren: RootRouteChildren = {
   CompareHeygenRoute: CompareHeygenRoute,
   CompareRaskRoute: CompareRaskRoute,
   BlogIndexRoute: BlogIndexRoute,
+  CompareIndexRoute: CompareIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
