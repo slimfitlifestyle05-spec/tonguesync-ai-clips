@@ -201,6 +201,7 @@ function IdeaForm({ existing, onSaved }: { existing?: CommunityIdea; onSaved: ()
   const [cta, setCta] = useState(existing?.cta ?? "");
   const [thumbnailUrl, setThumbnailUrl] = useState(existing?.thumbnail_url ?? "");
   const [pdfUrl, setPdfUrl] = useState(existing?.pdf_url ?? "");
+  const [ytUrl, setYtUrl] = useState(existing?.youtube_video_url ?? "");
   const [published, setPublished] = useState(existing?.is_published ?? true);
   const [thumbBusy, setThumbBusy] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -261,6 +262,7 @@ function IdeaForm({ existing, onSaved }: { existing?: CommunityIdea; onSaved: ()
         cta: cta.trim() || null,
         thumbnail_url: thumbnailUrl.trim() || null,
         pdf_url: pdfUrl.trim() || null,
+        youtube_video_url: ytUrl.trim() || null,
         is_published: published,
       };
       if (existing) {
@@ -331,10 +333,85 @@ function IdeaForm({ existing, onSaved }: { existing?: CommunityIdea; onSaved: ()
         <span className="text-sm">Published</span>
       </div>
 
+      <div>
+        <Label className="flex items-center gap-1.5"><Youtube className="h-3.5 w-3.5 text-red-400" /> YouTube video for this idea (optional)</Label>
+        <Input
+          value={ytUrl}
+          onChange={(e) => setYtUrl(e.target.value)}
+          placeholder="https://www.youtube.com/watch?v=..."
+          className="mt-1 bg-white/5 border-white/10"
+        />
+        <p className="mt-1 text-[11px] text-slate-500">
+          Once linked, visitors will need to subscribe, like, and watch this video before downloading the PDF (activates when the YouTube API is connected).
+        </p>
+      </div>
+
       <Button type="submit" disabled={saving} className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold hover:opacity-90">
         {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
         {existing ? "Save changes" : "Publish idea"}
       </Button>
+    </form>
+  );
+}
+
+function YoutubeChannelSetting() {
+  const qc = useQueryClient();
+  const load = useServerFn(getYoutubeChannel);
+  const save = useServerFn(setYoutubeChannel);
+  const q = useQuery({ queryKey: ["yt-channel"], queryFn: () => load() });
+  const [url, setUrl] = useState("");
+  const [handle, setHandle] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  if (q.data && !hydrated) {
+    setUrl(q.data.url ?? "");
+    setHandle(q.data.handle ?? "");
+    setHydrated(true);
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await save({ data: { url: url.trim(), handle: handle.trim() } });
+      toast.success("YouTube channel saved");
+      qc.invalidateQueries({ queryKey: ["yt-channel"] });
+      qc.invalidateQueries({ queryKey: ["yt-channel-public"] });
+    } catch (err: any) {
+      toast.error(err?.message ?? "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="mb-5 rounded-xl border border-red-400/20 bg-red-500/5 p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Youtube className="h-4 w-4 text-red-400" />
+        <div className="text-sm font-semibold text-red-200">Site YouTube channel</div>
+      </div>
+      <p className="text-xs text-slate-400 mb-3">
+        Add your channel link once. It will show as a "Subscribe" CTA on the Viral Ideas page, and later gate PDF downloads (subscribe + watch ≥ 50% + like + comment).
+      </p>
+      <div className="grid gap-3 md:grid-cols-[1fr_180px_auto]">
+        <Input
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://www.youtube.com/@yourchannel"
+          className="bg-white/5 border-white/10"
+        />
+        <Input
+          value={handle}
+          onChange={(e) => setHandle(e.target.value)}
+          placeholder="@handle (optional)"
+          className="bg-white/5 border-white/10"
+        />
+        <Button type="submit" disabled={saving} className="bg-red-500 hover:bg-red-500/90 text-white font-semibold">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+          Save channel
+        </Button>
+      </div>
     </form>
   );
 }
