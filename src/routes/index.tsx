@@ -15,7 +15,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { getPromoVideo } from "@/lib/admin.functions";
 import { getShowcaseVideos } from "@/lib/showcase-videos.functions";
-import { useI18n as useI18nLang } from "@/lib/i18n";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -148,8 +147,7 @@ function Index() {
 }
 
 function BeforeAfterSection() {
-  const { t } = useI18n();
-  const { lang } = useI18nLang();
+  const { t, lang } = useI18n();
   const fetchShowcase = useServerFn(getShowcaseVideos);
   const { data: showcase } = useQuery({
     queryKey: ["showcase-videos"],
