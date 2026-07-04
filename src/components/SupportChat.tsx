@@ -208,6 +208,8 @@ export function SupportChat() {
     setChannel(cleaned);
     try { window.localStorage.setItem(CHANNEL_KEY, JSON.stringify(cleaned)); } catch { /* ignore */ }
     setShowChannelForm(false);
+    setSeededFromIdeas(false);
+    setTimeout(() => inputRef.current?.focus(), 80);
     // Persist to server for signed-in users (best-effort)
     try {
       const { data: sess } = await supabase.auth.getSession();
@@ -320,6 +322,16 @@ export function SupportChat() {
             {/* Channel-linking onboarding card */}
             {(needsChannelPrompt || showChannelForm) && (
               <div dir={dir} className="rounded-xl border border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/10 via-slate-900 to-amber-400/10 p-3">
+                {seededFromIdeas && showChannelForm && (
+                  <div className="mb-2 flex items-center gap-2 rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2 py-1.5 text-[11px] text-emerald-100">
+                    <Sparkles className="h-3.5 w-3.5 text-emerald-300" />
+                    <span className="flex-1">
+                      {isAr
+                        ? "اخترنا النيتش من فكرة Viral Ideas اللي دُست عليها — راجعه أو عدّله ثم اضغط حفظ وتفعيل."
+                        : "We pre-filled the niche from the Viral Idea you tapped — review or edit it, then hit Save & activate."}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 mb-2">
                   <div className="flex h-7 w-7 items-center justify-center rounded-full bg-red-500/90 text-white">
                     <Youtube className="h-4 w-4" />
