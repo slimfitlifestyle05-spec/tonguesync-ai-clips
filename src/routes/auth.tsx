@@ -9,6 +9,7 @@ import { Logo } from "@/components/Logo";
 import { LangToggle } from "@/components/LangToggle";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
+import { isDisposableEmail } from "@/lib/disposable-emails";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -35,6 +36,10 @@ function AuthPage() {
     setLoading(true);
     try {
       if (mode === "signup") {
+        if (isDisposableEmail(email)) {
+          toast.error("Disposable or temporary email addresses are not allowed. Please use a real email.");
+          return;
+        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
