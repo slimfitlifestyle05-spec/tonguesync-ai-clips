@@ -325,10 +325,12 @@ export type Database = {
     }
     Functions: {
       consume_ai_coach_credit: {
-        Args: { _daily_limit: number; _user_id: string }
+        Args: never
         Returns: {
           allowed: boolean
           credits_left: number
+          daily_limit: number
+          tier: string
           used: number
         }[]
       }
