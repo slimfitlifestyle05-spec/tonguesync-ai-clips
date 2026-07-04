@@ -424,6 +424,34 @@ export function SupportChat() {
               </div>
             </div>
             <div className="flex items-center gap-1">
+              {signedIn && (
+                <>
+                  <button
+                    onClick={newConversation}
+                    className="rounded p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
+                    aria-label={isAr ? "محادثة جديدة" : "New conversation"}
+                    title={isAr ? "محادثة جديدة" : "New conversation"}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => { setHistoryOpen((v) => !v); if (!historyOpen) void refreshConversations(); }}
+                    className={
+                      "relative rounded p-1.5 hover:bg-white/10 " +
+                      (historyOpen ? "text-fuchsia-300" : "text-slate-400 hover:text-white")
+                    }
+                    aria-label={isAr ? "سجل المحادثات" : "Conversation history"}
+                    title={isAr ? "سجل المحادثات" : "Conversation history"}
+                  >
+                    <History className="h-4 w-4" />
+                    {conversations.length > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[16px] rounded-full bg-fuchsia-500 px-1 text-[9px] font-bold text-black">
+                        {conversations.length > 99 ? "99+" : conversations.length}
+                      </span>
+                    )}
+                  </button>
+                </>
+              )}
               <button
                 onClick={reset}
                 className="rounded px-2 py-1 text-[11px] text-slate-400 hover:bg-white/10 hover:text-white"
@@ -440,6 +468,106 @@ export function SupportChat() {
               </button>
             </div>
           </div>
+
+          {/* History panel (in-panel overlay) */}
+          {historyOpen && (
+            <div dir={dir} className="absolute inset-x-0 top-[60px] bottom-0 z-10 flex flex-col overflow-hidden border-t border-white/10 bg-slate-950/98 backdrop-blur">
+              <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
+                <div className="flex items-center gap-2 text-white">
+                  <History className="h-4 w-4 text-fuchsia-300" />
+                  <span className="text-sm font-semibold">
+                    {isAr ? "خططك المحفوظة" : "Your saved plans"}
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    ({conversations.length})
+                  </span>
+                </div>
+                <button
+                  onClick={() => setHistoryOpen(false)}
+                  className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white"
+                  aria-label="Close history"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-3 py-3">
+                {!signedIn ? (
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center text-xs text-slate-300">
+                    {isAr ? "سجّل الدخول عشان تحفظ خططك وترجع لها بعدين." : "Sign in to save your plans and resume them later."}
+                    <div className="mt-3">
+                      <Link to="/auth" onClick={() => setOpen(false)}>
+                        <Button size="sm" className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black">
+                          {isAr ? "سجّل الدخول" : "Sign in"}
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                ) : loadingHistory ? (
+                  <div className="flex items-center justify-center py-8 text-slate-400">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                ) : conversations.length === 0 ? (
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center text-xs text-slate-400">
+                    {isAr
+                      ? "لسه مفيش خطط محفوظة. ابدأ محادثة مع المدرب وهنحفظها تلقائيًا."
+                      : "No saved plans yet. Start chatting with the coach and we'll auto-save this thread."}
+                  </div>
+                ) : (
+                  <ul className="space-y-2">
+                    {conversations.map((c) => {
+                      const active = c.id === currentConvId;
+                      const date = new Date(c.updated_at).toLocaleDateString(isAr ? "ar-EG" : "en-US", { month: "short", day: "numeric" });
+                      return (
+                        <li
+                          key={c.id}
+                          className={
+                            "group rounded-xl border p-3 transition " +
+                            (active
+                              ? "border-fuchsia-400/60 bg-fuchsia-500/10"
+                              : "border-white/10 bg-white/5 hover:border-fuchsia-400/40 hover:bg-white/10")
+                          }
+                        >
+                          <div className="flex items-start gap-2">
+                            <button
+                              onClick={() => void loadConversation(c.id)}
+                              className="flex-1 min-w-0 text-start"
+                            >
+                              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-fuchsia-300">
+                                <MessageCircle className="h-3 w-3" />
+                                <span className="truncate">{c.niche || (isAr ? "بدون نيتش" : "No niche")}</span>
+                                <span className="text-slate-500">·</span>
+                                <span className="text-slate-400">{date}</span>
+                                <span className="text-slate-500">·</span>
+                                <span className="text-slate-400">{c.message_count} {isAr ? "رسالة" : "msgs"}</span>
+                              </div>
+                              <div className="mt-1 text-[13px] font-medium text-white line-clamp-2">
+                                {c.title}
+                              </div>
+                              {c.topics && (
+                                <div className="mt-0.5 text-[11px] text-slate-400 line-clamp-1">
+                                  {c.topics}
+                                </div>
+                              )}
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(isAr ? "حذف الخطة؟" : "Delete this plan?")) void removeConversation(c.id);
+                              }}
+                              className="shrink-0 rounded p-1 text-slate-500 opacity-0 transition hover:bg-red-500/20 hover:text-red-300 group-hover:opacity-100"
+                              aria-label="Delete"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Messages */}
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4 text-sm">
