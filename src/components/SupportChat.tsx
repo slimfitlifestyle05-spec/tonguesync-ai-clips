@@ -12,8 +12,10 @@ const STORAGE_KEY = "tonguesync_support_chat_v1";
 const WELCOME: Msg = {
   role: "assistant",
   content:
-    "Hey — I'm **AI Coach**, your YouTube & Shorts growth partner at TongueSync.\n\nAsk me for viral video ideas, SEO-ready titles, descriptions, hashtags and tags — I pull from our [Viral Ideas](/community) library and give you what actually ranks. What are we filming next?",
+    "Hey — I'm **TongueSync AI Coach**, your YouTube Growth & SEO strategist (vidIQ-style, powered by Gemini).\n\nAsk me for a **niche keyword table**, **viral title formulas**, **YouTube algorithm tips**, or **Shorts retention tricks** — I'll give you data-backed answers with search volume, competition, and CTR strategy.\n\n> Free plan: **10 credits/day** &middot; Pro: **50 credits/day** &middot; 1 credit per question.",
 };
+
+type CoachMeta = { creditsLeft: number; dailyLimit: number; tier: "free" | "pro" } | null;
 
 export function SupportChat() {
   const [open, setOpen] = useState(false);
@@ -21,6 +23,7 @@ export function SupportChat() {
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [meta, setMeta] = useState<CoachMeta>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const askAi = useServerFn(supportChat);
@@ -66,11 +69,17 @@ export function SupportChat() {
     setInput("");
     setPending(true);
     try {
-      const { reply } = await askAi({ data: { messages: next } });
+      const res = await askAi({ data: { messages: next } });
+      const { reply, creditsLeft, dailyLimit, tier } = res;
+      setMeta({ creditsLeft, dailyLimit, tier });
       setMessages((cur) => [...cur, { role: "assistant", content: reply }]);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Something went wrong. Please try again.";
-      setMessages((cur) => [...cur, { role: "assistant", content: `_${msg}_` }]);
+      const raw = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      const isAuth = /unauthorized|authorization|token/i.test(raw);
+      const msg = isAuth
+        ? "You need to **sign in** to use AI Coach. 👉 [Sign in / Create free account](/auth) — Free plan gets 10 AI Coach credits/day."
+        : `_${raw}_`;
+      setMessages((cur) => [...cur, { role: "assistant", content: msg }]);
     } finally {
       setPending(false);
       setTimeout(() => inputRef.current?.focus(), 50);
@@ -108,7 +117,11 @@ export function SupportChat() {
               </div>
               <div className="leading-tight">
                 <div className="text-sm font-semibold">AI Coach &middot; TongueSync</div>
-                <div className="text-[11px] text-emerald-300">Online &middot; SEO + viral ideas</div>
+                <div className="text-[11px] text-emerald-300">
+                  {meta
+                    ? `${meta.tier === "pro" ? "Pro" : "Free"} · ${meta.creditsLeft}/${meta.dailyLimit} credits left today`
+                    : "Online · YouTube SEO + Algorithm"}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-1">
