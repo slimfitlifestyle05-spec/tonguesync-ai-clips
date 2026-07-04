@@ -8,6 +8,7 @@ export type ChannelContext = {
   topics: string | null;
   audience: string | null;
   language: string | null;
+  country: string | null;
 };
 
 const SaveSchema = z.object({
@@ -16,6 +17,7 @@ const SaveSchema = z.object({
   topics: z.string().trim().max(500).optional().nullable(),
   audience: z.string().trim().max(200).optional().nullable(),
   language: z.string().trim().max(50).optional().nullable(),
+  country: z.string().trim().max(80).optional().nullable(),
 });
 
 function norm(v: string | null | undefined): string | null {
@@ -30,18 +32,19 @@ export const getChannelContext = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("profiles")
-      .select("youtube_channel_url,niche,topics,audience,content_language")
+      .select("youtube_channel_url,niche,topics,audience,content_language,channel_country")
       .eq("id", userId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!data) return null;
-    if (!data.youtube_channel_url && !data.niche && !data.topics && !data.audience) return null;
+    if (!data.youtube_channel_url && !data.niche && !data.topics && !data.audience && !data.channel_country) return null;
     return {
       channelUrl: data.youtube_channel_url ?? null,
       niche: data.niche ?? null,
       topics: data.topics ?? null,
       audience: data.audience ?? null,
       language: data.content_language ?? null,
+      country: data.channel_country ?? null,
     };
   });
 
@@ -56,6 +59,7 @@ export const saveChannelContext = createServerFn({ method: "POST" })
       topics: norm(data.topics),
       audience: norm(data.audience),
       content_language: norm(data.language),
+      channel_country: norm(data.country),
       updated_at: new Date().toISOString(),
     };
     const { error } = await supabase.from("profiles").update(payload).eq("id", userId);
@@ -66,6 +70,7 @@ export const saveChannelContext = createServerFn({ method: "POST" })
       topics: payload.topics,
       audience: payload.audience,
       language: payload.content_language,
+      country: payload.channel_country,
     };
   });
 
@@ -81,6 +86,7 @@ export const clearChannelContext = createServerFn({ method: "POST" })
         topics: null,
         audience: null,
         content_language: null,
+        channel_country: null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", userId);
