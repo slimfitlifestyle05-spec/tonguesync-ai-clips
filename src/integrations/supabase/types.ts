@@ -324,7 +324,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      consume_ai_coach_credit: {
+        Args: never
+        Returns: {
+          allowed: boolean
+          credits_left: number
+          daily_limit: number
+          tier: string
+          used: number
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "user"
