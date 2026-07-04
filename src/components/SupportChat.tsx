@@ -46,6 +46,7 @@ export function SupportChat() {
   const [channel, setChannel] = useState<ChannelCtx | null>(null);
   const [showChannelForm, setShowChannelForm] = useState(false);
   const [chDraft, setChDraft] = useState<ChannelCtx>({});
+  const [seededFromIdeas, setSeededFromIdeas] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const askAi = useServerFn(supportChat);
@@ -141,13 +142,13 @@ export function SupportChat() {
           topics: detail.topics || channel?.topics,
           skipped: false,
         };
-        setChannel(seeded);
         setChDraft(seeded);
-        try { window.localStorage.setItem(CHANNEL_KEY, JSON.stringify(seeded)); } catch { /* ignore */ }
+        // Do NOT save yet — surface the form so the user reviews / edits / confirms first.
+        setShowChannelForm(true);
+        setSeededFromIdeas(true);
       }
       if (detail.prefill) {
         setInput(detail.prefill);
-        setTimeout(() => inputRef.current?.focus(), 120);
       }
     };
     window.addEventListener("tonguesync:open-ai-coach", handler as EventListener);
