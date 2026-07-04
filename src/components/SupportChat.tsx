@@ -22,6 +22,7 @@ type Msg = { role: "user" | "assistant"; content: string };
 
 const STORAGE_KEY = "tonguesync_support_chat_v1";
 const CHANNEL_KEY = "tonguesync_ai_coach_channel_v1";
+const FULLSCREEN_KEY = "tonguesync_ai_coach_fullscreen_v1";
 
 type ChannelCtx = {
   channelUrl?: string;
@@ -83,6 +84,10 @@ export function SupportChat() {
       }
     } catch { /* ignore */ }
     try {
+      const fs = window.localStorage.getItem(FULLSCREEN_KEY);
+      if (fs === "1") setFullscreen(true);
+    } catch { /* ignore */ }
+    try {
       const rawC = window.localStorage.getItem(CHANNEL_KEY);
       if (rawC) {
         const parsed = JSON.parse(rawC) as ChannelCtx;
@@ -94,6 +99,14 @@ export function SupportChat() {
     } catch { /* ignore */ }
     setHydrated(true);
   }, []);
+
+  // Persist fullscreen preference (per browser/user)
+  useEffect(() => {
+    if (!hydrated) return;
+    try {
+      window.localStorage.setItem(FULLSCREEN_KEY, fullscreen ? "1" : "0");
+    } catch { /* ignore */ }
+  }, [fullscreen, hydrated]);
 
   // If signed in, prefer server-stored channel context (survives across devices/visits)
   useEffect(() => {
@@ -404,7 +417,7 @@ export function SupportChat() {
           dir={dir}
           className={
             fullscreen
-              ? "fixed inset-0 z-50 flex h-screen w-screen flex-col overflow-hidden border border-white/10 bg-slate-950 shadow-2xl"
+              ? "fixed inset-0 z-50 flex flex-col overflow-hidden bg-slate-950 shadow-2xl"
               : "fixed bottom-5 z-40 flex h-[560px] max-h-[calc(100vh-2rem)] w-[380px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950 shadow-2xl shadow-fuchsia-500/20 " +
                 (isAr ? "left-5" : "right-5")
           }
@@ -464,11 +477,17 @@ export function SupportChat() {
               </button>
               <button
                 onClick={() => setFullscreen((v) => !v)}
-                className="rounded p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
+                className={
+                  "flex items-center gap-1 rounded px-2 py-1 text-[11px] hover:bg-white/10 " +
+                  (fullscreen ? "text-fuchsia-200" : "text-slate-400 hover:text-white")
+                }
                 aria-label={fullscreen ? (isAr ? "تصغير" : "Exit fullscreen") : (isAr ? "ملء الشاشة" : "Fullscreen")}
                 title={fullscreen ? (isAr ? "تصغير" : "Exit fullscreen") : (isAr ? "ملء الشاشة" : "Fullscreen")}
               >
                 {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                {fullscreen && (
+                  <span className="hidden sm:inline">{isAr ? "خروج" : "Exit"}</span>
+                )}
               </button>
               <button
                 onClick={() => setOpen(false)}
@@ -581,7 +600,8 @@ export function SupportChat() {
           )}
 
           {/* Messages */}
-          <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4 text-sm">
+          <div ref={scrollRef} className={"flex-1 space-y-3 overflow-y-auto py-4 text-sm " + (fullscreen ? "px-4 md:px-8" : "px-4")}>
+            <div className={fullscreen ? "mx-auto w-full max-w-3xl space-y-3" : "contents"}>
             {/* Channel-linking onboarding card */}
             {(needsChannelPrompt || showChannelForm) && (
               <div dir={dir} className="rounded-xl border border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/10 via-slate-900 to-amber-400/10 p-3">
@@ -724,16 +744,16 @@ export function SupportChat() {
                 <div
                   className={
                     m.role === "user"
-                      ? "max-w-[80%] rounded-2xl bg-gradient-to-br from-fuchsia-500 to-amber-400 px-3 py-2 text-black " + (isAr ? "rounded-tl-sm" : "rounded-tr-sm")
-                      : "max-w-[85%] rounded-2xl bg-white/5 px-3 py-2 text-slate-100 " + (isAr ? "rounded-tr-sm" : "rounded-tl-sm")
+                      ? "min-w-0 max-w-[80%] break-words rounded-2xl bg-gradient-to-br from-fuchsia-500 to-amber-400 px-3 py-2 text-black " + (isAr ? "rounded-tl-sm" : "rounded-tr-sm")
+                      : "min-w-0 max-w-[85%] break-words rounded-2xl bg-white/5 px-3 py-2 text-slate-100 " + (isAr ? "rounded-tr-sm" : "rounded-tl-sm")
                   }
                 >
                   {m.role === "assistant" ? (
-                    <div className="prose prose-invert prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-a:text-fuchsia-300">
+                    <div className="prose prose-invert prose-sm max-w-none break-words prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-a:text-fuchsia-300 prose-pre:overflow-x-auto prose-code:break-words [&_table]:block [&_table]:w-full [&_table]:overflow-x-auto">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
                     </div>
                   ) : (
-                    <p className="whitespace-pre-wrap">{m.content}</p>
+                    <p className="whitespace-pre-wrap break-words">{m.content}</p>
                   )}
                 </div>
               </div>
@@ -768,11 +788,12 @@ export function SupportChat() {
                 </Link>
               </div>
             ) : null}
+            </div>
           </div>
 
           {/* Composer */}
-          <div className="border-t border-white/10 bg-slate-900 p-3">
-            <div className="flex items-end gap-2">
+          <div className={"border-t border-white/10 bg-slate-900 p-3 " + (fullscreen ? "px-4 md:px-8" : "")}>
+            <div className={"flex items-end gap-2 " + (fullscreen ? "mx-auto w-full max-w-3xl" : "")}>
               <textarea
                 ref={inputRef}
                 value={input}
