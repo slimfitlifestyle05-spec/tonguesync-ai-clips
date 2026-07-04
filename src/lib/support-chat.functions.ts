@@ -79,32 +79,23 @@ async function fetchIdeasContext(): Promise<string> {
   }
 }
 
-function todayUtc(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 export const supportChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => InputSchema.parse(input))
   .handler(async ({ data, context }): Promise<{ reply: string; creditsLeft: number; dailyLimit: number; tier: "free" | "pro" }> => {
-    const { supabase, userId } = context;
-    // Fetch tier
-    const { data: profile } = await supabase.from("profiles").select("tier").eq("id", userId).maybeSingle();
-    const tier = (profile?.tier ?? "free") as "free" | "pro";
-    const dailyLimit = tier === "pro" ? 50 : 10;
+    const { supabase } = context;
 
-    const today = todayUtc();
-    const { data: usageRow } = await supabase
-      .from("ai_coach_usage")
-      .select("count")
-      .eq("user_id", userId)
-      .eq("usage_date", today)
-      .maybeSingle();
-    const used = usageRow?.count ?? 0;
+    // Atomic check-and-increment inside Postgres (race-safe, tier-safe).
+    const { data: creditRows, error: creditErr } = await supabase.rpc("consume_ai_coach_credit");
+    if (creditErr) throw new Error(creditErr.message);
+    const credit = Array.isArray(creditRows) ? creditRows[0] : creditRows;
+    const tier = (credit?.tier ?? "free") as "free" | "pro";
+    const dailyLimit: number = credit?.daily_limit ?? (tier === "pro" ? 50 : 10);
+    const creditsLeft: number = credit?.credits_left ?? 0;
 
-    if (used >= dailyLimit) {
+    if (!credit?.allowed) {
       const upgradeMsg = tier === "pro"
-        ? `**Daily limit reached (${dailyLimit}/day).** Your Pro AI Coach credits reset tomorrow (UTC). Save your question and I'll help you first thing.`
+        ? `**Daily limit reached (${dailyLimit}/day).** Your Pro AI Coach credits reset tomorrow (UTC).`
         : `**Daily limit reached (${dailyLimit}/day on Free).** Upgrade to **Pro** for **50 AI Coach credits/day**, no watermark, and 30 shorts/month. 👉 [Upgrade to Pro](/#pricing)`;
       return { reply: upgradeMsg, creditsLeft: 0, dailyLimit, tier };
     }
@@ -115,23 +106,15 @@ export const supportChat = createServerFn({ method: "POST" })
       [
         { role: "system", content: BASE_PROMPT },
         { role: "system", content: ideasContext },
-        { role: "system", content: `USER_CONTEXT: tier=${tier}, credits_left_today=${dailyLimit - used - 1}/${dailyLimit}` },
+        { role: "system", content: `USER_CONTEXT: tier=${tier}, credits_left_today=${creditsLeft}/${dailyLimit}` },
         ...data.messages,
       ],
       { model: "google/gemini-2.5-pro", temperature: 0.6, maxTokens: 1600 },
     );
 
-    // Increment usage (upsert)
-    await supabase
-      .from("ai_coach_usage")
-      .upsert(
-        { user_id: userId, usage_date: today, count: used + 1, updated_at: new Date().toISOString() },
-        { onConflict: "user_id,usage_date" },
-      );
-
     return {
       reply: reply || "Sorry, I didn't catch that. Could you rephrase?",
-      creditsLeft: Math.max(0, dailyLimit - used - 1),
+      creditsLeft,
       dailyLimit,
       tier,
     };
