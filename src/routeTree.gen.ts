@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TsSecretGate2026RouteImport } from './routes/ts-secret-gate-2026'
 import { Route as TermsRouteImport } from './routes/terms'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ShowcaseRouteImport } from './routes/showcase'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ContactRouteImport } from './routes/contact'
@@ -19,7 +20,10 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CompareIndexRouteImport } from './routes/compare.index'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as CompareRaskRouteImport } from './routes/compare.rask'
+import { Route as CompareHeygenRouteImport } from './routes/compare.heygen'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as AuthenticatedDubbingRouteImport } from './routes/_authenticated/dubbing'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -34,6 +38,11 @@ const TsSecretGate2026Route = TsSecretGate2026RouteImport.update({
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShowcaseRoute = ShowcaseRouteImport.update({
@@ -75,9 +84,24 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CompareIndexRoute = CompareIndexRouteImport.update({
+  id: '/compare/',
+  path: '/compare/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BlogIndexRoute = BlogIndexRouteImport.update({
   id: '/blog/',
   path: '/blog/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareRaskRoute = CompareRaskRouteImport.update({
+  id: '/compare/rask',
+  path: '/compare/rask',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareHeygenRoute = CompareHeygenRouteImport.update({
+  id: '/compare/heygen',
+  path: '/compare/heygen',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({
@@ -115,13 +139,17 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/privacy': typeof PrivacyRoute
   '/showcase': typeof ShowcaseRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/ts-secret-gate-2026': typeof TsSecretGate2026Route
   '/clipper': typeof AuthenticatedClipperRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/dubbing': typeof AuthenticatedDubbingRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/compare/heygen': typeof CompareHeygenRoute
+  '/compare/rask': typeof CompareRaskRoute
   '/blog/': typeof BlogIndexRoute
+  '/compare/': typeof CompareIndexRoute
   '/action/$videoId': typeof AuthenticatedActionVideoIdRoute
 }
 export interface FileRoutesByTo {
@@ -132,13 +160,17 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/privacy': typeof PrivacyRoute
   '/showcase': typeof ShowcaseRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/ts-secret-gate-2026': typeof TsSecretGate2026Route
   '/clipper': typeof AuthenticatedClipperRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/dubbing': typeof AuthenticatedDubbingRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/compare/heygen': typeof CompareHeygenRoute
+  '/compare/rask': typeof CompareRaskRoute
   '/blog': typeof BlogIndexRoute
+  '/compare': typeof CompareIndexRoute
   '/action/$videoId': typeof AuthenticatedActionVideoIdRoute
 }
 export interface FileRoutesById {
@@ -151,13 +183,17 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/privacy': typeof PrivacyRoute
   '/showcase': typeof ShowcaseRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/ts-secret-gate-2026': typeof TsSecretGate2026Route
   '/_authenticated/clipper': typeof AuthenticatedClipperRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/dubbing': typeof AuthenticatedDubbingRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/compare/heygen': typeof CompareHeygenRoute
+  '/compare/rask': typeof CompareRaskRoute
   '/blog/': typeof BlogIndexRoute
+  '/compare/': typeof CompareIndexRoute
   '/_authenticated/action/$videoId': typeof AuthenticatedActionVideoIdRoute
 }
 export interface FileRouteTypes {
@@ -170,13 +206,17 @@ export interface FileRouteTypes {
     | '/contact'
     | '/privacy'
     | '/showcase'
+    | '/sitemap.xml'
     | '/terms'
     | '/ts-secret-gate-2026'
     | '/clipper'
     | '/dashboard'
     | '/dubbing'
     | '/blog/$slug'
+    | '/compare/heygen'
+    | '/compare/rask'
     | '/blog/'
+    | '/compare/'
     | '/action/$videoId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -187,13 +227,17 @@ export interface FileRouteTypes {
     | '/contact'
     | '/privacy'
     | '/showcase'
+    | '/sitemap.xml'
     | '/terms'
     | '/ts-secret-gate-2026'
     | '/clipper'
     | '/dashboard'
     | '/dubbing'
     | '/blog/$slug'
+    | '/compare/heygen'
+    | '/compare/rask'
     | '/blog'
+    | '/compare'
     | '/action/$videoId'
   id:
     | '__root__'
@@ -205,13 +249,17 @@ export interface FileRouteTypes {
     | '/contact'
     | '/privacy'
     | '/showcase'
+    | '/sitemap.xml'
     | '/terms'
     | '/ts-secret-gate-2026'
     | '/_authenticated/clipper'
     | '/_authenticated/dashboard'
     | '/_authenticated/dubbing'
     | '/blog/$slug'
+    | '/compare/heygen'
+    | '/compare/rask'
     | '/blog/'
+    | '/compare/'
     | '/_authenticated/action/$videoId'
   fileRoutesById: FileRoutesById
 }
@@ -224,10 +272,14 @@ export interface RootRouteChildren {
   ContactRoute: typeof ContactRoute
   PrivacyRoute: typeof PrivacyRoute
   ShowcaseRoute: typeof ShowcaseRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
   TsSecretGate2026Route: typeof TsSecretGate2026Route
   BlogSlugRoute: typeof BlogSlugRoute
+  CompareHeygenRoute: typeof CompareHeygenRoute
+  CompareRaskRoute: typeof CompareRaskRoute
   BlogIndexRoute: typeof BlogIndexRoute
+  CompareIndexRoute: typeof CompareIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -244,6 +296,13 @@ declare module '@tanstack/react-router' {
       path: '/terms'
       fullPath: '/terms'
       preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/showcase': {
@@ -302,11 +361,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/compare/': {
+      id: '/compare/'
+      path: '/compare'
+      fullPath: '/compare/'
+      preLoaderRoute: typeof CompareIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/blog/': {
       id: '/blog/'
       path: '/blog'
       fullPath: '/blog/'
       preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare/rask': {
+      id: '/compare/rask'
+      path: '/compare/rask'
+      fullPath: '/compare/rask'
+      preLoaderRoute: typeof CompareRaskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare/heygen': {
+      id: '/compare/heygen'
+      path: '/compare/heygen'
+      fullPath: '/compare/heygen'
+      preLoaderRoute: typeof CompareHeygenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/blog/$slug': {
@@ -373,10 +453,14 @@ const rootRouteChildren: RootRouteChildren = {
   ContactRoute: ContactRoute,
   PrivacyRoute: PrivacyRoute,
   ShowcaseRoute: ShowcaseRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
   TsSecretGate2026Route: TsSecretGate2026Route,
   BlogSlugRoute: BlogSlugRoute,
+  CompareHeygenRoute: CompareHeygenRoute,
+  CompareRaskRoute: CompareRaskRoute,
   BlogIndexRoute: BlogIndexRoute,
+  CompareIndexRoute: CompareIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
