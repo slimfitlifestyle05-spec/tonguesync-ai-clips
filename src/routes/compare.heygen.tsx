@@ -53,7 +53,7 @@ const ROWS = [
   { label: "Free tier", us: "Yes — clips + dubs", them: "Limited watermark trial" },
   { label: "Starting paid plan", us: "Simple Pro subscription", them: "From $24/mo (Creator)" },
   { label: "Built-in captions styled for TikTok/Reels", us: true, them: "Basic subtitles" },
-  { label: "PDF playbooks & trending idea community", us: true, them: false },
+  { label: "PDF playbooks & Viral Ideas library", us: true, them: false },
 ];
 
 const FAQS = [

@@ -56,16 +56,16 @@ async function fetchIdeasContext(): Promise<string> {
       .order("votes", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(20);
-    if (!data || data.length === 0) return "COMMUNITY_IDEAS: (empty)";
+    if (!data || data.length === 0) return "VIRAL_IDEAS: (empty)";
     const lines = data.map((i, idx) => {
       const tags = (i.tags ?? []).join(", ");
       const hook = i.hook ? ` | hook: ${i.hook}` : "";
       const cta = i.cta ? ` | cta: ${i.cta}` : "";
       return `${idx + 1}. [${i.category}] ${i.title}${hook}${cta} | tags: ${tags}\n   ${(i.description || "").slice(0, 320)}`;
     });
-    return `COMMUNITY_IDEAS (${data.length} فكرة من صفحة /community):\n${lines.join("\n")}`;
+    return `VIRAL_IDEAS (${data.length} live ideas from /community — use these when recommending):\n${lines.join("\n")}`;
   } catch {
-    return "COMMUNITY_IDEAS: (unavailable)";
+    return "VIRAL_IDEAS: (unavailable)";
   }
 }
 

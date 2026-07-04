@@ -36,16 +36,16 @@ import {
 export const Route = createFileRoute("/community")({
   head: () => ({
     meta: [
-      { title: "Community — Trending short video ideas | TongueSync AI" },
+      { title: "Viral Ideas — Trending short video ideas | TongueSync AI" },
       {
         name: "description",
         content:
-          "Trending short-form video ideas from the TongueSync community, with step-by-step PDF playbooks you can download and run today.",
+          "Viral Ideas — trending short-form video ideas from TongueSync, with step-by-step PDF playbooks you can download and run today.",
       },
-      { property: "og:title", content: "TongueSync Community — Trending short ideas" },
+      { property: "og:title", content: "TongueSync Viral Ideas — Trending short ideas" },
       {
         property: "og:description",
-        content: "Fresh short video ideas + PDF playbooks curated by the TongueSync team.",
+        content: "Fresh viral short video ideas + PDF playbooks curated by the TongueSync team.",
       },
     ],
   }),

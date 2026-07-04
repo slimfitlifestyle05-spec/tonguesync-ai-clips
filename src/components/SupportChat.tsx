@@ -12,7 +12,7 @@ const STORAGE_KEY = "tonguesync_support_chat_v1";
 const WELCOME: Msg = {
   role: "assistant",
   content:
-    "أهلاً! أنا **بُشرى** من فريق TongueSync 👋\n\nاسأليني عن أفكار شورتس رايجة، طريقة الدبلجة الذكية، أو أي حاجة عن حسابك. عندنا مكتبة أفكار جاهزة في [/community](/community) مع PDF playbooks تقدر تنزّلها.",
+    "Hey — I'm **AI Coach**, your YouTube & Shorts growth partner at TongueSync.\n\nAsk me for viral video ideas, SEO-ready titles, descriptions, hashtags and tags — I pull from our [Viral Ideas](/community) library and give you what actually ranks. What are we filming next?",
 };
 
 export function SupportChat() {
@@ -107,8 +107,8 @@ export function SupportChat() {
                 <Sparkles className="h-4 w-4 text-black" />
               </div>
               <div className="leading-tight">
-                <div className="text-sm font-semibold">Sync &middot; TongueSync AI</div>
-                <div className="text-[11px] text-emerald-300">Online &middot; instant replies</div>
+                <div className="text-sm font-semibold">AI Coach &middot; TongueSync</div>
+                <div className="text-[11px] text-emerald-300">Online &middot; SEO + viral ideas</div>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -154,7 +154,7 @@ export function SupportChat() {
               <div className="flex justify-start">
                 <div className="flex items-center gap-2 rounded-2xl rounded-tl-sm bg-white/5 px-3 py-2 text-slate-400">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  <span className="text-xs">Sync is typing…</span>
+                  <span className="text-xs">AI Coach is typing…</span>
                 </div>
               </div>
             )}
@@ -174,7 +174,7 @@ export function SupportChat() {
                   }
                 }}
                 rows={1}
-                placeholder="Ask about dubbing, voice cloning, your account…"
+                placeholder="Ask for viral ideas, titles, tags, hashtags…"
                 className="max-h-32 min-h-[40px] flex-1 resize-none rounded-lg border border-white/10 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-fuchsia-400 focus:outline-none"
                 disabled={pending}
               />
