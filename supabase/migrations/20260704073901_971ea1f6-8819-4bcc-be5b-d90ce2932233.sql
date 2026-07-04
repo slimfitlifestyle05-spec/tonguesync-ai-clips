@@ -1,0 +1,1 @@
+CREATE POLICY "Public reads showcase videos" ON public.app_settings FOR SELECT TO anon, authenticated USING (key = 'showcase_videos');
