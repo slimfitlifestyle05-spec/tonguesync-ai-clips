@@ -3,8 +3,15 @@ import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
 import { supportChat } from "@/lib/support-chat.functions";
 import { getChannelContext, saveChannelContext, clearChannelContext } from "@/lib/channel-context.functions";
+import {
+  listCoachConversations,
+  getCoachConversation,
+  upsertCoachConversation,
+  deleteCoachConversation,
+  type ConversationSummary,
+} from "@/lib/ai-coach-history.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { X, Send, Sparkles, Loader2, Bot, Youtube, Pencil } from "lucide-react";
+import { X, Send, Sparkles, Loader2, Bot, Youtube, Pencil, History, Plus, Trash2, MessageCircle } from "lucide-react";
 import { Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
@@ -47,12 +54,22 @@ export function SupportChat() {
   const [showChannelForm, setShowChannelForm] = useState(false);
   const [chDraft, setChDraft] = useState<ChannelCtx>({});
   const [seededFromIdeas, setSeededFromIdeas] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [currentConvId, setCurrentConvId] = useState<string | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const askAi = useServerFn(supportChat);
   const loadChannel = useServerFn(getChannelContext);
   const saveChannelFn = useServerFn(saveChannelContext);
   const clearChannelFn = useServerFn(clearChannelContext);
+  const listConvsFn = useServerFn(listCoachConversations);
+  const getConvFn = useServerFn(getCoachConversation);
+  const upsertConvFn = useServerFn(upsertCoachConversation);
+  const deleteConvFn = useServerFn(deleteCoachConversation);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Hydrate from localStorage after mount (SSR-safe)
   useEffect(() => {
