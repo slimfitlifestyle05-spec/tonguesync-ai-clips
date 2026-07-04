@@ -85,7 +85,7 @@ export function CommunityIdeasManager() {
   if (!isAdmin) return null;
 
   return (
-    <section className="rounded-2xl border border-amber-300/20 bg-amber-500/5 p-5">
+    <section className="rounded-2xl border border-amber-300/20 bg-amber-500/5 p-5 overflow-hidden">
       <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
         <div>
           <div className="text-sm font-semibold text-amber-200 flex items-center gap-2"><Sparkles className="h-4 w-4" /> Viral Ideas</div>
@@ -114,17 +114,17 @@ export function CommunityIdeasManager() {
       ) : (ideasQ.data ?? []).length === 0 ? (
         <div className="text-sm text-slate-400">No ideas yet. Add the first one.</div>
       ) : (
-        <div className="grid gap-3">
+        <div className="grid gap-3 min-w-0">
           {(ideasQ.data ?? []).map((idea) => (
-            <div key={idea.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+            <div key={idea.id} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3 min-w-0">
               {idea.thumbnail_signed_url ? (
-                <img src={idea.thumbnail_signed_url} alt="" className="h-14 w-14 rounded-lg object-cover" loading="lazy" />
+                <img src={idea.thumbnail_signed_url} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" loading="lazy" />
               ) : (
-                <div className="h-14 w-14 rounded-lg bg-gradient-to-br from-fuchsia-500/30 to-amber-400/30 flex items-center justify-center">
+                <div className="h-14 w-14 shrink-0 rounded-lg bg-gradient-to-br from-fuchsia-500/30 to-amber-400/30 flex items-center justify-center">
                   <ImageIcon className="h-5 w-5 text-white/60" />
                 </div>
               )}
-              <div className="flex-1 min-w-0">
+              <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="font-medium truncate">{idea.title}</div>
                   <Badge variant="outline" className="border-white/20 text-slate-300 text-[10px]">{idea.category}</Badge>
@@ -134,7 +134,7 @@ export function CommunityIdeasManager() {
                 </div>
                 <div className="text-xs text-slate-400 truncate">{idea.description}</div>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
                 <Button
                   size="sm"
                   variant="ghost"
