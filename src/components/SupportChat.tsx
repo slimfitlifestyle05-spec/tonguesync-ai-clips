@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supportChat } from "@/lib/support-chat.functions";
-import { MessageCircle, X, Send, Sparkles, Loader2 } from "lucide-react";
+import { X, Send, Sparkles, Loader2, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -61,6 +61,14 @@ export function SupportChat() {
     }
   }, [open]);
 
+  // Allow external triggers (e.g. top nav) to open the coach
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = () => setOpen(true);
+    window.addEventListener("tonguesync:open-ai-coach", handler);
+    return () => window.removeEventListener("tonguesync:open-ai-coach", handler);
+  }, []);
+
   async function send() {
     const text = input.trim();
     if (!text || pending) return;
@@ -98,11 +106,17 @@ export function SupportChat() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label="Open support chat"
-          className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-amber-400 text-black shadow-2xl shadow-fuchsia-500/40 transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-fuchsia-300 focus:ring-offset-2 focus:ring-offset-slate-950"
+          aria-label="Open AI Coach"
+          className="group fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full border border-white/10 bg-slate-950/90 py-2 pl-2 pr-4 shadow-2xl shadow-fuchsia-500/30 backdrop-blur transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-fuchsia-300 focus:ring-offset-2 focus:ring-offset-slate-950"
         >
-          <MessageCircle className="h-6 w-6" />
-          <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-emerald-400 ring-2 ring-slate-950" />
+          <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 via-violet-500 to-amber-400 text-black">
+            <Bot className="h-5 w-5" strokeWidth={2.25} />
+            <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-950" />
+          </span>
+          <span className="flex flex-col items-start leading-tight">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-fuchsia-300">AI Coach</span>
+            <span className="text-[11px] text-slate-300 group-hover:text-white">Ask about YouTube SEO</span>
+          </span>
         </button>
       )}
 
