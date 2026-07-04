@@ -20,6 +20,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BlogIndexRouteImport } from './routes/blog.index'
+import { Route as CompareRaskRouteImport } from './routes/compare.rask'
 import { Route as CompareHeygenRouteImport } from './routes/compare.heygen'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as AuthenticatedDubbingRouteImport } from './routes/_authenticated/dubbing'
@@ -81,6 +82,11 @@ const BlogIndexRoute = BlogIndexRouteImport.update({
   path: '/blog/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CompareRaskRoute = CompareRaskRouteImport.update({
+  id: '/compare/rask',
+  path: '/compare/rask',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CompareHeygenRoute = CompareHeygenRouteImport.update({
   id: '/compare/heygen',
   path: '/compare/heygen',
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/dubbing': typeof AuthenticatedDubbingRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/compare/heygen': typeof CompareHeygenRoute
+  '/compare/rask': typeof CompareRaskRoute
   '/blog/': typeof BlogIndexRoute
   '/action/$videoId': typeof AuthenticatedActionVideoIdRoute
 }
@@ -146,6 +153,7 @@ export interface FileRoutesByTo {
   '/dubbing': typeof AuthenticatedDubbingRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/compare/heygen': typeof CompareHeygenRoute
+  '/compare/rask': typeof CompareRaskRoute
   '/blog': typeof BlogIndexRoute
   '/action/$videoId': typeof AuthenticatedActionVideoIdRoute
 }
@@ -166,6 +174,7 @@ export interface FileRoutesById {
   '/_authenticated/dubbing': typeof AuthenticatedDubbingRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/compare/heygen': typeof CompareHeygenRoute
+  '/compare/rask': typeof CompareRaskRoute
   '/blog/': typeof BlogIndexRoute
   '/_authenticated/action/$videoId': typeof AuthenticatedActionVideoIdRoute
 }
@@ -186,6 +195,7 @@ export interface FileRouteTypes {
     | '/dubbing'
     | '/blog/$slug'
     | '/compare/heygen'
+    | '/compare/rask'
     | '/blog/'
     | '/action/$videoId'
   fileRoutesByTo: FileRoutesByTo
@@ -204,6 +214,7 @@ export interface FileRouteTypes {
     | '/dubbing'
     | '/blog/$slug'
     | '/compare/heygen'
+    | '/compare/rask'
     | '/blog'
     | '/action/$videoId'
   id:
@@ -223,6 +234,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dubbing'
     | '/blog/$slug'
     | '/compare/heygen'
+    | '/compare/rask'
     | '/blog/'
     | '/_authenticated/action/$videoId'
   fileRoutesById: FileRoutesById
@@ -240,6 +252,7 @@ export interface RootRouteChildren {
   TsSecretGate2026Route: typeof TsSecretGate2026Route
   BlogSlugRoute: typeof BlogSlugRoute
   CompareHeygenRoute: typeof CompareHeygenRoute
+  CompareRaskRoute: typeof CompareRaskRoute
   BlogIndexRoute: typeof BlogIndexRoute
 }
 
@@ -322,6 +335,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/compare/rask': {
+      id: '/compare/rask'
+      path: '/compare/rask'
+      fullPath: '/compare/rask'
+      preLoaderRoute: typeof CompareRaskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/compare/heygen': {
       id: '/compare/heygen'
       path: '/compare/heygen'
@@ -397,6 +417,7 @@ const rootRouteChildren: RootRouteChildren = {
   TsSecretGate2026Route: TsSecretGate2026Route,
   BlogSlugRoute: BlogSlugRoute,
   CompareHeygenRoute: CompareHeygenRoute,
+  CompareRaskRoute: CompareRaskRoute,
   BlogIndexRoute: BlogIndexRoute,
 }
 export const routeTree = rootRouteImport
