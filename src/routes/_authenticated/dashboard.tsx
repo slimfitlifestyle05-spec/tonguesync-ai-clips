@@ -7,7 +7,7 @@ import { LangToggle } from "@/components/LangToggle";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
-import { LogOut, Crown, Video, ChevronRight, Languages, Search } from "lucide-react";
+import { LogOut, Crown, Video, ChevronRight, Languages, Search, Sparkles } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -80,7 +80,17 @@ function Dashboard() {
     <div className="min-h-screen bg-slate-950 text-white">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5 border-b border-white/5">
         <Link to="/"><Logo /></Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <Link to="/showcase"><Button variant="ghost" className="text-white hover:bg-white/10 hidden md:inline-flex">Showcase</Button></Link>
+          <Link to="/community"><Button variant="ghost" className="text-white hover:bg-white/10 hidden md:inline-flex">Viral Ideas</Button></Link>
+          <Link to="/blog"><Button variant="ghost" className="text-white hover:bg-white/10 hidden md:inline-flex">Blog</Button></Link>
+          <Button
+            variant="ghost"
+            onClick={() => window.dispatchEvent(new CustomEvent("tonguesync:open-ai-coach"))}
+            className="hidden md:inline-flex items-center gap-1.5 text-white hover:bg-white/10"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-fuchsia-300" /> AI Coach
+          </Button>
           <LangToggle />
           {!isPro && (
             <Link to="/pricing">
