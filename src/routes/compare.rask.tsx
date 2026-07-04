@@ -53,7 +53,7 @@ const ROWS = [
   { label: "Voice cloning", us: true, them: true },
   { label: "Free tier", us: "Yes — clips + dubs", them: "Limited free minutes" },
   { label: "Captions styled for TikTok/Reels", us: true, them: "Basic subtitles" },
-  { label: "Community + PDF playbooks", us: true, them: false },
+  { label: "Viral Ideas + PDF playbooks", us: true, them: false },
 ];
 
 const FAQS = [
