@@ -3,8 +3,15 @@ import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
 import { supportChat } from "@/lib/support-chat.functions";
 import { getChannelContext, saveChannelContext, clearChannelContext } from "@/lib/channel-context.functions";
+import {
+  listCoachConversations,
+  getCoachConversation,
+  upsertCoachConversation,
+  deleteCoachConversation,
+  type ConversationSummary,
+} from "@/lib/ai-coach-history.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { X, Send, Sparkles, Loader2, Bot, Youtube, Pencil } from "lucide-react";
+import { X, Send, Sparkles, Loader2, Bot, Youtube, Pencil, History, Plus, Trash2, MessageCircle } from "lucide-react";
 import { Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
@@ -47,12 +54,22 @@ export function SupportChat() {
   const [showChannelForm, setShowChannelForm] = useState(false);
   const [chDraft, setChDraft] = useState<ChannelCtx>({});
   const [seededFromIdeas, setSeededFromIdeas] = useState(false);
+  const [signedIn, setSignedIn] = useState(false);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [currentConvId, setCurrentConvId] = useState<string | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const askAi = useServerFn(supportChat);
   const loadChannel = useServerFn(getChannelContext);
   const saveChannelFn = useServerFn(saveChannelContext);
   const clearChannelFn = useServerFn(clearChannelContext);
+  const listConvsFn = useServerFn(listCoachConversations);
+  const getConvFn = useServerFn(getCoachConversation);
+  const upsertConvFn = useServerFn(upsertCoachConversation);
+  const deleteConvFn = useServerFn(deleteCoachConversation);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Hydrate from localStorage after mount (SSR-safe)
   useEffect(() => {
@@ -83,6 +100,7 @@ export function SupportChat() {
     (async () => {
       try {
         const { data: sess } = await supabase.auth.getSession();
+        setSignedIn(Boolean(sess.session));
         if (!sess.session) return;
         const remote = await loadChannel({});
         if (cancelled) return;
@@ -102,8 +120,62 @@ export function SupportChat() {
         }
       } catch { /* ignore — anonymous or offline */ }
     })();
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setSignedIn(Boolean(session));
+    });
     return () => { cancelled = true; };
+    // NOTE: onAuthStateChange sub is intentionally not cleaned to keep signedIn state fresh; parent-level listener also runs.
+    void sub;
   }, [loadChannel]);
+
+  // Load saved conversations list when signed-in + panel opens
+  async function refreshConversations() {
+    if (!signedIn) { setConversations([]); return; }
+    try {
+      setLoadingHistory(true);
+      const rows = await listConvsFn();
+      setConversations(rows);
+    } catch { /* ignore */ }
+    finally { setLoadingHistory(false); }
+  }
+  useEffect(() => {
+    if (open && signedIn) void refreshConversations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, signedIn]);
+
+  // Auto-save current conversation (debounced) whenever messages change and the
+  // conversation has at least one real user turn.
+  useEffect(() => {
+    if (!signedIn || !hydrated) return;
+    const hasUserTurn = messages.some((m) => m.role === "user");
+    if (!hasUserTurn) return;
+    if (pending) return; // wait for round-trip to finish
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      try {
+        const firstUser = messages.find((m) => m.role === "user");
+        const title = (channel?.niche || channel?.topics || firstUser?.content || "AI Coach chat")
+          .toString()
+          .slice(0, 90);
+        const res = await upsertConvFn({
+          data: {
+            id: currentConvId ?? undefined,
+            title,
+            niche: channel?.niche ?? null,
+            topics: channel?.topics ?? null,
+            messages: messages.slice(-40).map((m) => ({ role: m.role, content: m.content })),
+          },
+        });
+        if (!currentConvId) setCurrentConvId(res.id);
+        // Refresh sidebar list (updated_at ordering)
+        void refreshConversations();
+      } catch { /* silent — best effort */ }
+    }, 800);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, pending, signedIn, hydrated, channel?.niche, channel?.topics]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -192,7 +264,58 @@ export function SupportChat() {
 
   function reset() {
     setMessages([WELCOME]);
+    setCurrentConvId(null);
     try { window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+  }
+
+  function newConversation() {
+    setMessages([WELCOME]);
+    setCurrentConvId(null);
+    setHistoryOpen(false);
+    try { window.localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    setTimeout(() => inputRef.current?.focus(), 60);
+  }
+
+  async function loadConversation(id: string) {
+    try {
+      setLoadingHistory(true);
+      const conv = await getConvFn({ data: { id } });
+      if (!conv) return;
+      setMessages(
+        conv.messages.length > 0
+          ? conv.messages.map((m) => ({ role: m.role, content: m.content }))
+          : [WELCOME],
+      );
+      setCurrentConvId(conv.id);
+      if (conv.niche || conv.topics) {
+        const restored: ChannelCtx = {
+          ...(channel && !channel.skipped ? channel : {}),
+          niche: conv.niche ?? channel?.niche,
+          topics: conv.topics ?? channel?.topics,
+          skipped: false,
+        };
+        setChannel(restored);
+        setChDraft(restored);
+        try { window.localStorage.setItem(CHANNEL_KEY, JSON.stringify(restored)); } catch { /* ignore */ }
+      }
+      setHistoryOpen(false);
+      setTimeout(() => {
+        if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        inputRef.current?.focus();
+      }, 60);
+    } catch { /* ignore */ }
+    finally { setLoadingHistory(false); }
+  }
+
+  async function removeConversation(id: string) {
+    try {
+      await deleteConvFn({ data: { id } });
+      setConversations((cur) => cur.filter((c) => c.id !== id));
+      if (currentConvId === id) {
+        setCurrentConvId(null);
+        setMessages([WELCOME]);
+      }
+    } catch { /* ignore */ }
   }
 
   async function saveChannel() {
@@ -301,6 +424,34 @@ export function SupportChat() {
               </div>
             </div>
             <div className="flex items-center gap-1">
+              {signedIn && (
+                <>
+                  <button
+                    onClick={newConversation}
+                    className="rounded p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
+                    aria-label={isAr ? "محادثة جديدة" : "New conversation"}
+                    title={isAr ? "محادثة جديدة" : "New conversation"}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => { setHistoryOpen((v) => !v); if (!historyOpen) void refreshConversations(); }}
+                    className={
+                      "relative rounded p-1.5 hover:bg-white/10 " +
+                      (historyOpen ? "text-fuchsia-300" : "text-slate-400 hover:text-white")
+                    }
+                    aria-label={isAr ? "سجل المحادثات" : "Conversation history"}
+                    title={isAr ? "سجل المحادثات" : "Conversation history"}
+                  >
+                    <History className="h-4 w-4" />
+                    {conversations.length > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[16px] rounded-full bg-fuchsia-500 px-1 text-[9px] font-bold text-black">
+                        {conversations.length > 99 ? "99+" : conversations.length}
+                      </span>
+                    )}
+                  </button>
+                </>
+              )}
               <button
                 onClick={reset}
                 className="rounded px-2 py-1 text-[11px] text-slate-400 hover:bg-white/10 hover:text-white"
@@ -317,6 +468,106 @@ export function SupportChat() {
               </button>
             </div>
           </div>
+
+          {/* History panel (in-panel overlay) */}
+          {historyOpen && (
+            <div dir={dir} className="absolute inset-x-0 top-[60px] bottom-0 z-10 flex flex-col overflow-hidden border-t border-white/10 bg-slate-950/98 backdrop-blur">
+              <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
+                <div className="flex items-center gap-2 text-white">
+                  <History className="h-4 w-4 text-fuchsia-300" />
+                  <span className="text-sm font-semibold">
+                    {isAr ? "خططك المحفوظة" : "Your saved plans"}
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    ({conversations.length})
+                  </span>
+                </div>
+                <button
+                  onClick={() => setHistoryOpen(false)}
+                  className="rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white"
+                  aria-label="Close history"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto px-3 py-3">
+                {!signedIn ? (
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center text-xs text-slate-300">
+                    {isAr ? "سجّل الدخول عشان تحفظ خططك وترجع لها بعدين." : "Sign in to save your plans and resume them later."}
+                    <div className="mt-3">
+                      <Link to="/auth" onClick={() => setOpen(false)}>
+                        <Button size="sm" className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black">
+                          {isAr ? "سجّل الدخول" : "Sign in"}
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                ) : loadingHistory ? (
+                  <div className="flex items-center justify-center py-8 text-slate-400">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                ) : conversations.length === 0 ? (
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-center text-xs text-slate-400">
+                    {isAr
+                      ? "لسه مفيش خطط محفوظة. ابدأ محادثة مع المدرب وهنحفظها تلقائيًا."
+                      : "No saved plans yet. Start chatting with the coach and we'll auto-save this thread."}
+                  </div>
+                ) : (
+                  <ul className="space-y-2">
+                    {conversations.map((c) => {
+                      const active = c.id === currentConvId;
+                      const date = new Date(c.updated_at).toLocaleDateString(isAr ? "ar-EG" : "en-US", { month: "short", day: "numeric" });
+                      return (
+                        <li
+                          key={c.id}
+                          className={
+                            "group rounded-xl border p-3 transition " +
+                            (active
+                              ? "border-fuchsia-400/60 bg-fuchsia-500/10"
+                              : "border-white/10 bg-white/5 hover:border-fuchsia-400/40 hover:bg-white/10")
+                          }
+                        >
+                          <div className="flex items-start gap-2">
+                            <button
+                              onClick={() => void loadConversation(c.id)}
+                              className="flex-1 min-w-0 text-start"
+                            >
+                              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-fuchsia-300">
+                                <MessageCircle className="h-3 w-3" />
+                                <span className="truncate">{c.niche || (isAr ? "بدون نيتش" : "No niche")}</span>
+                                <span className="text-slate-500">·</span>
+                                <span className="text-slate-400">{date}</span>
+                                <span className="text-slate-500">·</span>
+                                <span className="text-slate-400">{c.message_count} {isAr ? "رسالة" : "msgs"}</span>
+                              </div>
+                              <div className="mt-1 text-[13px] font-medium text-white line-clamp-2">
+                                {c.title}
+                              </div>
+                              {c.topics && (
+                                <div className="mt-0.5 text-[11px] text-slate-400 line-clamp-1">
+                                  {c.topics}
+                                </div>
+                              )}
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(isAr ? "حذف الخطة؟" : "Delete this plan?")) void removeConversation(c.id);
+                              }}
+                              className="shrink-0 rounded p-1 text-slate-500 opacity-0 transition hover:bg-red-500/20 hover:text-red-300 group-hover:opacity-100"
+                              aria-label="Delete"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Messages */}
           <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4 text-sm">
