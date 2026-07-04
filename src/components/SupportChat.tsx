@@ -11,7 +11,8 @@ type Msg = { role: "user" | "assistant"; content: string };
 const STORAGE_KEY = "tonguesync_support_chat_v1";
 const WELCOME: Msg = {
   role: "assistant",
-  content: "Hi! I'm Sync, the TongueSync support assistant. Ask me anything about turning videos into shorts, AI dubbing, voice cloning, or your account.",
+  content:
+    "أهلاً! أنا **بُشرى** من فريق TongueSync 👋\n\nاسأليني عن أفكار شورتس رايجة، طريقة الدبلجة الذكية، أو أي حاجة عن حسابك. عندنا مكتبة أفكار جاهزة في [/community](/community) مع PDF playbooks تقدر تنزّلها.",
 };
 
 export function SupportChat() {
