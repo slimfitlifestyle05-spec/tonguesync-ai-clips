@@ -87,7 +87,7 @@ export function CommunityIdeasManager() {
     <section className="rounded-2xl border border-amber-300/20 bg-amber-500/5 p-5">
       <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
         <div>
-          <div className="text-sm font-semibold text-amber-200 flex items-center gap-2"><Sparkles className="h-4 w-4" /> Community ideas</div>
+          <div className="text-sm font-semibold text-amber-200 flex items-center gap-2"><Sparkles className="h-4 w-4" /> Viral Ideas</div>
           <div className="text-xs text-slate-400">Add, edit or remove trending short-video ideas (with images &amp; PDF playbooks).</div>
         </div>
         <Button
