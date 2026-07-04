@@ -100,6 +100,7 @@ export function SupportChat() {
     (async () => {
       try {
         const { data: sess } = await supabase.auth.getSession();
+        setSignedIn(Boolean(sess.session));
         if (!sess.session) return;
         const remote = await loadChannel({});
         if (cancelled) return;
@@ -119,8 +120,62 @@ export function SupportChat() {
         }
       } catch { /* ignore — anonymous or offline */ }
     })();
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setSignedIn(Boolean(session));
+    });
     return () => { cancelled = true; };
+    // NOTE: onAuthStateChange sub is intentionally not cleaned to keep signedIn state fresh; parent-level listener also runs.
+    void sub;
   }, [loadChannel]);
+
+  // Load saved conversations list when signed-in + panel opens
+  async function refreshConversations() {
+    if (!signedIn) { setConversations([]); return; }
+    try {
+      setLoadingHistory(true);
+      const rows = await listConvsFn();
+      setConversations(rows);
+    } catch { /* ignore */ }
+    finally { setLoadingHistory(false); }
+  }
+  useEffect(() => {
+    if (open && signedIn) void refreshConversations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, signedIn]);
+
+  // Auto-save current conversation (debounced) whenever messages change and the
+  // conversation has at least one real user turn.
+  useEffect(() => {
+    if (!signedIn || !hydrated) return;
+    const hasUserTurn = messages.some((m) => m.role === "user");
+    if (!hasUserTurn) return;
+    if (pending) return; // wait for round-trip to finish
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      try {
+        const firstUser = messages.find((m) => m.role === "user");
+        const title = (channel?.niche || channel?.topics || firstUser?.content || "AI Coach chat")
+          .toString()
+          .slice(0, 90);
+        const res = await upsertConvFn({
+          data: {
+            id: currentConvId ?? undefined,
+            title,
+            niche: channel?.niche ?? null,
+            topics: channel?.topics ?? null,
+            messages: messages.slice(-40).map((m) => ({ role: m.role, content: m.content })),
+          },
+        });
+        if (!currentConvId) setCurrentConvId(res.id);
+        // Refresh sidebar list (updated_at ordering)
+        void refreshConversations();
+      } catch { /* silent — best effort */ }
+    }, 800);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, pending, signedIn, hydrated, channel?.niche, channel?.topics]);
 
   useEffect(() => {
     if (!hydrated) return;
