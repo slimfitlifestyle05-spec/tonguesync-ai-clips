@@ -21,7 +21,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { FileText, Upload, Loader2, Trash2, Pencil, Plus, Sparkles, ImageIcon, Heart, Eye, EyeOff, RotateCcw } from "lucide-react";
 import { Youtube } from "lucide-react";
-import { getYoutubeChannel, setYoutubeChannel } from "@/lib/admin.functions";
 
 export function CommunityIdeasManager() {
   const qc = useQueryClient();
@@ -87,7 +86,6 @@ export function CommunityIdeasManager() {
 
   return (
     <section className="rounded-2xl border border-amber-300/20 bg-amber-500/5 p-5">
-      <YoutubeChannelSetting />
       <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
         <div>
           <div className="text-sm font-semibold text-amber-200 flex items-center gap-2"><Sparkles className="h-4 w-4" /> Viral Ideas</div>
