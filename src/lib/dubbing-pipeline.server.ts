@@ -238,7 +238,14 @@ async function translateSentence(
   targetLanguage: string,
   targetCountry: string,
 ): Promise<string> {
-  if (apiKeys.gemini) return translateWithGemini(apiKeys.gemini, text, targetLanguage, targetCountry);
+  if (apiKeys.gemini) {
+    try {
+      return await translateWithGemini(apiKeys.gemini, text, targetLanguage, targetCountry);
+    } catch (e: any) {
+      console.warn("[dubbing-pipeline] gemini failed, trying openai:", e?.message ?? e);
+      if (apiKeys.openai) return translateWithOpenAI(apiKeys.openai, text, targetLanguage, targetCountry);
+    }
+  }
   if (apiKeys.openai) return translateWithOpenAI(apiKeys.openai, text, targetLanguage, targetCountry);
   // Fallback to Lovable AI Gateway (no user key required).
   try {
@@ -315,12 +322,24 @@ export async function runDubbingPipeline(input: {
   try {
     if (apiKeys.gemini) {
       llm = "gemini";
-      localizedText = await translateWithGemini(
-        apiKeys.gemini,
-        workingTranscript,
-        input.targetLanguage,
-        input.targetCountry,
-      );
+      try {
+        localizedText = await translateWithGemini(
+          apiKeys.gemini,
+          workingTranscript,
+          input.targetLanguage,
+          input.targetCountry,
+        );
+      } catch (e: any) {
+        console.warn("[dubbing-pipeline] gemini failed, falling back to openai:", e?.message ?? e);
+        if (!apiKeys.openai) throw e;
+        llm = "openai";
+        localizedText = await translateWithOpenAI(
+          apiKeys.openai,
+          workingTranscript,
+          input.targetLanguage,
+          input.targetCountry,
+        );
+      }
     } else if (apiKeys.openai) {
       llm = "openai";
       localizedText = await translateWithOpenAI(
