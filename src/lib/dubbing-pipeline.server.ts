@@ -331,14 +331,37 @@ export async function runDubbingPipeline(input: {
         );
       } catch (e: any) {
         console.warn("[dubbing-pipeline] gemini failed, falling back to openai:", e?.message ?? e);
-        if (!apiKeys.openai) throw e;
-        llm = "openai";
-        localizedText = await translateWithOpenAI(
-          apiKeys.openai,
-          workingTranscript,
-          input.targetLanguage,
-          input.targetCountry,
-        );
+        if (apiKeys.openai) {
+          try {
+            llm = "openai";
+            localizedText = await translateWithOpenAI(
+              apiKeys.openai,
+              workingTranscript,
+              input.targetLanguage,
+              input.targetCountry,
+            );
+          } catch (e2: any) {
+            console.warn("[dubbing-pipeline] openai failed too, using Lovable AI:", e2?.message ?? e2);
+            const { lovableChat } = await import("./ai-gateway.server");
+            localizedText = await lovableChat(
+              [
+                { role: "system", content: `You rewrite transcripts into the natural spoken ${input.targetLanguage} dialect used in ${input.targetCountry}, preserving pacing for dubbing. Reply with the transcript only.` },
+                { role: "user", content: workingTranscript },
+              ],
+              { temperature: 0.3, maxTokens: 2048 },
+            );
+          }
+        } else {
+          const { lovableChat } = await import("./ai-gateway.server");
+          localizedText = await lovableChat(
+            [
+              { role: "system", content: `You rewrite transcripts into the natural spoken ${input.targetLanguage} dialect used in ${input.targetCountry}, preserving pacing for dubbing. Reply with the transcript only.` },
+              { role: "user", content: workingTranscript },
+            ],
+            { temperature: 0.3, maxTokens: 2048 },
+          );
+        }
+        if (!localizedText.trim()) throw e;
       }
     } else if (apiKeys.openai) {
       llm = "openai";
