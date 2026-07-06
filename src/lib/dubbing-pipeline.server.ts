@@ -17,7 +17,7 @@ export type PipelineSettings = {
 export type PipelineResult =
   | {
       ok: true;
-      provider: "cartesia" | "elevenlabs";
+      provider: "cartesia" | "elevenlabs" | "lovable";
       llm: "gemini" | "openai";
       localizedText: string;
       audioDataUrl: string;
