@@ -286,6 +286,30 @@ async function synthesizeWithElevenLabs(
   return { audioDataUrl: `data:audio/mpeg;base64,${base64}` };
 }
 
+// Lovable AI Gateway TTS (OpenAI gpt-4o-mini-tts) — no user key required.
+// Used as a last-resort fallback when ElevenLabs/Cartesia fail.
+async function synthesizeWithLovableAI(text: string): Promise<{ audioDataUrl: string }> {
+  const key = process.env.LOVABLE_API_KEY;
+  if (!key) throw new Error("LOVABLE_API_KEY not configured");
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/audio/speech", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+    body: JSON.stringify({
+      model: "openai/gpt-4o-mini-tts",
+      input: text.slice(0, 4000),
+      voice: "alloy",
+      response_format: "mp3",
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Lovable TTS ${res.status}: ${body.slice(0, 200)}`);
+  }
+  const buf = new Uint8Array(await res.arrayBuffer());
+  const base64 = Buffer.from(buf).toString("base64");
+  return { audioDataUrl: `data:audio/mpeg;base64,${base64}` };
+}
+
 export async function runDubbingPipeline(input: {
   transcript: string;
   targetLanguage: string;
