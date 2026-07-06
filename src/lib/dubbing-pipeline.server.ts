@@ -330,11 +330,21 @@ export async function runDubbingPipeline(input: {
         input.targetCountry,
       );
     } else {
-      return {
-        ok: false,
-        stage: "config",
-        message: "No LLM key configured. Add a Gemini or OpenAI key in Admin → API Integrations.",
-      };
+      // No user key — fall back to Lovable AI Gateway (Gemini).
+      llm = "gemini";
+      localizedText = await translateSentence(
+        apiKeys,
+        workingTranscript,
+        input.targetLanguage,
+        input.targetCountry,
+      );
+      if (!localizedText.trim() || localizedText === workingTranscript) {
+        return {
+          ok: false,
+          stage: "config",
+          message: "Translation unavailable. Add a Gemini/OpenAI key or enable Lovable AI credits.",
+        };
+      }
     }
   } catch (e: any) {
     console.error("[dubbing-pipeline] LLM failed:", e?.message ?? e);
