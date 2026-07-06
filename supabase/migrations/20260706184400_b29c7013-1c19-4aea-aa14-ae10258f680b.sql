@@ -1,0 +1,1 @@
+UPDATE public.videos SET output_url = source_url WHERE kind = 'dub' AND source_url IS NOT NULL AND source_url <> '' AND output_url LIKE '%test-videos.co.uk%';

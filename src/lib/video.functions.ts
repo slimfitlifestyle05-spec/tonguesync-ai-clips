@@ -204,7 +204,7 @@ export const createDub = createServerFn({ method: "POST" })
         kind: "dub",
         title: socialKit?.title ? `${socialKit.title} (${data.targetCountry})` : `${data.title} \u2014 ${data.targetCountry}`,
         source_url: data.sourceUrl || null,
-        output_url: sampleOutput("dub"),
+        output_url: data.sourceUrl?.trim() ? data.sourceUrl : sampleOutput("dub"),
         style,
         target_language: data.targetLanguage,
         target_country: data.targetCountry,
