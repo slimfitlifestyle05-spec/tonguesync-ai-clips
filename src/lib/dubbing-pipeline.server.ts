@@ -240,6 +240,23 @@ async function translateSentence(
 ): Promise<string> {
   if (apiKeys.gemini) return translateWithGemini(apiKeys.gemini, text, targetLanguage, targetCountry);
   if (apiKeys.openai) return translateWithOpenAI(apiKeys.openai, text, targetLanguage, targetCountry);
+  // Fallback to Lovable AI Gateway (no user key required).
+  try {
+    const { lovableChat } = await import("./ai-gateway.server");
+    const out = await lovableChat(
+      [
+        {
+          role: "system",
+          content: `You rewrite transcripts into the natural spoken ${targetLanguage} dialect used in ${targetCountry}, preserving pacing for dubbing. Reply with the transcript only, no preface.`,
+        },
+        { role: "user", content: text },
+      ],
+      { temperature: 0.3, maxTokens: 1024 },
+    );
+    if (out.trim()) return out.trim();
+  } catch (e: any) {
+    console.warn("[dubbing-pipeline] lovable gateway translate failed:", e?.message ?? e);
+  }
   return text;
 }
 
@@ -313,11 +330,21 @@ export async function runDubbingPipeline(input: {
         input.targetCountry,
       );
     } else {
-      return {
-        ok: false,
-        stage: "config",
-        message: "No LLM key configured. Add a Gemini or OpenAI key in Admin → API Integrations.",
-      };
+      // No user key — fall back to Lovable AI Gateway (Gemini).
+      llm = "gemini";
+      localizedText = await translateSentence(
+        apiKeys,
+        workingTranscript,
+        input.targetLanguage,
+        input.targetCountry,
+      );
+      if (!localizedText.trim() || localizedText === workingTranscript) {
+        return {
+          ok: false,
+          stage: "config",
+          message: "Translation unavailable. Add a Gemini/OpenAI key or enable Lovable AI credits.",
+        };
+      }
     }
   } catch (e: any) {
     console.error("[dubbing-pipeline] LLM failed:", e?.message ?? e);
