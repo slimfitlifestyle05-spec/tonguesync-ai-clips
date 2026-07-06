@@ -240,6 +240,23 @@ async function translateSentence(
 ): Promise<string> {
   if (apiKeys.gemini) return translateWithGemini(apiKeys.gemini, text, targetLanguage, targetCountry);
   if (apiKeys.openai) return translateWithOpenAI(apiKeys.openai, text, targetLanguage, targetCountry);
+  // Fallback to Lovable AI Gateway (no user key required).
+  try {
+    const { lovableChat } = await import("./ai-gateway.server");
+    const out = await lovableChat(
+      [
+        {
+          role: "system",
+          content: `You rewrite transcripts into the natural spoken ${targetLanguage} dialect used in ${targetCountry}, preserving pacing for dubbing. Reply with the transcript only, no preface.`,
+        },
+        { role: "user", content: text },
+      ],
+      { temperature: 0.3, maxTokens: 1024 },
+    );
+    if (out.trim()) return out.trim();
+  } catch (e: any) {
+    console.warn("[dubbing-pipeline] lovable gateway translate failed:", e?.message ?? e);
+  }
   return text;
 }
 
