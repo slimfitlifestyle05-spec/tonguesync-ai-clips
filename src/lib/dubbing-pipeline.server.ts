@@ -478,16 +478,26 @@ export async function runDubbingPipeline(input: {
         transcriptSource,
       };
     }
-    if (!apiKeys.elevenlabs)
-      return {
-        ok: false,
-        stage: "config",
-        message: "ElevenLabs is selected but no ElevenLabs API key is set.",
-      };
-    const { audioDataUrl } = await synthesizeWithElevenLabs(apiKeys.elevenlabs, localizedText);
+    // ElevenLabs first (if key), otherwise fall back to Lovable AI TTS.
+    let audioDataUrl: string;
+    let provider: "elevenlabs" | "lovable" = "lovable";
+    if (apiKeys.elevenlabs) {
+      try {
+        const r = await synthesizeWithElevenLabs(apiKeys.elevenlabs, localizedText);
+        audioDataUrl = r.audioDataUrl;
+        provider = "elevenlabs";
+      } catch (e: any) {
+        console.warn("[dubbing-pipeline] elevenlabs failed, using Lovable AI TTS:", e?.message ?? e);
+        const r = await synthesizeWithLovableAI(localizedText);
+        audioDataUrl = r.audioDataUrl;
+      }
+    } else {
+      const r = await synthesizeWithLovableAI(localizedText);
+      audioDataUrl = r.audioDataUrl;
+    }
     return {
       ok: true,
-      provider: "elevenlabs",
+      provider,
       llm,
       localizedText,
       audioDataUrl,
