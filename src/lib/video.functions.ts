@@ -156,7 +156,7 @@ export const createDub = createServerFn({ method: "POST" })
     let pipelineError: string | null = null;
     let dubbedAudioUrl: string | null = null;
     let localizedText: string | null = null;
-    let ttsProvider: "cartesia" | "elevenlabs" | null = null;
+    let ttsProvider: "cartesia" | "elevenlabs" | "lovable" | null = null;
     let dubbedSegments: Array<{ start: number; end: number; text: string; audioDataUrl: string }> | null = null;
     let transcriptSource: "whisper" | "mock" | null = null;
     try {
