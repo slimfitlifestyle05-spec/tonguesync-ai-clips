@@ -107,13 +107,28 @@ async function geminiDirectChat(
 }
 
 export async function lovableChat(messages: ChatMessage[], opts: ChatOptions = {}): Promise<string> {
-  // 1) Personal Gemini key takes precedence — bypass Lovable's gateway entirely.
-  const personal = getPersonalGeminiKey();
-  if (personal) {
-    return geminiDirectChat(personal, messages, opts);
+  // 1) Personal Gemini keys take precedence — bypass Lovable's gateway entirely.
+  // Try each key in order so a second key acts as a fallback when the first hits quota.
+  const personalKeys = getPersonalGeminiKeys();
+  for (const key of personalKeys) {
+    try {
+      return await geminiDirectChat(key, messages, opts);
+    } catch (e: any) {
+      const msg: string = e?.message ?? "";
+      if (
+        msg.includes("rate-limited") ||
+        msg.includes("rejected") ||
+        msg.includes("quota") ||
+        msg.includes("429")
+      ) {
+        console.warn("[ai-gateway] Gemini key failed, trying next:", msg);
+        continue;
+      }
+      throw e;
+    }
   }
 
-  // 2) No personal key configured — fall back to Lovable's AI Gateway.
+  // 2) No personal key configured (or all exhausted) — fall back to Lovable's AI Gateway.
   const res = await fetch(LOVABLE_GATEWAY_URL, {
     method: "POST",
     headers: {
