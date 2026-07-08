@@ -46,15 +46,19 @@ export async function loadPipelineSettings(): Promise<PipelineSettings> {
   (data ?? []).forEach((r) => (map[r.key] = r.value));
   (extra ?? []).forEach((r) => (map[r.key] = r.value));
   return {
-    // Personal Google AI Studio key (GEMINI_API_KEY / VITE_GEMINI_API_KEY)
-    // always wins over anything stored in app_settings, so the dubbing
-    // pipeline routes translation + text steps through the user's own quota
-    // instead of the shared Lovable one.
+    // Personal Google AI Studio keys (GEMINI_API_KEY / GEMINI_API_KEY_2 /
+    // VITE_GEMINI_API_KEY / VITE_GEMINI_API_KEY_2) always win over anything
+    // stored in app_settings, so the dubbing pipeline routes translation +
+    // text steps through the user's own quota instead of the shared Lovable one.
     apiKeys: (() => {
       const stored = (map.api_keys ?? {}) as ApiKeys;
       const personalGemini =
         process.env.GEMINI_API_KEY?.trim() || process.env.VITE_GEMINI_API_KEY?.trim() || "";
-      return personalGemini ? { ...stored, gemini: personalGemini } : stored;
+      const personalGemini2 =
+        process.env.GEMINI_API_KEY_2?.trim() || process.env.VITE_GEMINI_API_KEY_2?.trim() || "";
+      const out: ApiKeys = personalGemini ? { ...stored, gemini: personalGemini } : { ...stored };
+      if (personalGemini2) out.gemini2 = personalGemini2;
+      return out;
     })(),
     ttsProvider: (typeof map.tts_provider === "string" ? map.tts_provider : "cartesia") as
       | "cartesia"
