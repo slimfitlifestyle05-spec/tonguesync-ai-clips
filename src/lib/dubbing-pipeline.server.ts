@@ -4,6 +4,7 @@
 type ApiKeys = {
   openai?: string;
   gemini?: string;
+  gemini2?: string;
   elevenlabs?: string;
   cartesia?: string;
 };
