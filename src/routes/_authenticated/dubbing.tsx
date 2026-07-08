@@ -59,7 +59,22 @@ function DubbingPage() {
   const [extraLanguages, setExtraLanguages] = useState<string[]>([]);
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [localVideoUrl, setLocalVideoUrl] = useState<string | null>(null);
   const hydrated = useRef(false);
+
+  const isUploadUrl = (url: unknown) => typeof url === "string" && /^upload:\/\//i.test(url);
+
+  const withPlayableUploadUrl = (video: any) => {
+    if (!video || !localVideoUrl) return video;
+    return {
+      ...video,
+      source_url: isUploadUrl(video.source_url) ? localVideoUrl : video.source_url,
+      output_url: isUploadUrl(video.output_url) ? localVideoUrl : video.output_url,
+    };
+  };
+
+  const displayResult = result ? withPlayableUploadUrl(result) : null;
+  const displayBatchResults = batchResults ? batchResults.map(withPlayableUploadUrl) : null;
 
   // Restore cached session (including uploaded file Blob)
   useEffect(() => {
@@ -93,6 +108,16 @@ function DubbingPage() {
       hydrated.current = true;
     });
   }, []);
+
+  useEffect(() => {
+    if (!file) {
+      setLocalVideoUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setLocalVideoUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
 
   // Persist changes
   useEffect(() => {
@@ -397,7 +422,7 @@ function DubbingPage() {
               </div>
             ) : (
               <div className="flex-1">
-                <VideoResult videos={batchResults ?? [result]} isPro={isPro} embedded />
+                <VideoResult videos={displayBatchResults ?? [displayResult]} isPro={isPro} embedded />
               </div>
             )}
           </aside>
