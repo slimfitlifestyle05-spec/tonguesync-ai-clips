@@ -270,15 +270,15 @@ async function translateSentence(
   targetLanguage: string,
   targetCountry: string,
 ): Promise<string> {
-  if (apiKeys.gemini) {
+  const geminiResult = await tryGeminiTranslate(apiKeys, text, targetLanguage, targetCountry);
+  if (geminiResult) return geminiResult;
+  if (apiKeys.openai) {
     try {
-      return await translateWithGemini(apiKeys.gemini, text, targetLanguage, targetCountry);
+      return await translateWithOpenAI(apiKeys.openai, text, targetLanguage, targetCountry);
     } catch (e: any) {
-      console.warn("[dubbing-pipeline] gemini failed, trying openai:", e?.message ?? e);
-      if (apiKeys.openai) return translateWithOpenAI(apiKeys.openai, text, targetLanguage, targetCountry);
+      console.warn("[dubbing-pipeline] openai failed, using Lovable AI:", e?.message ?? e);
     }
   }
-  if (apiKeys.openai) return translateWithOpenAI(apiKeys.openai, text, targetLanguage, targetCountry);
   // Fallback to Lovable AI Gateway (no user key required).
   try {
     const { lovableChat } = await import("./ai-gateway.server");
