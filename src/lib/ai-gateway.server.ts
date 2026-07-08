@@ -1,11 +1,12 @@
 // Server-only chat helper.
 //
 // Routing strategy — enforced in this order on EVERY call:
-//   1. Personal Google AI Studio key (GEMINI_API_KEY / VITE_GEMINI_API_KEY) →
-//      call Google's Generative Language API directly. This is the primary
-//      path in dev preview so the shared Lovable quota is never touched.
-//   2. Only if no personal key is configured, fall back to Lovable's AI
-//      Gateway (LOVABLE_API_KEY).
+//   1. Personal Google AI Studio keys (GEMINI_API_KEY / GEMINI_API_KEY_2 /
+//      VITE_GEMINI_API_KEY / VITE_GEMINI_API_KEY_2) → call Google's
+//      Generative Language API directly. The second key acts as a fallback
+//      when the first hits quota, so the shared Lovable quota is never touched.
+//   2. Only if no personal key is configured (or all are exhausted), fall back
+//      to Lovable's AI Gateway (LOVABLE_API_KEY).
 //
 // Both paths return the assistant's text content as a string.
 
