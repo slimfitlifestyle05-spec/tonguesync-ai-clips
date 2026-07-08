@@ -88,6 +88,19 @@ export function DownloadDubbedButton({
   // Fetch a URL with byte-level progress into a Uint8Array.
   async function fetchWithProgress(url: string, signal: AbortSignal, onPct: (p: number) => void): Promise<Uint8Array> {
     const isRemote = /^https?:\/\//i.test(url);
+    // data: and blob: URLs — decode locally, XHR/extensions can choke on them.
+    if (/^data:/i.test(url)) {
+      const res = await fetch(url);
+      const buf = await res.arrayBuffer();
+      onPct(100);
+      return new Uint8Array(buf);
+    }
+    if (/^blob:/i.test(url)) {
+      const res = await fetch(url);
+      const buf = await res.arrayBuffer();
+      onPct(100);
+      return new Uint8Array(buf);
+    }
     const sameOrigin =
       isRemote && typeof window !== "undefined" && url.startsWith(window.location.origin);
     // Route cross-origin HTTP(S) fetches through our /api/public/proxy so
@@ -134,6 +147,15 @@ export function DownloadDubbedButton({
       if (isRemote && fetchUrl === url) {
         return await download(`/api/public/proxy?url=${encodeURIComponent(url)}`);
       }
+      // Last-resort fallback: try native fetch (works for same-origin, blob:,
+      // and cases where XHR was blocked by an extension).
+      try {
+        const res = await fetch(fetchUrl, { signal });
+        if (!res.ok) throw new Error(`Fetch ${res.status}`);
+        const buf = await res.arrayBuffer();
+        onPct(100);
+        return new Uint8Array(buf);
+      } catch {}
       throw err;
     }
   }
