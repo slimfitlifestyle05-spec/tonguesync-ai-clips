@@ -29,6 +29,7 @@ import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as AuthenticatedDubbingRouteImport } from './routes/_authenticated/dubbing'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedClipperRouteImport } from './routes/_authenticated/clipper'
+import { Route as ApiPublicProxyRouteImport } from './routes/api/public/proxy'
 import { Route as AuthenticatedActionVideoIdRouteImport } from './routes/_authenticated/action.$videoId'
 
 const TsSecretGate2026Route = TsSecretGate2026RouteImport.update({
@@ -130,6 +131,11 @@ const AuthenticatedClipperRoute = AuthenticatedClipperRouteImport.update({
   path: '/clipper',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicProxyRoute = ApiPublicProxyRouteImport.update({
+  id: '/api/public/proxy',
+  path: '/api/public/proxy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedActionVideoIdRoute =
   AuthenticatedActionVideoIdRouteImport.update({
     id: '/action/$videoId',
@@ -158,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/blog/': typeof BlogIndexRoute
   '/compare/': typeof CompareIndexRoute
   '/action/$videoId': typeof AuthenticatedActionVideoIdRoute
+  '/api/public/proxy': typeof ApiPublicProxyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -180,6 +187,7 @@ export interface FileRoutesByTo {
   '/blog': typeof BlogIndexRoute
   '/compare': typeof CompareIndexRoute
   '/action/$videoId': typeof AuthenticatedActionVideoIdRoute
+  '/api/public/proxy': typeof ApiPublicProxyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -204,6 +212,7 @@ export interface FileRoutesById {
   '/blog/': typeof BlogIndexRoute
   '/compare/': typeof CompareIndexRoute
   '/_authenticated/action/$videoId': typeof AuthenticatedActionVideoIdRoute
+  '/api/public/proxy': typeof ApiPublicProxyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -228,6 +237,7 @@ export interface FileRouteTypes {
     | '/blog/'
     | '/compare/'
     | '/action/$videoId'
+    | '/api/public/proxy'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -250,6 +260,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/compare'
     | '/action/$videoId'
+    | '/api/public/proxy'
   id:
     | '__root__'
     | '/'
@@ -273,6 +284,7 @@ export interface FileRouteTypes {
     | '/blog/'
     | '/compare/'
     | '/_authenticated/action/$videoId'
+    | '/api/public/proxy'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -293,6 +305,7 @@ export interface RootRouteChildren {
   CompareRaskRoute: typeof CompareRaskRoute
   BlogIndexRoute: typeof BlogIndexRoute
   CompareIndexRoute: typeof CompareIndexRoute
+  ApiPublicProxyRoute: typeof ApiPublicProxyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -437,6 +450,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClipperRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/proxy': {
+      id: '/api/public/proxy'
+      path: '/api/public/proxy'
+      fullPath: '/api/public/proxy'
+      preLoaderRoute: typeof ApiPublicProxyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/action/$videoId': {
       id: '/_authenticated/action/$videoId'
       path: '/action/$videoId'
@@ -482,6 +502,7 @@ const rootRouteChildren: RootRouteChildren = {
   CompareRaskRoute: CompareRaskRoute,
   BlogIndexRoute: BlogIndexRoute,
   CompareIndexRoute: CompareIndexRoute,
+  ApiPublicProxyRoute: ApiPublicProxyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
