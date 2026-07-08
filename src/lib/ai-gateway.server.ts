@@ -1,11 +1,12 @@
 // Server-only chat helper.
 //
 // Routing strategy — enforced in this order on EVERY call:
-//   1. Personal Google AI Studio key (GEMINI_API_KEY / VITE_GEMINI_API_KEY) →
-//      call Google's Generative Language API directly. This is the primary
-//      path in dev preview so the shared Lovable quota is never touched.
-//   2. Only if no personal key is configured, fall back to Lovable's AI
-//      Gateway (LOVABLE_API_KEY).
+//   1. Personal Google AI Studio keys (GEMINI_API_KEY / GEMINI_API_KEY_2 /
+//      VITE_GEMINI_API_KEY / VITE_GEMINI_API_KEY_2) → call Google's
+//      Generative Language API directly. The second key acts as a fallback
+//      when the first hits quota, so the shared Lovable quota is never touched.
+//   2. Only if no personal key is configured (or all are exhausted), fall back
+//      to Lovable's AI Gateway (LOVABLE_API_KEY).
 //
 // Both paths return the assistant's text content as a string.
 
@@ -20,11 +21,20 @@ export interface ChatOptions {
   maxTokens?: number;
 }
 
-function getPersonalGeminiKey(): string | null {
-  // Prefer the user's personal Google AI Studio key. Accept the VITE_
-  // prefixed variant too because that's the name the user configured.
-  const key = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-  return key && key.trim() ? key.trim() : null;
+function getPersonalGeminiKeys(): string[] {
+  const raw = [
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY_2,
+    process.env.VITE_GEMINI_API_KEY,
+    process.env.VITE_GEMINI_API_KEY_2,
+  ];
+  const keys: string[] = [];
+  for (const k of raw) {
+    if (typeof k === "string" && k.trim().length > 0) {
+      keys.push(k.trim());
+    }
+  }
+  return [...new Set(keys)];
 }
 
 function getLovableKey(): string {
@@ -97,13 +107,28 @@ async function geminiDirectChat(
 }
 
 export async function lovableChat(messages: ChatMessage[], opts: ChatOptions = {}): Promise<string> {
-  // 1) Personal Gemini key takes precedence — bypass Lovable's gateway entirely.
-  const personal = getPersonalGeminiKey();
-  if (personal) {
-    return geminiDirectChat(personal, messages, opts);
+  // 1) Personal Gemini keys take precedence — bypass Lovable's gateway entirely.
+  // Try each key in order so a second key acts as a fallback when the first hits quota.
+  const personalKeys = getPersonalGeminiKeys();
+  for (const key of personalKeys) {
+    try {
+      return await geminiDirectChat(key, messages, opts);
+    } catch (e: any) {
+      const msg: string = e?.message ?? "";
+      if (
+        msg.includes("rate-limited") ||
+        msg.includes("rejected") ||
+        msg.includes("quota") ||
+        msg.includes("429")
+      ) {
+        console.warn("[ai-gateway] Gemini key failed, trying next:", msg);
+        continue;
+      }
+      throw e;
+    }
   }
 
-  // 2) No personal key configured — fall back to Lovable's AI Gateway.
+  // 2) No personal key configured (or all exhausted) — fall back to Lovable's AI Gateway.
   const res = await fetch(LOVABLE_GATEWAY_URL, {
     method: "POST",
     headers: {

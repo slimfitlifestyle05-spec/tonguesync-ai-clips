@@ -4,6 +4,7 @@
 type ApiKeys = {
   openai?: string;
   gemini?: string;
+  gemini2?: string;
   elevenlabs?: string;
   cartesia?: string;
 };
@@ -45,15 +46,19 @@ export async function loadPipelineSettings(): Promise<PipelineSettings> {
   (data ?? []).forEach((r) => (map[r.key] = r.value));
   (extra ?? []).forEach((r) => (map[r.key] = r.value));
   return {
-    // Personal Google AI Studio key (GEMINI_API_KEY / VITE_GEMINI_API_KEY)
-    // always wins over anything stored in app_settings, so the dubbing
-    // pipeline routes translation + text steps through the user's own quota
-    // instead of the shared Lovable one.
+    // Personal Google AI Studio keys (GEMINI_API_KEY / GEMINI_API_KEY_2 /
+    // VITE_GEMINI_API_KEY / VITE_GEMINI_API_KEY_2) always win over anything
+    // stored in app_settings, so the dubbing pipeline routes translation +
+    // text steps through the user's own quota instead of the shared Lovable one.
     apiKeys: (() => {
       const stored = (map.api_keys ?? {}) as ApiKeys;
       const personalGemini =
         process.env.GEMINI_API_KEY?.trim() || process.env.VITE_GEMINI_API_KEY?.trim() || "";
-      return personalGemini ? { ...stored, gemini: personalGemini } : stored;
+      const personalGemini2 =
+        process.env.GEMINI_API_KEY_2?.trim() || process.env.VITE_GEMINI_API_KEY_2?.trim() || "";
+      const out: ApiKeys = personalGemini ? { ...stored, gemini: personalGemini } : { ...stored };
+      if (personalGemini2) out.gemini2 = personalGemini2;
+      return out;
     })(),
     ttsProvider: (typeof map.tts_provider === "string" ? map.tts_provider : "cartesia") as
       | "cartesia"
@@ -164,6 +169,24 @@ async function translateWithOpenAI(
   return out.trim();
 }
 
+// Try each configured Gemini key in order; return null if all fail.
+async function tryGeminiTranslate(
+  apiKeys: ApiKeys,
+  transcript: string,
+  targetLanguage: string,
+  targetCountry: string,
+): Promise<string | null> {
+  const keys = [apiKeys.gemini, apiKeys.gemini2].filter(Boolean) as string[];
+  for (const key of keys) {
+    try {
+      return await translateWithGemini(key, transcript, targetLanguage, targetCountry);
+    } catch (e: any) {
+      console.warn("[dubbing-pipeline] Gemini key failed:", e?.message ?? e);
+    }
+  }
+  return null;
+}
+
 async function synthesizeWithCartesia(
   key: string,
   text: string,
@@ -247,15 +270,15 @@ async function translateSentence(
   targetLanguage: string,
   targetCountry: string,
 ): Promise<string> {
-  if (apiKeys.gemini) {
+  const geminiResult = await tryGeminiTranslate(apiKeys, text, targetLanguage, targetCountry);
+  if (geminiResult) return geminiResult;
+  if (apiKeys.openai) {
     try {
-      return await translateWithGemini(apiKeys.gemini, text, targetLanguage, targetCountry);
+      return await translateWithOpenAI(apiKeys.openai, text, targetLanguage, targetCountry);
     } catch (e: any) {
-      console.warn("[dubbing-pipeline] gemini failed, trying openai:", e?.message ?? e);
-      if (apiKeys.openai) return translateWithOpenAI(apiKeys.openai, text, targetLanguage, targetCountry);
+      console.warn("[dubbing-pipeline] openai failed, using Lovable AI:", e?.message ?? e);
     }
   }
-  if (apiKeys.openai) return translateWithOpenAI(apiKeys.openai, text, targetLanguage, targetCountry);
   // Fallback to Lovable AI Gateway (no user key required).
   try {
     const { lovableChat } = await import("./ai-gateway.server");
@@ -349,77 +372,49 @@ export async function runDubbingPipeline(input: {
     }
   }
 
-  // Translation step — prefer Gemini, fall back to OpenAI.
+  // Translation step — try Gemini keys in order, then OpenAI, then Lovable.
   let localizedText = "";
-  let llm: "gemini" | "openai";
+  let llm: "gemini" | "openai" = "gemini";
   try {
-    if (apiKeys.gemini) {
+    const geminiResult = await tryGeminiTranslate(
+      apiKeys,
+      workingTranscript,
+      input.targetLanguage,
+      input.targetCountry,
+    );
+    if (geminiResult) {
+      localizedText = geminiResult;
       llm = "gemini";
+    } else if (apiKeys.openai) {
       try {
-        localizedText = await translateWithGemini(
-          apiKeys.gemini,
+        localizedText = await translateWithOpenAI(
+          apiKeys.openai,
           workingTranscript,
           input.targetLanguage,
           input.targetCountry,
         );
+        llm = "openai";
       } catch (e: any) {
-        console.warn("[dubbing-pipeline] gemini failed, falling back to openai:", e?.message ?? e);
-        if (apiKeys.openai) {
-          try {
-            llm = "openai";
-            localizedText = await translateWithOpenAI(
-              apiKeys.openai,
-              workingTranscript,
-              input.targetLanguage,
-              input.targetCountry,
-            );
-          } catch (e2: any) {
-            console.warn("[dubbing-pipeline] openai failed too, using Lovable AI:", e2?.message ?? e2);
-            const { lovableChat } = await import("./ai-gateway.server");
-            localizedText = await lovableChat(
-              [
-                { role: "system", content: `You rewrite transcripts into the natural spoken ${input.targetLanguage} dialect used in ${input.targetCountry}, preserving pacing for dubbing. Reply with the transcript only.` },
-                { role: "user", content: workingTranscript },
-              ],
-              { temperature: 0.3, maxTokens: 2048 },
-            );
-          }
-        } else {
-          const { lovableChat } = await import("./ai-gateway.server");
-          localizedText = await lovableChat(
-            [
-              { role: "system", content: `You rewrite transcripts into the natural spoken ${input.targetLanguage} dialect used in ${input.targetCountry}, preserving pacing for dubbing. Reply with the transcript only.` },
-              { role: "user", content: workingTranscript },
-            ],
-            { temperature: 0.3, maxTokens: 2048 },
-          );
-        }
-        if (!localizedText.trim()) throw e;
+        console.warn("[dubbing-pipeline] openai failed, using Lovable AI:", e?.message ?? e);
       }
-    } else if (apiKeys.openai) {
-      llm = "openai";
-      localizedText = await translateWithOpenAI(
-        apiKeys.openai,
-        workingTranscript,
-        input.targetLanguage,
-        input.targetCountry,
+    }
+    if (!localizedText) {
+      const { lovableChat } = await import("./ai-gateway.server");
+      localizedText = await lovableChat(
+        [
+          { role: "system", content: `You rewrite transcripts into the natural spoken ${input.targetLanguage} dialect used in ${input.targetCountry}, preserving pacing for dubbing. Reply with the transcript only.` },
+          { role: "user", content: workingTranscript },
+        ],
+        { temperature: 0.3, maxTokens: 2048 },
       );
-    } else {
-      // No user key — fall back to Lovable AI Gateway (Gemini).
       llm = "gemini";
-      localizedText = await translateSentence(
-        apiKeys,
-        workingTranscript,
-        input.targetLanguage,
-        input.targetCountry,
-      );
-      if (!localizedText.trim() || localizedText === workingTranscript) {
-        return {
-          ok: false,
-          stage: "config",
-          message: "Translation unavailable. Add a Gemini/OpenAI key or enable Lovable AI credits.",
-        };
-      }
+    }
+    if (!localizedText.trim() || localizedText === workingTranscript) {
+      return {
+        ok: false,
+        stage: "config",
+        message: "Translation unavailable. Add a Gemini/OpenAI key or enable Lovable AI credits.",
+      };
     }
   } catch (e: any) {
     console.error("[dubbing-pipeline] LLM failed:", e?.message ?? e);
