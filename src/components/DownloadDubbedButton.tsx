@@ -91,50 +91,51 @@ export function DownloadDubbedButton({
     const sameOrigin =
       isRemote && typeof window !== "undefined" && url.startsWith(window.location.origin);
     // Route cross-origin HTTP(S) fetches through our /api/public/proxy so
-    // ffmpeg.wasm can read videos/audios from origins that don't send CORS
-    // headers (was surfacing as "Failed to fetch" during dubbing).
+    // ffmpeg.wasm can read videos/audios from origins without CORS headers.
     const fetchUrl =
       isRemote && !sameOrigin
         ? `/api/public/proxy?url=${encodeURIComponent(url)}`
         : url;
-    let res: Response;
+
+    // Use XMLHttpRequest instead of fetch: some browser extensions (Ant Video
+    // Downloader, ad-blockers, antivirus) wrap window.fetch and reject binary
+    // media requests with a bare "TypeError: Failed to fetch" — XHR bypasses
+    // those hooks and also gives us reliable progress on non-chunked responses.
+    const download = (target: string) =>
+      new Promise<Uint8Array>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("GET", target, true);
+        xhr.responseType = "arraybuffer";
+        xhr.onprogress = (e) => {
+          if (e.lengthComputable && e.total > 0) {
+            onPct(Math.min(99, Math.round((e.loaded / e.total) * 100)));
+          }
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            onPct(100);
+            resolve(new Uint8Array(xhr.response as ArrayBuffer));
+          } else {
+            reject(new Error(`Fetch ${xhr.status}`));
+          }
+        };
+        xhr.onerror = () => reject(new Error("Network error"));
+        xhr.onabort = () => reject(new DOMException("Aborted", "AbortError"));
+        const abortHandler = () => { try { xhr.abort(); } catch {} };
+        if (signal.aborted) abortHandler();
+        else signal.addEventListener("abort", abortHandler, { once: true });
+        xhr.send();
+      });
+
     try {
-      res = await fetch(fetchUrl, { signal });
+      return await download(fetchUrl);
     } catch (err: any) {
-      if (isRemote && !sameOrigin && fetchUrl !== url) {
-        throw new Error(`Network error fetching source: ${err?.message ?? err}`);
+      // If the direct URL failed and we didn't already proxy, retry via proxy.
+      if (isRemote && fetchUrl === url) {
+        return await download(`/api/public/proxy?url=${encodeURIComponent(url)}`);
       }
-      // For data:/blob:/same-origin, retry once through the proxy if it's http.
-      if (isRemote) {
-        res = await fetch(`/api/public/proxy?url=${encodeURIComponent(url)}`, { signal });
-      } else {
-        throw err;
-      }
+      throw err;
     }
-    if (!res.ok) throw new Error(`Fetch ${res.status}`);
-    const total = Number(res.headers.get("content-length") || 0);
-    if (!res.body || !total) {
-      const buf = await res.arrayBuffer();
-      onPct(100);
-      return new Uint8Array(buf);
-    }
-    const reader = res.body.getReader();
-    const chunks: Uint8Array[] = [];
-    let received = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (value) {
-        chunks.push(value);
-        received += value.byteLength;
-        onPct(Math.min(99, Math.round((received / total) * 100)));
-      }
-    }
-    const out = new Uint8Array(received);
-    let off = 0;
-    for (const c of chunks) { out.set(c, off); off += c.byteLength; }
-    onPct(100);
-    return out;
   }
 
   async function renderMux({ downloadAfter }: { downloadAfter: boolean }): Promise<string | null> {
