@@ -132,7 +132,10 @@ export function DownloadDubbedButton({
       const ffmpeg = new FFmpeg();
       ffmpegRef.current = ffmpeg;
       setPct(10);
-      const base = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
+      // FFmpeg's wrapper worker is a module worker, so the core must be the
+      // ESM build. Loading the UMD build here makes the worker fall back to a
+      // dynamic `import()` and then throw "failed to import ffmpeg-core.js".
+      const base = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm";
       const [coreURL, wasmURL] = await Promise.all([
         toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript"),
         toBlobURL(`${base}/ffmpeg-core.wasm`, "application/wasm"),
