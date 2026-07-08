@@ -162,6 +162,10 @@ export function DownloadDubbedButton({
 
   async function renderMux({ downloadAfter }: { downloadAfter: boolean }): Promise<string | null> {
     if (!videoUrl || !audioUrl) { toast.error("Need both source video and dubbed audio"); return null; }
+    if (/^upload:\/\//i.test(videoUrl)) {
+      toast.error("Please re-select the source video, then export again.");
+      return null;
+    }
     canceledRef.current = false;
     abortRef.current = new AbortController();
     const signal = abortRef.current.signal;
