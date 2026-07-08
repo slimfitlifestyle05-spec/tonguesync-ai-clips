@@ -169,6 +169,24 @@ async function translateWithOpenAI(
   return out.trim();
 }
 
+// Try each configured Gemini key in order; return null if all fail.
+async function tryGeminiTranslate(
+  apiKeys: ApiKeys,
+  transcript: string,
+  targetLanguage: string,
+  targetCountry: string,
+): Promise<string | null> {
+  const keys = [apiKeys.gemini, apiKeys.gemini2].filter(Boolean) as string[];
+  for (const key of keys) {
+    try {
+      return await translateWithGemini(key, transcript, targetLanguage, targetCountry);
+    } catch (e: any) {
+      console.warn("[dubbing-pipeline] Gemini key failed:", e?.message ?? e);
+    }
+  }
+  return null;
+}
+
 async function synthesizeWithCartesia(
   key: string,
   text: string,
