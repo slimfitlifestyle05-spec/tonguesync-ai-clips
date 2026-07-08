@@ -88,18 +88,18 @@ export function DownloadDubbedButton({
   // Fetch a URL with byte-level progress into a Uint8Array.
   async function fetchWithProgress(url: string, signal: AbortSignal, onPct: (p: number) => void): Promise<Uint8Array> {
     const isRemote = /^https?:\/\//i.test(url);
-    // data: and blob: URLs — decode locally, XHR/extensions can choke on them.
     if (/^data:/i.test(url)) {
-      const res = await fetch(url);
-      const buf = await res.arrayBuffer();
+      // Decode data: URLs synchronously — avoids window.fetch, which some
+      // browser extensions (Ant Video Downloader) hijack and break.
+      const comma = url.indexOf(",");
+      const meta = url.slice(5, comma);
+      const payload = url.slice(comma + 1);
+      const isBase64 = /;base64/i.test(meta);
+      const raw = isBase64 ? atob(payload) : decodeURIComponent(payload);
+      const bytes = new Uint8Array(raw.length);
+      for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
       onPct(100);
-      return new Uint8Array(buf);
-    }
-    if (/^blob:/i.test(url)) {
-      const res = await fetch(url);
-      const buf = await res.arrayBuffer();
-      onPct(100);
-      return new Uint8Array(buf);
+      return bytes;
     }
     const sameOrigin =
       isRemote && typeof window !== "undefined" && url.startsWith(window.location.origin);
