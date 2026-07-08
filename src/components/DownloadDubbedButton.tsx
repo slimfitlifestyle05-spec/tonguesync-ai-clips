@@ -128,17 +128,21 @@ export function DownloadDubbedButton({
       setLabel("Rendering your dubbed short video in the browser…");
       setPct(0);
       const { FFmpeg } = await import("@ffmpeg/ffmpeg");
+      const { toBlobURL } = await import("@ffmpeg/util");
       const ffmpeg = new FFmpeg();
       ffmpegRef.current = ffmpeg;
-      const base = "https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd";
-      const coreBytes = await fetchWithProgress(`${base}/ffmpeg-core.js`, signal, (p) => setPct(Math.round(p * 0.15)));
-      const wasmBytes = await fetchWithProgress(`${base}/ffmpeg-core.wasm`, signal, (p) => setPct(15 + Math.round(p * 0.35)));
+      setPct(10);
+      const base = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd";
+      const [coreURL, wasmURL] = await Promise.all([
+        toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript"),
+        toBlobURL(`${base}/ffmpeg-core.wasm`, "application/wasm"),
+      ]);
       if (canceledRef.current) return null;
-      const coreURL = URL.createObjectURL(new Blob([coreBytes.buffer as ArrayBuffer], { type: "text/javascript" }));
-      const wasmURL = URL.createObjectURL(new Blob([wasmBytes.buffer as ArrayBuffer], { type: "application/wasm" }));
+      setPct(45);
       await ffmpeg.load({ coreURL, wasmURL });
-      URL.revokeObjectURL(coreURL);
-      URL.revokeObjectURL(wasmURL);
+      // Do NOT revoke the blob URLs — the ffmpeg worker may re-import them
+      // if it needs to reinitialize during long muxes, which is what caused
+      // the "failed to import ffmpeg-core.js" error mid-render.
 
       // 2) Fetch source video + dubbed audio(s).
       setPhase("fetching");
