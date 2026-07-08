@@ -87,7 +87,30 @@ export function DownloadDubbedButton({
 
   // Fetch a URL with byte-level progress into a Uint8Array.
   async function fetchWithProgress(url: string, signal: AbortSignal, onPct: (p: number) => void): Promise<Uint8Array> {
-    const res = await fetch(url, { signal });
+    const isRemote = /^https?:\/\//i.test(url);
+    const sameOrigin =
+      isRemote && typeof window !== "undefined" && url.startsWith(window.location.origin);
+    // Route cross-origin HTTP(S) fetches through our /api/public/proxy so
+    // ffmpeg.wasm can read videos/audios from origins that don't send CORS
+    // headers (was surfacing as "Failed to fetch" during dubbing).
+    const fetchUrl =
+      isRemote && !sameOrigin
+        ? `/api/public/proxy?url=${encodeURIComponent(url)}`
+        : url;
+    let res: Response;
+    try {
+      res = await fetch(fetchUrl, { signal });
+    } catch (err: any) {
+      if (isRemote && !sameOrigin && fetchUrl !== url) {
+        throw new Error(`Network error fetching source: ${err?.message ?? err}`);
+      }
+      // For data:/blob:/same-origin, retry once through the proxy if it's http.
+      if (isRemote) {
+        res = await fetch(`/api/public/proxy?url=${encodeURIComponent(url)}`, { signal });
+      } else {
+        throw err;
+      }
+    }
     if (!res.ok) throw new Error(`Fetch ${res.status}`);
     const total = Number(res.headers.get("content-length") || 0);
     if (!res.body || !total) {
