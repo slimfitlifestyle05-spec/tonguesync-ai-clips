@@ -374,7 +374,7 @@ export async function runDubbingPipeline(input: {
 
   // Translation step — try Gemini keys in order, then OpenAI, then Lovable.
   let localizedText = "";
-  let llm: "gemini" | "openai";
+  let llm: "gemini" | "openai" = "gemini";
   try {
     const geminiResult = await tryGeminiTranslate(
       apiKeys,
