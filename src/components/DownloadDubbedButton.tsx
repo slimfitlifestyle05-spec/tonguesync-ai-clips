@@ -174,18 +174,23 @@ export function DownloadDubbedButton({
       setLabel("Rendering your dubbed short video in the browser…");
       setPct(0);
       const { FFmpeg } = await import("@ffmpeg/ffmpeg");
-      const { toBlobURL } = await import("@ffmpeg/util");
       const ffmpeg = new FFmpeg();
       ffmpegRef.current = ffmpeg;
       setPct(10);
-      // FFmpeg's wrapper worker is a module worker, so the core must be the
-      // ESM build. Loading the UMD build here makes the worker fall back to a
-      // dynamic `import()` and then throw "failed to import ffmpeg-core.js".
+      // Fetch ffmpeg core via XHR (not @ffmpeg/util `toBlobURL`, which uses
+      // window.fetch — some browser extensions like Ant Video Downloader
+      // hijack fetch and reject binary requests with "Failed to fetch").
       const base = "https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm";
-      const [coreURL, wasmURL] = await Promise.all([
-        toBlobURL(`${base}/ffmpeg-core.js`, "text/javascript"),
-        toBlobURL(`${base}/ffmpeg-core.wasm`, "application/wasm"),
+      const [coreBytes, wasmBytes] = await Promise.all([
+        fetchWithProgress(`${base}/ffmpeg-core.js`, signal, () => {}),
+        fetchWithProgress(`${base}/ffmpeg-core.wasm`, signal, () => {}),
       ]);
+      const coreURL = URL.createObjectURL(
+        new Blob([coreBytes.buffer as ArrayBuffer], { type: "text/javascript" }),
+      );
+      const wasmURL = URL.createObjectURL(
+        new Blob([wasmBytes.buffer as ArrayBuffer], { type: "application/wasm" }),
+      );
       if (canceledRef.current) return null;
       setPct(45);
       await ffmpeg.load({ coreURL, wasmURL });
