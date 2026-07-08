@@ -21,11 +21,16 @@ export interface ChatOptions {
   maxTokens?: number;
 }
 
-function getPersonalGeminiKey(): string | null {
-  // Prefer the user's personal Google AI Studio key. Accept the VITE_
-  // prefixed variant too because that's the name the user configured.
-  const key = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-  return key && key.trim() ? key.trim() : null;
+function getPersonalGeminiKeys(): string[] {
+  const keys = [
+    process.env.GEMINI_API_KEY,
+    process.env.GEMINI_API_KEY_2,
+    process.env.VITE_GEMINI_API_KEY,
+    process.env.VITE_GEMINI_API_KEY_2,
+  ]
+    .filter((k): k is string => Boolean(k) && k.trim().length > 0)
+    .map((k) => k.trim());
+  return [...new Set(keys)];
 }
 
 function getLovableKey(): string {
