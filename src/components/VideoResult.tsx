@@ -152,6 +152,8 @@ export function VideoResult({ videos, isPro, embedded = false }: { videos: any[]
                 videoUrl={v.source_url || v.output_url}
                 audioUrl={v.social_kit.dubbed_audio_url}
                 segments={v.social_kit.dubbed_segments ?? null}
+                clipStart={typeof v.clip_start === "number" ? v.clip_start : null}
+                clipEnd={typeof v.clip_end === "number" ? v.clip_end : null}
                 filename={`${(v.title || "dubbed").replace(/[^\w-]+/g, "_")}.mp4`}
               />
             ) : null}
