@@ -22,14 +22,18 @@ export interface ChatOptions {
 }
 
 function getPersonalGeminiKeys(): string[] {
-  const keys = [
+  const raw = [
     process.env.GEMINI_API_KEY,
     process.env.GEMINI_API_KEY_2,
     process.env.VITE_GEMINI_API_KEY,
     process.env.VITE_GEMINI_API_KEY_2,
-  ]
-    .filter((k): k is string => Boolean(k) && k.trim().length > 0)
-    .map((k) => k.trim());
+  ];
+  const keys: string[] = [];
+  for (const k of raw) {
+    if (typeof k === "string" && k.trim().length > 0) {
+      keys.push(k.trim());
+    }
+  }
   return [...new Set(keys)];
 }
 
