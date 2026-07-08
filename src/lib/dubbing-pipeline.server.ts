@@ -372,77 +372,49 @@ export async function runDubbingPipeline(input: {
     }
   }
 
-  // Translation step — prefer Gemini, fall back to OpenAI.
+  // Translation step — try Gemini keys in order, then OpenAI, then Lovable.
   let localizedText = "";
   let llm: "gemini" | "openai";
   try {
-    if (apiKeys.gemini) {
+    const geminiResult = await tryGeminiTranslate(
+      apiKeys,
+      workingTranscript,
+      input.targetLanguage,
+      input.targetCountry,
+    );
+    if (geminiResult) {
+      localizedText = geminiResult;
       llm = "gemini";
+    } else if (apiKeys.openai) {
       try {
-        localizedText = await translateWithGemini(
-          apiKeys.gemini,
+        localizedText = await translateWithOpenAI(
+          apiKeys.openai,
           workingTranscript,
           input.targetLanguage,
           input.targetCountry,
         );
+        llm = "openai";
       } catch (e: any) {
-        console.warn("[dubbing-pipeline] gemini failed, falling back to openai:", e?.message ?? e);
-        if (apiKeys.openai) {
-          try {
-            llm = "openai";
-            localizedText = await translateWithOpenAI(
-              apiKeys.openai,
-              workingTranscript,
-              input.targetLanguage,
-              input.targetCountry,
-            );
-          } catch (e2: any) {
-            console.warn("[dubbing-pipeline] openai failed too, using Lovable AI:", e2?.message ?? e2);
-            const { lovableChat } = await import("./ai-gateway.server");
-            localizedText = await lovableChat(
-              [
-                { role: "system", content: `You rewrite transcripts into the natural spoken ${input.targetLanguage} dialect used in ${input.targetCountry}, preserving pacing for dubbing. Reply with the transcript only.` },
-                { role: "user", content: workingTranscript },
-              ],
-              { temperature: 0.3, maxTokens: 2048 },
-            );
-          }
-        } else {
-          const { lovableChat } = await import("./ai-gateway.server");
-          localizedText = await lovableChat(
-            [
-              { role: "system", content: `You rewrite transcripts into the natural spoken ${input.targetLanguage} dialect used in ${input.targetCountry}, preserving pacing for dubbing. Reply with the transcript only.` },
-              { role: "user", content: workingTranscript },
-            ],
-            { temperature: 0.3, maxTokens: 2048 },
-          );
-        }
-        if (!localizedText.trim()) throw e;
+        console.warn("[dubbing-pipeline] openai failed, using Lovable AI:", e?.message ?? e);
       }
-    } else if (apiKeys.openai) {
-      llm = "openai";
-      localizedText = await translateWithOpenAI(
-        apiKeys.openai,
-        workingTranscript,
-        input.targetLanguage,
-        input.targetCountry,
+    }
+    if (!localizedText) {
+      const { lovableChat } = await import("./ai-gateway.server");
+      localizedText = await lovableChat(
+        [
+          { role: "system", content: `You rewrite transcripts into the natural spoken ${input.targetLanguage} dialect used in ${input.targetCountry}, preserving pacing for dubbing. Reply with the transcript only.` },
+          { role: "user", content: workingTranscript },
+        ],
+        { temperature: 0.3, maxTokens: 2048 },
       );
-    } else {
-      // No user key — fall back to Lovable AI Gateway (Gemini).
       llm = "gemini";
-      localizedText = await translateSentence(
-        apiKeys,
-        workingTranscript,
-        input.targetLanguage,
-        input.targetCountry,
-      );
-      if (!localizedText.trim() || localizedText === workingTranscript) {
-        return {
-          ok: false,
-          stage: "config",
-          message: "Translation unavailable. Add a Gemini/OpenAI key or enable Lovable AI credits.",
-        };
-      }
+    }
+    if (!localizedText.trim() || localizedText === workingTranscript) {
+      return {
+        ok: false,
+        stage: "config",
+        message: "Translation unavailable. Add a Gemini/OpenAI key or enable Lovable AI credits.",
+      };
     }
   } catch (e: any) {
     console.error("[dubbing-pipeline] LLM failed:", e?.message ?? e);
