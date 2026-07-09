@@ -122,46 +122,71 @@ export function VideoResult({ videos, isPro, embedded = false }: { videos: any[]
     <>
     <div className={wrapCls}>
       {videos.map((v) => (
-        <div key={v.id} className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
-          <div className="relative">
-            <video src={v.output_url} controls className="w-full aspect-[9/16] object-cover bg-black" />
-            {v.watermarked && (
-              <div className="absolute bottom-2 right-2 rounded bg-black/50 px-2 py-1 text-xs text-white/80 backdrop-blur">TongueSync AI</div>
-            )}
-          </div>
-          <div className="p-3 space-y-3">
-            <div className="font-medium text-sm truncate">{v.title}</div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => setMagicVideo(v)}
-                className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold hover:opacity-90"
-              >
-                <Play className="h-4 w-4 mr-1" /> View Magic
-              </Button>
-              <a href={v.output_url} download>
-                <Button size="sm" variant="outline" className="w-full bg-white/5 border-white/10 hover:bg-white/10">
-                  <Download className="h-4 w-4 mr-1" />{t("download")}
-                </Button>
-              </a>
-            </div>
-            <SocialKitPanel kit={v.social_kit} isPro={isPro} />
-            {v.social_kit?.dubbed_audio_url ? (
-              <DownloadDubbedButton
-                videoUrl={v.source_url || v.output_url}
-                audioUrl={v.social_kit.dubbed_audio_url}
-                segments={v.social_kit.dubbed_segments ?? null}
-                clipStart={typeof v.clip_start === "number" ? v.clip_start : null}
-                clipEnd={typeof v.clip_end === "number" ? v.clip_end : null}
-                filename={`${(v.title || "dubbed").replace(/[^\w-]+/g, "_")}.mp4`}
-              />
-            ) : null}
-          </div>
-        </div>
+        <VideoCard
+          key={v.id}
+          video={v}
+          isPro={isPro}
+          onOpenMagic={() => setMagicVideo(v)}
+        />
       ))}
     </div>
     <MagicPreviewModal open={!!magicVideo} onOpenChange={(o) => !o && setMagicVideo(null)} video={magicVideo} />
     </>
+  );
+}
+
+function VideoCard({ video: v, isPro, onOpenMagic }: { video: any; isPro: boolean; onOpenMagic: () => void }) {
+  const { t } = useI18n();
+  const [dubbedUrl, setDubbedUrl] = useState<string | null>(null);
+  const hasDub = !!v.social_kit?.dubbed_audio_url;
+  // Once the browser has muxed the dubbed track, show it as the main preview
+  // and route the top Download button to it — so the primary video the user
+  // sees and downloads is the dubbed one, not the original source.
+  const displayUrl = dubbedUrl || v.output_url;
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
+      <div className="relative">
+        <video src={displayUrl} controls className="w-full aspect-[9/16] object-cover bg-black" />
+        {v.watermarked && (
+          <div className="absolute bottom-2 right-2 rounded bg-black/50 px-2 py-1 text-xs text-white/80 backdrop-blur">TongueSync AI</div>
+        )}
+        {hasDub && dubbedUrl && (
+          <div className="absolute top-2 left-2 rounded bg-emerald-500/90 px-2 py-0.5 text-[10px] font-bold text-black">DUBBED</div>
+        )}
+      </div>
+      <div className="p-3 space-y-3">
+        <div className="font-medium text-sm truncate">{v.title}</div>
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            type="button"
+            size="sm"
+            onClick={onOpenMagic}
+            className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold hover:opacity-90"
+          >
+            <Play className="h-4 w-4 mr-1" /> View Magic
+          </Button>
+          <a
+            href={displayUrl}
+            download={dubbedUrl ? `${(v.title || "dubbed").replace(/[^\w-]+/g, "_")}.mp4` : undefined}
+          >
+            <Button size="sm" variant="outline" className="w-full bg-white/5 border-white/10 hover:bg-white/10">
+              <Download className="h-4 w-4 mr-1" />{t("download")}
+            </Button>
+          </a>
+        </div>
+        <SocialKitPanel kit={v.social_kit} isPro={isPro} />
+        {hasDub ? (
+          <DownloadDubbedButton
+            videoUrl={v.source_url || v.output_url}
+            audioUrl={v.social_kit.dubbed_audio_url}
+            segments={v.social_kit.dubbed_segments ?? null}
+            clipStart={typeof v.clip_start === "number" ? v.clip_start : null}
+            clipEnd={typeof v.clip_end === "number" ? v.clip_end : null}
+            filename={`${(v.title || "dubbed").replace(/[^\w-]+/g, "_")}.mp4`}
+            onRendered={(url) => setDubbedUrl(url)}
+          />
+        ) : null}
+      </div>
+    </div>
   );
 }
