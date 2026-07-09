@@ -410,6 +410,7 @@ export async function runDubbingPipeline(input: {
   durationSeconds?: number;
   sourceUrl?: string | null;
   skipAsr?: boolean;
+  providedSegments?: Array<{ start: number; end: number; text: string }>;
 }): Promise<PipelineResult> {
   const started = Date.now();
   const settings = await loadPipelineSettings();
@@ -420,6 +421,18 @@ export async function runDubbingPipeline(input: {
   let workingTranscript = input.transcript;
   let asrSegments: Array<{ start: number; end: number; text: string }> = [];
   let transcriptSource: "whisper" | "mock" = "mock";
+  // Client-provided segments (from an upload transcribed in the browser
+  // via Lovable AI STT / Gemini inline) win — the server can't fetch
+  // upload:// URLs, and these are the only real timing signal we have.
+  if (input.providedSegments && input.providedSegments.length > 0) {
+    asrSegments = input.providedSegments
+      .filter((s) => s.text && s.end > s.start)
+      .sort((a, b) => a.start - b.start);
+    transcriptSource = "whisper";
+    if (!input.transcript || input.transcript.trim().length === 0) {
+      workingTranscript = asrSegments.map((s) => s.text).join(" ");
+    }
+  }
   if (!input.skipAsr && input.sourceUrl && apiKeys.openai) {
     try {
       const w = await transcribeWithWhisper(apiKeys.openai, input.sourceUrl);
