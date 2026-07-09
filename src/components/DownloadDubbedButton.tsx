@@ -43,6 +43,7 @@ export function DownloadDubbedButton({
   clipStart,
   clipEnd,
   autoRender = true,
+  onRendered,
 }: {
   videoUrl?: string | null;
   audioUrl?: string | null;
@@ -51,6 +52,7 @@ export function DownloadDubbedButton({
   clipStart?: number | null;
   clipEnd?: number | null;
   autoRender?: boolean;
+  onRendered?: (url: string) => void;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [pct, setPct] = useState(0);
@@ -309,6 +311,7 @@ export function DownloadDubbedButton({
       const blob = new Blob([data.buffer as ArrayBuffer], { type: "video/mp4" });
       const url = URL.createObjectURL(blob);
       setRenderedUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return url; });
+      try { onRendered?.(url); } catch {}
       if (downloadAfter) {
         const a = document.createElement("a");
         a.href = url;
