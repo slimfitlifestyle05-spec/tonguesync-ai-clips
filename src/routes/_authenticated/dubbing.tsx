@@ -159,6 +159,7 @@ function DubbingPage() {
       // → server via Lovable AI STT so the dub matches what the video says.
       // Server can't fetch upload:// URLs, so ASR must happen here.
       let providedTranscript = "";
+      let providedSegments: Array<{ start: number; end: number; text: string }> = [];
       if (file) {
         try {
           if (file.size > 15 * 1024 * 1024) {
@@ -174,8 +175,12 @@ function DubbingPage() {
           }
           const base64 = btoa(bin);
           const tr = await transcribe({ data: { base64, mimeType: file.type || "video/mp4", filename: file.name } });
-          if ((tr as any).ok) providedTranscript = (tr as any).text;
-          else toast.warning(`Couldn't read the video's speech: ${(tr as any).error}. Using a generic script.`);
+          if ((tr as any).ok) {
+            providedTranscript = (tr as any).text;
+            providedSegments = ((tr as any).segments ?? []) as typeof providedSegments;
+          } else {
+            toast.warning(`Couldn't read the video's speech: ${(tr as any).error}. Using a generic script.`);
+          }
         } catch (e: any) {
           toast.warning(`Transcription skipped: ${e?.message ?? "error"}. Using a generic script.`);
         }
@@ -193,7 +198,7 @@ function DubbingPage() {
       for (let i = 0; i < targets.length; i++) {
         const lang = targets[i];
         const [res] = await Promise.all([
-          dub({ data: { title: isBatch ? `${title} — ${lang.toUpperCase()}` : title, sourceUrl, targetLanguage: lang, targetCountry, style, durationSeconds: duration, providedTranscript } }),
+          dub({ data: { title: isBatch ? `${title} — ${lang.toUpperCase()}` : title, sourceUrl, targetLanguage: lang, targetCountry, style, durationSeconds: duration, providedTranscript, providedSegments } }),
           i === 0 ? new Promise((r) => setTimeout(r, 4200)) : Promise.resolve(),
         ]);
         if ((res as any).error === "limit") { setUpgradeOpen(true); return; }
