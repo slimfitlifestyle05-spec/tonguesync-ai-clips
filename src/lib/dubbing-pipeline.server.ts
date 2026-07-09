@@ -608,6 +608,7 @@ export async function runDubbingPipeline(input: {
         input.targetLanguage,
         cartesiaModel,
         input.durationSeconds,
+        gender,
       );
 
       // Per-segment synthesis for lip-sync: translate + speak each ASR
@@ -631,6 +632,7 @@ export async function runDubbingPipeline(input: {
                 input.targetLanguage,
                 cartesiaModel,
                 Math.max(0.4, s.end - s.start),
+                gender,
               );
               out.push({ start: s.start, end: s.end, text: localized, audioDataUrl: segAudio });
             }
