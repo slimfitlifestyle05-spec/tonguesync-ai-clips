@@ -187,7 +187,7 @@ async function tryGeminiTranslate(
   return null;
 }
 
-async function synthesizeWithCartesia(
+export async function synthesizeWithCartesia(
   key: string,
   text: string,
   language: string,

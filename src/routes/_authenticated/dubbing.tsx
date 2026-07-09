@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createDub, getMyProfile, LIMITS } from "@/lib/video.functions";
 import { transcribeUpload } from "@/lib/transcribe.functions";
+import { previewDubbingVoice } from "@/lib/voice-preview.functions";
 import { Logo } from "@/components/Logo";
 import { LangToggle } from "@/components/LangToggle";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LANGUAGES, REGIONS, STYLE_TEMPLATES } from "@/lib/premium";
 import { useI18n } from "@/lib/i18n";
-import { ArrowLeft, Globe2, Lock, RotateCcw, UploadCloud, X, Loader2, Layers } from "lucide-react";
+import { ArrowLeft, Globe2, Lock, RotateCcw, UploadCloud, X, Loader2, Layers, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
@@ -43,6 +44,29 @@ function DubbingPage() {
   const getProfile = useServerFn(getMyProfile);
   const dub = useServerFn(createDub);
   const transcribe = useServerFn(transcribeUpload);
+  const previewVoice = useServerFn(previewDubbingVoice);
+  const [previewingVoice, setPreviewingVoice] = useState(false);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  async function handleVoicePreview() {
+    if (previewingVoice) return;
+    setPreviewingVoice(true);
+    try {
+      const r = await previewVoice({ data: { targetLanguage } });
+      if (!(r as any).ok) {
+        toast.error((r as any).error ?? "Couldn't play preview");
+        return;
+      }
+      const audio = new Audio((r as any).audioDataUrl);
+      previewAudioRef.current?.pause();
+      previewAudioRef.current = audio;
+      await audio.play();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Couldn't play preview");
+    } finally {
+      setPreviewingVoice(false);
+    }
+  }
   const qc = useQueryClient();
   const { data: profileData } = useQuery({ queryKey: ["me"], queryFn: () => getProfile() });
   const isPro = profileData?.profile?.tier === "pro";
@@ -325,10 +349,24 @@ function DubbingPage() {
           <div className="grid gap-4 md:grid-cols-3">
             <div>
               <Label>{t("target_language")}</Label>
-              <Select value={targetLanguage} onValueChange={setTargetLanguage}>
-                <SelectTrigger className="bg-white/5 border-white/10 mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>{LANGUAGES.map((l) => <SelectItem key={l.code} value={l.code}>{l.label}</SelectItem>)}</SelectContent>
-              </Select>
+              <div className="mt-1 flex gap-2">
+                <Select value={targetLanguage} onValueChange={setTargetLanguage}>
+                  <SelectTrigger className="bg-white/5 border-white/10 flex-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>{LANGUAGES.map((l) => <SelectItem key={l.code} value={l.code}>{l.label}</SelectItem>)}</SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={handleVoicePreview}
+                  disabled={previewingVoice}
+                  aria-label="Preview dubbing voice"
+                  title="Preview dubbing voice"
+                  className="shrink-0 bg-white/5 border-white/10"
+                >
+                  {previewingVoice ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
             <div>
               <Label>{t("target_country")}</Label>
