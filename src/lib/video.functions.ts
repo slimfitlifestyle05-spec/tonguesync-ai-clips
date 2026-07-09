@@ -135,6 +135,7 @@ export const createDub = createServerFn({ method: "POST" })
       targetCountry: z.string().min(2).max(4),
       style: z.string().min(1).max(30),
       durationSeconds: z.number().int().positive().max(600),
+      providedTranscript: z.string().max(20000).optional().default(""),
     }).parse(raw)
   )
   .handler(async ({ context, data }) => {
@@ -148,7 +149,8 @@ export const createDub = createServerFn({ method: "POST" })
     if (tier === "pro" && profile.monthly_used >= PRO_MONTHLY) return { error: "limit" as const };
 
     const style = tier === "free" && data.style !== "modern" && data.style !== "minimal" ? "modern" : data.style;
-    const transcript = mockTranscript(profile.dubs_used + Date.now());
+    const clientTranscript = data.providedTranscript?.trim() ?? "";
+    const transcript = clientTranscript || mockTranscript(profile.dubs_used + Date.now());
     const socialKit = tier === "pro" ? (await import("./premium")).generateSocialKit(transcript) : null;
 
     // Ultra-fast Gemini/OpenAI -> Cartesia Sonic pipeline. Best-effort: on
@@ -166,7 +168,10 @@ export const createDub = createServerFn({ method: "POST" })
         targetLanguage: data.targetLanguage,
         targetCountry: data.targetCountry,
         durationSeconds: data.durationSeconds,
-        sourceUrl: data.sourceUrl || null,
+        // If the client already transcribed the upload, skip server-side ASR
+        // (the upload:// URL isn't reachable from the server anyway).
+        sourceUrl: clientTranscript ? null : data.sourceUrl || null,
+        skipAsr: !!clientTranscript,
       });
       if (result.ok) {
         dubbedAudioUrl = result.audioDataUrl;
