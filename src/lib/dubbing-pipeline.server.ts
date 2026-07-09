@@ -263,6 +263,67 @@ async function transcribeWithWhisper(
   return { text, segments };
 }
 
+// Fallback ASR using Gemini's inline video support. Works with the user's
+// existing Gemini key (no OpenAI required). We ask Gemini to return a JSON
+// array of {start,end,text} so we still get per-segment timing for lip-sync.
+async function transcribeWithGemini(
+  key: string,
+  sourceUrl: string,
+): Promise<{ text: string; segments: Array<{ start: number; end: number; text: string }> }> {
+  const src = await fetch(sourceUrl);
+  if (!src.ok) throw new Error(`Gemini source fetch ${src.status}`);
+  const contentType = src.headers.get("content-type") || "video/mp4";
+  const buf = new Uint8Array(await src.arrayBuffer());
+  if (buf.byteLength > 18 * 1024 * 1024) throw new Error("Source too large for Gemini inline (18MB)");
+  const base64 = Buffer.from(buf).toString("base64");
+  const prompt =
+    "Transcribe the spoken audio in this video verbatim in its ORIGINAL language. " +
+    "Return ONLY a JSON array (no markdown, no prose) of objects with keys " +
+    '"start" (seconds, number), "end" (seconds, number), "text" (string). ' +
+    "One object per spoken sentence, in order. If there is no speech, return [].";
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { inlineData: { mimeType: contentType, data: base64 } },
+              { text: prompt },
+            ],
+          },
+        ],
+        generationConfig: { temperature: 0, responseMimeType: "application/json" },
+      }),
+    },
+  );
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Gemini ASR ${res.status}: ${body.slice(0, 200)}`);
+  }
+  const json: any = await res.json();
+  const raw: string = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  let parsed: any = [];
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    const match = raw.match(/\[[\s\S]*\]/);
+    if (match) parsed = JSON.parse(match[0]);
+  }
+  const segments = (Array.isArray(parsed) ? parsed : [])
+    .map((s: any) => ({
+      start: Number(s.start) || 0,
+      end: Number(s.end) || 0,
+      text: String(s.text || "").trim(),
+    }))
+    .filter((s: any) => s.text);
+  const text = segments.map((s: any) => s.text).join(" ").trim();
+  if (!text) throw new Error("Gemini returned empty transcript");
+  return { text, segments };
+}
+
 // Translate a single sentence while preserving pacing and voice-direction.
 async function translateSentence(
   apiKeys: ApiKeys,
@@ -370,6 +431,34 @@ export async function runDubbingPipeline(input: {
     } catch (e: any) {
       console.warn("[dubbing-pipeline] whisper failed, using mock transcript:", e?.message ?? e);
     }
+  }
+  // If Whisper wasn't used (or failed), try Gemini inline-video ASR so we
+  // dub what the video actually says instead of a random mock transcript.
+  if (transcriptSource === "mock" && input.sourceUrl) {
+    const geminiKeys = [apiKeys.gemini, apiKeys.gemini2].filter(Boolean) as string[];
+    for (const key of geminiKeys) {
+      try {
+        const g = await transcribeWithGemini(key, input.sourceUrl);
+        if (g.text.trim()) {
+          workingTranscript = g.text;
+          asrSegments = g.segments;
+          // Reuse "whisper" tag so downstream UI treats it as real ASR.
+          transcriptSource = "whisper";
+          console.log(`[dubbing-pipeline] gemini ASR ok segments=${g.segments.length}`);
+          break;
+        }
+      } catch (e: any) {
+        console.warn("[dubbing-pipeline] gemini ASR key failed:", e?.message ?? e);
+      }
+    }
+  }
+  if (transcriptSource === "mock" && input.sourceUrl) {
+    return {
+      ok: false,
+      stage: "config",
+      message:
+        "Couldn't transcribe the video. Add an OpenAI key (Whisper) or a Gemini key, and keep the clip under 18MB.",
+    };
   }
 
   // Translation step — try Gemini keys in order, then OpenAI, then Lovable.
