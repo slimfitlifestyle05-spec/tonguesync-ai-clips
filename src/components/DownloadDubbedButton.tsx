@@ -330,7 +330,9 @@ export function DownloadDubbedButton({
       // burning subtitles or trimming to Gemini timestamps.
       const needsReencode = wantBurn || hasClip;
       const styleString =
-        wantBurn && captionStyle !== "none" ? CAPTION_STYLES[captionStyle] : "";
+        wantBurn && captionStyle !== "none"
+          ? CAPTION_STYLES[captionStyle as Exclude<CaptionStyle, "none">]
+          : "";
       const videoArgs = wantBurn
         ? [
             "-filter_complex",
@@ -470,16 +472,34 @@ export function DownloadDubbedButton({
           <Play className="h-3.5 w-3.5" /> {previewOpen ? "Hide preview" : "Preview before export"}
         </button>
         {hasSegments ? (
-          <label className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={burnSubs}
-              onChange={(e) => setBurnSubs(e.target.checked)}
-              disabled={busy}
-              className="h-3 w-3 accent-emerald-500"
-            />
-            <Subtitles className="h-3.5 w-3.5" /> Burn subtitles
-          </label>
+          <div className="flex items-center gap-1.5">
+            <label className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-xs cursor-pointer select-none">
+              <Subtitles className="h-3.5 w-3.5" />
+              <select
+                value={captionStyle}
+                onChange={(e) => setCaptionStyle(e.target.value as CaptionStyle)}
+                disabled={busy}
+                className="bg-transparent text-xs outline-none cursor-pointer"
+              >
+                <option value="none" className="bg-slate-900">No captions</option>
+                <option value="classic" className="bg-slate-900">Classic</option>
+                <option value="tiktok" className="bg-slate-900">TikTok</option>
+                <option value="neon" className="bg-slate-900">Neon</option>
+                <option value="karaoke" className="bg-slate-900">Karaoke</option>
+                <option value="minimal" className="bg-slate-900">Minimal</option>
+              </select>
+            </label>
+            <label className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-xs cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={captionEmojis}
+                onChange={(e) => setCaptionEmojis(e.target.checked)}
+                disabled={busy || captionStyle === "none"}
+                className="h-3 w-3 accent-fuchsia-500"
+              />
+              <span>😀 Emojis</span>
+            </label>
+          </div>
         ) : null}
       </div>
 
