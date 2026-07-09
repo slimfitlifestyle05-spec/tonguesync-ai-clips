@@ -42,31 +42,18 @@ export const previewDubbingVoice = createServerFn({ method: "POST" })
 
     // Reuse the same pipeline settings + Cartesia voice map so the preview
     // matches the voice the final dub will use.
-    const { loadPipelineSettings } = await import("./dubbing-pipeline.server");
+    const { loadPipelineSettings, synthesizeWithCartesia } = await import("./dubbing-pipeline.server");
     const { apiKeys, ttsProvider, cartesiaModel } = await loadPipelineSettings();
 
-    const attemptCartesia = async () => {
-      if (!apiKeys.cartesia) return null;
-      const mod = await import("./dubbing-pipeline.server");
-      // We re-run the pipeline as a single-take TTS just for this preview.
-      const result = await (mod as any).runDubbingPipeline({
-        transcript: text,
-        targetLanguage: data.targetLanguage,
-        targetCountry: "",
-        durationSeconds: Math.max(2, Math.ceil(text.length / 15)),
-        skipAsr: true,
-        providedSegments: [],
-      });
-      if (result?.ok && result.audioDataUrl) {
-        return { audioDataUrl: result.audioDataUrl as string, provider: result.provider as string };
-      }
-      return null;
-    };
-
     try {
-      if (ttsProvider === "cartesia") {
-        const c = await attemptCartesia();
-        if (c) return { ok: true as const, ...c };
+      if (ttsProvider === "cartesia" && apiKeys.cartesia) {
+        const { audioDataUrl } = await synthesizeWithCartesia(
+          apiKeys.cartesia,
+          text,
+          data.targetLanguage,
+          cartesiaModel,
+        );
+        return { ok: true as const, audioDataUrl, provider: "cartesia" as const };
       }
     } catch (e: any) {
       console.warn("[voice-preview] cartesia failed:", e?.message ?? e);
