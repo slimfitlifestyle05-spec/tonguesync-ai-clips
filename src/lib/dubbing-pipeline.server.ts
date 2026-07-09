@@ -409,6 +409,7 @@ export async function runDubbingPipeline(input: {
   targetCountry: string;
   durationSeconds?: number;
   sourceUrl?: string | null;
+  skipAsr?: boolean;
 }): Promise<PipelineResult> {
   const started = Date.now();
   const settings = await loadPipelineSettings();
@@ -419,7 +420,7 @@ export async function runDubbingPipeline(input: {
   let workingTranscript = input.transcript;
   let asrSegments: Array<{ start: number; end: number; text: string }> = [];
   let transcriptSource: "whisper" | "mock" = "mock";
-  if (input.sourceUrl && apiKeys.openai) {
+  if (!input.skipAsr && input.sourceUrl && apiKeys.openai) {
     try {
       const w = await transcribeWithWhisper(apiKeys.openai, input.sourceUrl);
       if (w.text.trim()) {
@@ -434,7 +435,7 @@ export async function runDubbingPipeline(input: {
   }
   // If Whisper wasn't used (or failed), try Gemini inline-video ASR so we
   // dub what the video actually says instead of a random mock transcript.
-  if (transcriptSource === "mock" && input.sourceUrl) {
+  if (!input.skipAsr && transcriptSource === "mock" && input.sourceUrl) {
     const geminiKeys = [apiKeys.gemini, apiKeys.gemini2].filter(Boolean) as string[];
     for (const key of geminiKeys) {
       try {
@@ -452,7 +453,7 @@ export async function runDubbingPipeline(input: {
       }
     }
   }
-  if (transcriptSource === "mock" && input.sourceUrl) {
+  if (!input.skipAsr && transcriptSource === "mock" && input.sourceUrl) {
     return {
       ok: false,
       stage: "config",
