@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createDub, getMyProfile, LIMITS } from "@/lib/video.functions";
+import { transcribeUpload } from "@/lib/transcribe.functions";
 import { Logo } from "@/components/Logo";
 import { LangToggle } from "@/components/LangToggle";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ function DubbingPage() {
   const search = Route.useSearch();
   const getProfile = useServerFn(getMyProfile);
   const dub = useServerFn(createDub);
+  const transcribe = useServerFn(transcribeUpload);
   const qc = useQueryClient();
   const { data: profileData } = useQuery({ queryKey: ["me"], queryFn: () => getProfile() });
   const isPro = profileData?.profile?.tier === "pro";
@@ -153,6 +155,31 @@ function DubbingPage() {
     setBatchResults(null);
     try {
       const sourceUrl = file ? `upload://${file.name}` : source;
+      // If the user uploaded a video/audio file, transcribe it in the browser
+      // → server via Lovable AI STT so the dub matches what the video says.
+      // Server can't fetch upload:// URLs, so ASR must happen here.
+      let providedTranscript = "";
+      if (file) {
+        try {
+          if (file.size > 15 * 1024 * 1024) {
+            toast.error("For accurate dubbing, please use a clip under 15MB.");
+            return;
+          }
+          const buf = await file.arrayBuffer();
+          let bin = "";
+          const bytes = new Uint8Array(buf);
+          const chunk = 0x8000;
+          for (let i = 0; i < bytes.length; i += chunk) {
+            bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
+          }
+          const base64 = btoa(bin);
+          const tr = await transcribe({ data: { base64, mimeType: file.type || "video/mp4", filename: file.name } });
+          if ((tr as any).ok) providedTranscript = (tr as any).text;
+          else toast.warning(`Couldn't read the video's speech: ${(tr as any).error}. Using a generic script.`);
+        } catch (e: any) {
+          toast.warning(`Transcription skipped: ${e?.message ?? "error"}. Using a generic script.`);
+        }
+      }
       const targets = [targetLanguage, ...extraLanguages.filter((l) => l !== targetLanguage)];
       const isBatch = targets.length > 1;
       if (isBatch && !isPro) {
@@ -166,7 +193,7 @@ function DubbingPage() {
       for (let i = 0; i < targets.length; i++) {
         const lang = targets[i];
         const [res] = await Promise.all([
-          dub({ data: { title: isBatch ? `${title} — ${lang.toUpperCase()}` : title, sourceUrl, targetLanguage: lang, targetCountry, style, durationSeconds: duration } }),
+          dub({ data: { title: isBatch ? `${title} — ${lang.toUpperCase()}` : title, sourceUrl, targetLanguage: lang, targetCountry, style, durationSeconds: duration, providedTranscript } }),
           i === 0 ? new Promise((r) => setTimeout(r, 4200)) : Promise.resolve(),
         ]);
         if ((res as any).error === "limit") { setUpgradeOpen(true); return; }
