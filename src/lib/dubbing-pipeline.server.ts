@@ -430,24 +430,73 @@ export async function runDubbingPipeline(input: {
   durationSeconds?: number;
   sourceUrl?: string | null;
   skipAsr?: boolean;
-  providedSegments?: Array<{ start: number; end: number; text: string }>;
+  providedSegments?: Array<{
+    start: number;
+    end: number;
+    text: string;
+    words?: Array<{ start: number; end: number; text: string }>;
+  }>;
+  voiceGender?: VoiceGender;
 }): Promise<PipelineResult> {
   const started = Date.now();
   const settings = await loadPipelineSettings();
   const { apiKeys, ttsProvider, cartesiaModel } = settings;
+  const gender: VoiceGender = input.voiceGender === "male" ? "male" : "female";
 
   // Step 0 (optional) — real ASR with timestamps via Whisper. Falls back
   // silently to the caller-supplied transcript if disabled or fails.
   let workingTranscript = input.transcript;
-  let asrSegments: Array<{ start: number; end: number; text: string }> = [];
+  let asrSegments: Array<{
+    start: number;
+    end: number;
+    text: string;
+    words?: Array<{ start: number; end: number; text: string }>;
+  }> = [];
   let transcriptSource: "whisper" | "mock" = "mock";
   // Client-provided segments (from an upload transcribed in the browser
   // via Lovable AI STT / Gemini inline) win — the server can't fetch
   // upload:// URLs, and these are the only real timing signal we have.
   if (input.providedSegments && input.providedSegments.length > 0) {
-    asrSegments = input.providedSegments
+    const raw = input.providedSegments
       .filter((s) => s.text && s.end > s.start)
       .sort((a, b) => a.start - b.start);
+    // Split long segments (>4s) into tighter sub-segments using word timings.
+    // This gives us word-level alignment within each phrase so the dub tracks
+    // the original speaker's cadence instead of drifting.
+    const MAX_SEG = 4.0;
+    const refined: typeof raw = [];
+    for (const s of raw) {
+      const dur = s.end - s.start;
+      if (dur <= MAX_SEG || !s.words || s.words.length < 3) {
+        refined.push(s);
+        continue;
+      }
+      // Greedily accumulate words up to ~MAX_SEG seconds each.
+      let bucket: typeof s.words = [];
+      let bucketStart = s.words[0].start;
+      for (const w of s.words) {
+        if (bucket.length && w.end - bucketStart > MAX_SEG) {
+          refined.push({
+            start: bucketStart,
+            end: bucket[bucket.length - 1].end,
+            text: bucket.map((x) => x.text).join(" "),
+            words: bucket,
+          });
+          bucket = [];
+          bucketStart = w.start;
+        }
+        bucket.push(w);
+      }
+      if (bucket.length) {
+        refined.push({
+          start: bucketStart,
+          end: bucket[bucket.length - 1].end,
+          text: bucket.map((x) => x.text).join(" "),
+          words: bucket,
+        });
+      }
+    }
+    asrSegments = refined;
     transcriptSource = "whisper";
     if (!input.transcript || input.transcript.trim().length === 0) {
       workingTranscript = asrSegments.map((s) => s.text).join(" ");
