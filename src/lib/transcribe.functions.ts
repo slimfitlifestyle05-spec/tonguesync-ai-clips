@@ -2,7 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export type TranscriptSegment = { start: number; end: number; text: string };
+export type TranscriptWord = { start: number; end: number; text: string };
+export type TranscriptSegment = {
+  start: number;
+  end: number;
+  text: string;
+  words?: TranscriptWord[];
+};
 
 // Try Gemini inline audio → segment-level timestamps for tight lip-sync.
 // Uses the user's personal GEMINI_API_KEY(_2). Returns null if unavailable.
@@ -20,10 +26,12 @@ async function transcribeWithGeminiInline(
   const base64 = bytes.toString("base64");
   const prompt =
     "Transcribe the spoken audio in this media verbatim in its ORIGINAL language. " +
-    "Return ONLY a JSON array (no markdown, no prose) of objects with keys " +
-    '"start" (seconds, number), "end" (seconds, number), "text" (string). ' +
-    "Split at natural sentence/phrase boundaries — aim for 1–8s per segment " +
-    "so the dub can be time-aligned to the original speaker. " +
+    "Return ONLY a JSON array (no markdown, no prose) of segment objects with keys " +
+    '"start" (seconds, number), "end" (seconds, number), "text" (string), ' +
+    'and "words": an array of {"start","end","text"} for each spoken word ' +
+    "inside that segment, with accurate per-word timestamps in seconds. " +
+    "Split at natural phrase boundaries — aim for 1.5–5s per segment so the " +
+    "dub can be tightly time-aligned to the original speaker's mouth. " +
     "If there is no speech, return [].";
   for (const key of keys) {
     try {
@@ -55,11 +63,23 @@ async function transcribeWithGeminiInline(
         if (match) parsed = JSON.parse(match[0]);
       }
       const segments: TranscriptSegment[] = (Array.isArray(parsed) ? parsed : [])
-        .map((s: any) => ({
-          start: Number(s.start) || 0,
-          end: Number(s.end) || 0,
-          text: String(s.text || "").trim(),
-        }))
+        .map((s: any) => {
+          const words: TranscriptWord[] = Array.isArray(s.words)
+            ? s.words
+                .map((w: any) => ({
+                  start: Number(w.start) || 0,
+                  end: Number(w.end) || 0,
+                  text: String(w.text || w.word || "").trim(),
+                }))
+                .filter((w: TranscriptWord) => w.text && w.end > w.start)
+            : [];
+          return {
+            start: Number(s.start) || 0,
+            end: Number(s.end) || 0,
+            text: String(s.text || "").trim(),
+            words: words.length ? words : undefined,
+          };
+        })
         .filter((s) => s.text && s.end > s.start);
       const text = segments.map((s) => s.text).join(" ").trim();
       if (text) return { text, segments };
