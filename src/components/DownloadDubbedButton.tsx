@@ -7,6 +7,53 @@ type Segment = { start: number; end: number; text?: string; audioDataUrl: string
 
 type Phase = "idle" | "loading-core" | "fetching" | "mixing" | "done";
 
+export type CaptionStyle = "none" | "classic" | "tiktok" | "neon" | "karaoke" | "minimal";
+
+// ASS/SRT force_style strings per caption look (colors are &HAABBGGRR).
+const CAPTION_STYLES: Record<Exclude<CaptionStyle, "none">, string> = {
+  classic:
+    "Fontname=Arial,Fontsize=22,Bold=1,PrimaryColour=&Hffffff&,OutlineColour=&H80000000&,BorderStyle=3,Outline=1,Shadow=0,MarginV=40",
+  tiktok:
+    "Fontname=Arial,Fontsize=26,Bold=1,PrimaryColour=&H00f6ff&,OutlineColour=&H000000&,BorderStyle=1,Outline=3,Shadow=0,MarginV=60",
+  neon:
+    "Fontname=Arial,Fontsize=24,Bold=1,PrimaryColour=&Hffffff&,OutlineColour=&Hff40e0&,BorderStyle=1,Outline=3,Shadow=1,MarginV=60",
+  karaoke:
+    "Fontname=Arial,Fontsize=24,Bold=1,PrimaryColour=&H000000&,BackColour=&H0080ff&,OutlineColour=&H000000&,BorderStyle=4,Outline=6,Shadow=0,MarginV=60",
+  minimal:
+    "Fontname=Arial,Fontsize=18,PrimaryColour=&Hffffff&,OutlineColour=&H80000000&,BorderStyle=3,Outline=1,Shadow=0,MarginV=32",
+};
+
+// Very small keyword → emoji dictionary. Injects one emoji at the end of a
+// caption line when we spot a matching keyword. Keeps captions lively without
+// hitting an external API.
+const EMOJI_MAP: Array<[RegExp, string]> = [
+  [/\b(love|heart|amor|amour|liebe|حب|❤)\b/i, "❤️"],
+  [/\b(fire|hot|🔥|نار|رهيب|awesome)\b/i, "🔥"],
+  [/\b(money|cash|dollar|revenue|price|pricing|فلوس|مال|سعر)\b/i, "💰"],
+  [/\b(win|winner|victory|success|فوز|نجاح)\b/i, "🏆"],
+  [/\b(idea|think|brain|فكرة)\b/i, "💡"],
+  [/\b(fast|speed|quick|سريع|بسرعة)\b/i, "⚡"],
+  [/\b(secret|hidden|reveal|سر|خفي)\b/i, "🤫"],
+  [/\b(learn|teach|lesson|class|تعلم|درس)\b/i, "📚"],
+  [/\b(video|watch|show|فيديو|شاهد)\b/i, "🎬"],
+  [/\b(music|song|sing|موسيقى|أغنية)\b/i, "🎵"],
+  [/\b(happy|smile|joy|فرح|سعيد)\b/i, "😄"],
+  [/\b(sad|cry|tear|حزين|بكاء)\b/i, "😢"],
+  [/\b(surprise|wow|شگفت|واو|مذهل)\b/i, "😲"],
+  [/\b(warning|danger|alert|تحذير|خطر)\b/i, "⚠️"],
+  [/\b(rocket|launch|scale|grow|إطلاق|نمو)\b/i, "🚀"],
+  [/\b(time|clock|hour|وقت|ساعة)\b/i, "⏰"],
+  [/\b(question|why|how|كيف|لماذا)\b/i, "❓"],
+  [/\b(check|done|ready|جاهز|تم)\b/i, "✅"],
+];
+
+function addEmoji(text: string): string {
+  for (const [rx, emoji] of EMOJI_MAP) {
+    if (rx.test(text)) return text.endsWith(emoji) ? text : `${text} ${emoji}`;
+  }
+  return text;
+}
+
 function toSrtTime(seconds: number) {
   const s = Math.max(0, seconds);
   const h = Math.floor(s / 3600);
