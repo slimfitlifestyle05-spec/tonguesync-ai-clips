@@ -91,6 +91,8 @@ export function DownloadDubbedButton({
   clipEnd,
   autoRender = true,
   onRendered,
+  captionStyle: initialCaptionStyle = "none",
+  captionEmojis: initialCaptionEmojis = false,
 }: {
   videoUrl?: string | null;
   audioUrl?: string | null;
@@ -100,11 +102,14 @@ export function DownloadDubbedButton({
   clipEnd?: number | null;
   autoRender?: boolean;
   onRendered?: (url: string) => void;
+  captionStyle?: CaptionStyle;
+  captionEmojis?: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [pct, setPct] = useState(0);
   const [label, setLabel] = useState("");
-  const [burnSubs, setBurnSubs] = useState(false);
+  const [captionStyle, setCaptionStyle] = useState<CaptionStyle>(initialCaptionStyle);
+  const [captionEmojis, setCaptionEmojis] = useState<boolean>(initialCaptionEmojis);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const [renderedUrl, setRenderedUrl] = useState<string | null>(null);
@@ -218,7 +223,7 @@ export function DownloadDubbedButton({
     canceledRef.current = false;
     abortRef.current = new AbortController();
     const signal = abortRef.current.signal;
-    const wantBurn = burnSubs && hasSegments;
+    const wantBurn = captionStyle !== "none" && hasSegments;
     const hasClip = typeof clipStart === "number" && typeof clipEnd === "number" && clipEnd > clipStart;
 
     try {
@@ -283,7 +288,11 @@ export function DownloadDubbedButton({
 
       // Write SRT for burn-in when the user asked and we have segments.
       if (wantBurn) {
-        const srt = segmentsToSrt(segments!);
+        const styled: Segment[] = segments!.map((s) => ({
+          ...s,
+          text: captionEmojis ? addEmoji(s.text ?? "") : (s.text ?? ""),
+        }));
+        const srt = segmentsToSrt(styled);
         await ffmpeg.writeFile("subs.srt", new TextEncoder().encode(srt));
       }
 
@@ -320,11 +329,13 @@ export function DownloadDubbedButton({
       // Video map: fast stream-copy by default; re-encode with libx264 when
       // burning subtitles or trimming to Gemini timestamps.
       const needsReencode = wantBurn || hasClip;
+      const styleString =
+        wantBurn && captionStyle !== "none" ? CAPTION_STYLES[captionStyle] : "";
       const videoArgs = wantBurn
         ? [
             "-filter_complex",
             filterParts.join(";") +
-              `;[0:v]subtitles=subs.srt:force_style='Fontname=Arial,Fontsize=22,PrimaryColour=&Hffffff&,OutlineColour=&H80000000&,BorderStyle=3,Outline=1,Shadow=0,MarginV=40'[vout]`,
+              `;[0:v]subtitles=subs.srt:force_style='${styleString}'[vout]`,
             "-map", "[vout]",
             "-c:v", "libx264",
             "-preset", "veryfast",
