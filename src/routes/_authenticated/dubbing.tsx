@@ -402,6 +402,63 @@ function DubbingPage() {
             <Input type="number" min={5} max={maxDur} value={duration} onChange={(e) => setDuration(parseInt(e.target.value || "0"))} className="bg-white/5 border-white/10 mt-1" />
           </div>
           <div>
+            <Label className="flex items-center gap-1.5"><Mic className="h-3.5 w-3.5" /> Voice</Label>
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              {(["female", "male"] as const).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setVoiceGender(g)}
+                  className={`inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm capitalize transition ${
+                    voiceGender === g
+                      ? "bg-gradient-to-r from-fuchsia-500/30 to-amber-400/30 border-fuchsia-400/60 text-white"
+                      : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+                  }`}
+                >
+                  {g === "female" ? <User className="h-3.5 w-3.5" /> : <Users className="h-3.5 w-3.5" />}
+                  {g}
+                </button>
+              ))}
+            </div>
+            <div className="mt-1 text-[10px] text-slate-500">Tap the speaker icon above to preview the selected voice.</div>
+          </div>
+          <div>
+            <Label className="flex items-center gap-1.5"><Subtitles className="h-3.5 w-3.5" /> Captions</Label>
+            <div className="mt-1 grid grid-cols-3 gap-1.5">
+              {([
+                { id: "none", label: "Off" },
+                { id: "classic", label: "Classic" },
+                { id: "tiktok", label: "TikTok" },
+                { id: "neon", label: "Neon" },
+                { id: "karaoke", label: "Karaoke" },
+                { id: "minimal", label: "Minimal" },
+              ] as const).map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setCaptionStyle(c.id)}
+                  className={`rounded-md border px-2 py-1.5 text-xs transition ${
+                    captionStyle === c.id
+                      ? "bg-gradient-to-r from-fuchsia-500/30 to-amber-400/30 border-fuchsia-400/60 text-white"
+                      : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            <label className={`mt-2 inline-flex items-center gap-2 text-xs cursor-pointer select-none ${captionStyle === "none" ? "opacity-50 cursor-not-allowed" : ""}`}>
+              <input
+                type="checkbox"
+                checked={captionEmojis}
+                disabled={captionStyle === "none"}
+                onChange={(e) => setCaptionEmojis(e.target.checked)}
+                className="h-3.5 w-3.5 accent-fuchsia-500"
+              />
+              <Smile className="h-3.5 w-3.5 text-amber-300" /> Add auto-emojis to captions
+            </label>
+          </div>
+          <div>
             <Label className="flex items-center gap-1.5">
               <Layers className="h-3.5 w-3.5" /> Also dub into (batch)
               {!isPro && <span className="text-[10px] text-amber-300/80">Pro only 🔒</span>}
