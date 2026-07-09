@@ -223,7 +223,7 @@ export function DownloadDubbedButton({
     canceledRef.current = false;
     abortRef.current = new AbortController();
     const signal = abortRef.current.signal;
-    const wantBurn = captionStyle !== "none" && hasSegments;
+    const wantBurn: boolean = (captionStyle as string) !== "none" && hasSegments;
     const hasClip = typeof clipStart === "number" && typeof clipEnd === "number" && clipEnd > clipStart;
 
     try {
@@ -329,10 +329,9 @@ export function DownloadDubbedButton({
       // Video map: fast stream-copy by default; re-encode with libx264 when
       // burning subtitles or trimming to Gemini timestamps.
       const needsReencode = wantBurn || hasClip;
-      const activeCaptionStyle = captionStyle as CaptionStyle;
-      const styleString =
-        wantBurn && activeCaptionStyle !== "none"
-          ? CAPTION_STYLES[activeCaptionStyle as Exclude<CaptionStyle, "none">]
+      const styleString: string =
+        wantBurn && (captionStyle as string) !== "none"
+          ? CAPTION_STYLES[captionStyle as Exclude<CaptionStyle, "none">]
           : "";
       const videoArgs = wantBurn
         ? [
