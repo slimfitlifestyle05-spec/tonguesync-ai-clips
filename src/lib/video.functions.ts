@@ -136,6 +136,17 @@ export const createDub = createServerFn({ method: "POST" })
       style: z.string().min(1).max(30),
       durationSeconds: z.number().int().positive().max(600),
       providedTranscript: z.string().max(20000).optional().default(""),
+      providedSegments: z
+        .array(
+          z.object({
+            start: z.number().nonnegative(),
+            end: z.number().nonnegative(),
+            text: z.string().min(1).max(1000),
+          }),
+        )
+        .max(500)
+        .optional()
+        .default([]),
     }).parse(raw)
   )
   .handler(async ({ context, data }) => {
@@ -172,6 +183,7 @@ export const createDub = createServerFn({ method: "POST" })
         // (the upload:// URL isn't reachable from the server anyway).
         sourceUrl: clientTranscript ? null : data.sourceUrl || null,
         skipAsr: !!clientTranscript,
+        providedSegments: data.providedSegments,
       });
       if (result.ok) {
         dubbedAudioUrl = result.audioDataUrl;
