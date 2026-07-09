@@ -34,6 +34,7 @@ export const previewDubbingVoice = createServerFn({ method: "POST" })
       .object({
         targetLanguage: z.string().min(2).max(6),
         text: z.string().max(400).optional(),
+        voiceGender: z.enum(["female", "male"]).optional().default("female"),
       })
       .parse(raw),
   )
@@ -52,6 +53,8 @@ export const previewDubbingVoice = createServerFn({ method: "POST" })
           text,
           data.targetLanguage,
           cartesiaModel,
+          undefined,
+          data.voiceGender,
         );
         return { ok: true as const, audioDataUrl, provider: "cartesia" as const };
       }
@@ -69,7 +72,7 @@ export const previewDubbingVoice = createServerFn({ method: "POST" })
         body: JSON.stringify({
           model: "openai/gpt-4o-mini-tts",
           input: text,
-          voice: "alloy",
+          voice: data.voiceGender === "male" ? "onyx" : "alloy",
           response_format: "mp3",
         }),
       });

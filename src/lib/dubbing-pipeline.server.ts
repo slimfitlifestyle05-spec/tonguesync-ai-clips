@@ -94,23 +94,42 @@ function normalizeLanguage(input: string): string {
 }
 
 // Cartesia Sonic-2 is cross-lingual: one voice can speak any supported language.
-// We keep a small curated map so each language sounds native — pick a warm, mid-pitched voice.
-function voiceForLanguage(lang: string): string {
-  const map: Record<string, string> = {
-    ar: "a67e0421-22e0-4d5b-b586-bd4a64aee41d", // Farsi/Arabic-friendly narrator
-    en: "a0e99841-438c-4a64-b679-ae501e7d6091", // Barbershop Man
-    es: "846d6cb0-2301-48b6-9683-48f5618ea2f6", // Spanish-speaking Lady
-    fr: "a8a1eb38-5f15-4c1d-8722-7ac0f329727d", // Calm French Man
-    de: "b9de4a89-2257-424b-94c2-db18ba68c81a", // German conversational
-    pt: "700d1ee3-a641-4018-ba6e-899dcadc9e2b", // Brazilian Portuguese
-    it: "13524ffb-a918-499a-ae97-c98c7c4408c4", // Italian narrator
-    tr: "bf991597-6c13-47e4-8411-91ec2de5c466", // Turkish narrator
-    hi: "9b953e7b-b1ce-4a20-9a34-eb1c11d94f11", // Hindi conversational
-    ja: "2b568345-1d48-4047-b25f-7baccf842eb0", // Japanese narrator
-    zh: "e90c6678-f0d3-4767-9883-5d0ecf5894a8", // Mandarin narrator
-    ru: "779673f3-895f-4935-b6b5-b031dc78b319", // Russian storyteller
-  };
-  return map[lang] ?? map.en;
+// Two curated pools so users can pick a masculine or feminine timbre.
+export type VoiceGender = "female" | "male";
+
+const FEMALE_VOICES: Record<string, string> = {
+  ar: "a67e0421-22e0-4d5b-b586-bd4a64aee41d", // Arabic-friendly narrator
+  en: "79a125e8-cd45-4c13-8a67-188112f4dd22", // British Reading Lady
+  es: "846d6cb0-2301-48b6-9683-48f5618ea2f6", // Spanish-speaking Lady
+  fr: "a249eaff-1e96-4d2c-b23b-12efa4f66f41", // French Conversational Lady
+  de: "b9de4a89-2257-424b-94c2-db18ba68c81a", // German conversational
+  pt: "700d1ee3-a641-4018-ba6e-899dcadc9e2b", // Brazilian Portuguese
+  it: "13524ffb-a918-499a-ae97-c98c7c4408c4", // Italian narrator
+  tr: "bf991597-6c13-47e4-8411-91ec2de5c466", // Turkish narrator
+  hi: "9b953e7b-b1ce-4a20-9a34-eb1c11d94f11", // Hindi conversational
+  ja: "2b568345-1d48-4047-b25f-7baccf842eb0", // Japanese narrator
+  zh: "e90c6678-f0d3-4767-9883-5d0ecf5894a8", // Mandarin narrator
+  ru: "779673f3-895f-4935-b6b5-b031dc78b319", // Russian storyteller
+};
+
+const MALE_VOICES: Record<string, string> = {
+  ar: "a67e0421-22e0-4d5b-b586-bd4a64aee41d", // Warm Arabic male-leaning narrator
+  en: "a0e99841-438c-4a64-b679-ae501e7d6091", // Barbershop Man
+  es: "15a9cd88-84b0-4a8b-95f2-5d583b54c72e", // Spanish Reporter Man
+  fr: "a8a1eb38-5f15-4c1d-8722-7ac0f329727d", // Calm French Man
+  de: "384b625b-da5d-49e8-a76d-a2855d4f31eb", // German Reporter Man
+  pt: "6a16c1f4-462b-44de-998d-ccdaa4125a0a", // Brazilian Portuguese Man
+  it: "408daed0-c597-4c27-aae8-fa0497d644bf", // Italian Foreground
+  tr: "bf991597-6c13-47e4-8411-91ec2de5c466", // Turkish narrator
+  hi: "3f4ade23-6eb4-4279-ab05-6a144947c4d5", // Hindi male reporter
+  ja: "2b568345-1d48-4047-b25f-7baccf842eb0", // Japanese narrator
+  zh: "e90c6678-f0d3-4767-9883-5d0ecf5894a8", // Mandarin narrator
+  ru: "da05e96d-ca10-4220-9042-d8acef654fa9", // Russian Narrator Man
+};
+
+function voiceForLanguage(lang: string, gender: VoiceGender = "female"): string {
+  const pool = gender === "male" ? MALE_VOICES : FEMALE_VOICES;
+  return pool[lang] ?? pool.en ?? FEMALE_VOICES.en;
 }
 
 async function translateWithGemini(
@@ -193,10 +212,11 @@ export async function synthesizeWithCartesia(
   language: string,
   model: "sonic-2" | "sonic-turbo" | "sonic" = "sonic-2",
   targetDurationSeconds?: number,
+  gender: VoiceGender = "female",
 ): Promise<{ audioDataUrl: string }> {
   // Cartesia Sonic family — sonic-2 = flagship quality, sonic-turbo = ~40ms latency.
   const lang = normalizeLanguage(language);
-  const voiceId = voiceForLanguage(lang);
+  const voiceId = voiceForLanguage(lang, gender);
   // Estimate speech duration (~15 chars/sec at speed 1) and adjust `speed`
   // to match the source clip's length within Cartesia's [-1,1] range.
   let speed = 0;
@@ -410,24 +430,73 @@ export async function runDubbingPipeline(input: {
   durationSeconds?: number;
   sourceUrl?: string | null;
   skipAsr?: boolean;
-  providedSegments?: Array<{ start: number; end: number; text: string }>;
+  providedSegments?: Array<{
+    start: number;
+    end: number;
+    text: string;
+    words?: Array<{ start: number; end: number; text: string }>;
+  }>;
+  voiceGender?: VoiceGender;
 }): Promise<PipelineResult> {
   const started = Date.now();
   const settings = await loadPipelineSettings();
   const { apiKeys, ttsProvider, cartesiaModel } = settings;
+  const gender: VoiceGender = input.voiceGender === "male" ? "male" : "female";
 
   // Step 0 (optional) — real ASR with timestamps via Whisper. Falls back
   // silently to the caller-supplied transcript if disabled or fails.
   let workingTranscript = input.transcript;
-  let asrSegments: Array<{ start: number; end: number; text: string }> = [];
+  let asrSegments: Array<{
+    start: number;
+    end: number;
+    text: string;
+    words?: Array<{ start: number; end: number; text: string }>;
+  }> = [];
   let transcriptSource: "whisper" | "mock" = "mock";
   // Client-provided segments (from an upload transcribed in the browser
   // via Lovable AI STT / Gemini inline) win — the server can't fetch
   // upload:// URLs, and these are the only real timing signal we have.
   if (input.providedSegments && input.providedSegments.length > 0) {
-    asrSegments = input.providedSegments
+    const raw = input.providedSegments
       .filter((s) => s.text && s.end > s.start)
       .sort((a, b) => a.start - b.start);
+    // Split long segments (>4s) into tighter sub-segments using word timings.
+    // This gives us word-level alignment within each phrase so the dub tracks
+    // the original speaker's cadence instead of drifting.
+    const MAX_SEG = 4.0;
+    const refined: typeof raw = [];
+    for (const s of raw) {
+      const dur = s.end - s.start;
+      if (dur <= MAX_SEG || !s.words || s.words.length < 3) {
+        refined.push(s);
+        continue;
+      }
+      // Greedily accumulate words up to ~MAX_SEG seconds each.
+      let bucket: typeof s.words = [];
+      let bucketStart = s.words[0].start;
+      for (const w of s.words) {
+        if (bucket.length && w.end - bucketStart > MAX_SEG) {
+          refined.push({
+            start: bucketStart,
+            end: bucket[bucket.length - 1].end,
+            text: bucket.map((x) => x.text).join(" "),
+            words: bucket,
+          });
+          bucket = [];
+          bucketStart = w.start;
+        }
+        bucket.push(w);
+      }
+      if (bucket.length) {
+        refined.push({
+          start: bucketStart,
+          end: bucket[bucket.length - 1].end,
+          text: bucket.map((x) => x.text).join(" "),
+          words: bucket,
+        });
+      }
+    }
+    asrSegments = refined;
     transcriptSource = "whisper";
     if (!input.transcript || input.transcript.trim().length === 0) {
       workingTranscript = asrSegments.map((s) => s.text).join(" ");
@@ -539,6 +608,7 @@ export async function runDubbingPipeline(input: {
         input.targetLanguage,
         cartesiaModel,
         input.durationSeconds,
+        gender,
       );
 
       // Per-segment synthesis for lip-sync: translate + speak each ASR
@@ -562,6 +632,7 @@ export async function runDubbingPipeline(input: {
                 input.targetLanguage,
                 cartesiaModel,
                 Math.max(0.4, s.end - s.start),
+                gender,
               );
               out.push({ start: s.start, end: s.end, text: localized, audioDataUrl: segAudio });
             }

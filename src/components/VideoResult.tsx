@@ -183,6 +183,8 @@ function VideoCard({ video: v, isPro, onOpenMagic }: { video: any; isPro: boolea
             clipStart={typeof v.clip_start === "number" ? v.clip_start : null}
             clipEnd={typeof v.clip_end === "number" ? v.clip_end : null}
             filename={`${(v.title || "dubbed").replace(/[^\w-]+/g, "_")}.mp4`}
+            captionStyle={v.social_kit.caption_style ?? "none"}
+            captionEmojis={!!v.social_kit.caption_emojis}
             onRendered={(url) => setDubbedUrl(url)}
           />
         ) : null}

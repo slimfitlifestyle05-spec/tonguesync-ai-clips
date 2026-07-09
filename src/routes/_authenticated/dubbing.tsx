@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LANGUAGES, REGIONS, STYLE_TEMPLATES } from "@/lib/premium";
 import { useI18n } from "@/lib/i18n";
-import { ArrowLeft, Globe2, Lock, RotateCcw, UploadCloud, X, Loader2, Layers, Volume2 } from "lucide-react";
+import { ArrowLeft, Globe2, Lock, RotateCcw, UploadCloud, X, Loader2, Layers, Volume2, Mic, User, Users, Subtitles, Smile } from "lucide-react";
 import { toast } from "sonner";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
@@ -52,7 +52,7 @@ function DubbingPage() {
     if (previewingVoice) return;
     setPreviewingVoice(true);
     try {
-      const r = await previewVoice({ data: { targetLanguage } });
+      const r = await previewVoice({ data: { targetLanguage, voiceGender } });
       if (!(r as any).ok) {
         toast.error((r as any).error ?? "Couldn't play preview");
         return;
@@ -79,6 +79,11 @@ function DubbingPage() {
   const [targetCountry, setTargetCountry] = useState("SA");
   const [style, setStyle] = useState("modern");
   const [duration, setDuration] = useState(20);
+  const [voiceGender, setVoiceGender] = useState<"female" | "male">("female");
+  const [captionStyle, setCaptionStyle] = useState<
+    "none" | "classic" | "tiktok" | "neon" | "karaoke" | "minimal"
+  >("none");
+  const [captionEmojis, setCaptionEmojis] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any | null>(null);
   const [batchResults, setBatchResults] = useState<any[] | null>(null);
@@ -113,6 +118,9 @@ function DubbingPage() {
         if (typeof f.targetCountry === "string") setTargetCountry(f.targetCountry);
         if (typeof f.style === "string") setStyle(f.style);
         if (typeof f.duration === "number") setDuration(f.duration);
+        if (f.voiceGender === "male" || f.voiceGender === "female") setVoiceGender(f.voiceGender);
+        if (typeof f.captionStyle === "string") setCaptionStyle(f.captionStyle as any);
+        if (typeof f.captionEmojis === "boolean") setCaptionEmojis(f.captionEmojis);
         if (s.file && s.file.blob) {
           try {
             const restored = new File([s.file.blob], s.file.name, { type: s.file.type });
@@ -151,11 +159,11 @@ function DubbingPage() {
     saveSession({
       key: CACHE_KEY,
       updatedAt: Date.now(),
-      form: { title, source, targetLanguage, targetCountry, style, duration },
+      form: { title, source, targetLanguage, targetCountry, style, duration, voiceGender, captionStyle, captionEmojis },
       results: result,
       file: file ? { name: file.name, type: file.type, size: file.size, blob: file } : null,
     });
-  }, [title, source, targetLanguage, targetCountry, style, duration, result, file]);
+  }, [title, source, targetLanguage, targetCountry, style, duration, voiceGender, captionStyle, captionEmojis, result, file]);
 
   function resetAll() {
     setTitle("");
@@ -222,7 +230,7 @@ function DubbingPage() {
       for (let i = 0; i < targets.length; i++) {
         const lang = targets[i];
         const [res] = await Promise.all([
-          dub({ data: { title: isBatch ? `${title} — ${lang.toUpperCase()}` : title, sourceUrl, targetLanguage: lang, targetCountry, style, durationSeconds: duration, providedTranscript, providedSegments } }),
+          dub({ data: { title: isBatch ? `${title} — ${lang.toUpperCase()}` : title, sourceUrl, targetLanguage: lang, targetCountry, style, durationSeconds: duration, providedTranscript, providedSegments, voiceGender, captionStyle, captionEmojis } }),
           i === 0 ? new Promise((r) => setTimeout(r, 4200)) : Promise.resolve(),
         ]);
         if ((res as any).error === "limit") { setUpgradeOpen(true); return; }
@@ -392,6 +400,63 @@ function DubbingPage() {
           <div>
             <Label>Duration (seconds) — Max {maxDur}s</Label>
             <Input type="number" min={5} max={maxDur} value={duration} onChange={(e) => setDuration(parseInt(e.target.value || "0"))} className="bg-white/5 border-white/10 mt-1" />
+          </div>
+          <div>
+            <Label className="flex items-center gap-1.5"><Mic className="h-3.5 w-3.5" /> Voice</Label>
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              {(["female", "male"] as const).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setVoiceGender(g)}
+                  className={`inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm capitalize transition ${
+                    voiceGender === g
+                      ? "bg-gradient-to-r from-fuchsia-500/30 to-amber-400/30 border-fuchsia-400/60 text-white"
+                      : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+                  }`}
+                >
+                  {g === "female" ? <User className="h-3.5 w-3.5" /> : <Users className="h-3.5 w-3.5" />}
+                  {g}
+                </button>
+              ))}
+            </div>
+            <div className="mt-1 text-[10px] text-slate-500">Tap the speaker icon above to preview the selected voice.</div>
+          </div>
+          <div>
+            <Label className="flex items-center gap-1.5"><Subtitles className="h-3.5 w-3.5" /> Captions</Label>
+            <div className="mt-1 grid grid-cols-3 gap-1.5">
+              {([
+                { id: "none", label: "Off" },
+                { id: "classic", label: "Classic" },
+                { id: "tiktok", label: "TikTok" },
+                { id: "neon", label: "Neon" },
+                { id: "karaoke", label: "Karaoke" },
+                { id: "minimal", label: "Minimal" },
+              ] as const).map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setCaptionStyle(c.id)}
+                  className={`rounded-md border px-2 py-1.5 text-xs transition ${
+                    captionStyle === c.id
+                      ? "bg-gradient-to-r from-fuchsia-500/30 to-amber-400/30 border-fuchsia-400/60 text-white"
+                      : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            <label className={`mt-2 inline-flex items-center gap-2 text-xs cursor-pointer select-none ${captionStyle === "none" ? "opacity-50 cursor-not-allowed" : ""}`}>
+              <input
+                type="checkbox"
+                checked={captionEmojis}
+                disabled={captionStyle === "none"}
+                onChange={(e) => setCaptionEmojis(e.target.checked)}
+                className="h-3.5 w-3.5 accent-fuchsia-500"
+              />
+              <Smile className="h-3.5 w-3.5 text-amber-300" /> Add auto-emojis to captions
+            </label>
           </div>
           <div>
             <Label className="flex items-center gap-1.5">

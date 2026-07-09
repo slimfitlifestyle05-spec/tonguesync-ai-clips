@@ -142,11 +142,27 @@ export const createDub = createServerFn({ method: "POST" })
             start: z.number().nonnegative(),
             end: z.number().nonnegative(),
             text: z.string().min(1).max(1000),
+            words: z
+              .array(
+                z.object({
+                  start: z.number().nonnegative(),
+                  end: z.number().nonnegative(),
+                  text: z.string().min(1).max(200),
+                }),
+              )
+              .max(400)
+              .optional(),
           }),
         )
         .max(500)
         .optional()
         .default([]),
+      voiceGender: z.enum(["female", "male"]).optional().default("female"),
+      captionStyle: z
+        .enum(["none", "classic", "tiktok", "neon", "karaoke", "minimal"])
+        .optional()
+        .default("none"),
+      captionEmojis: z.boolean().optional().default(false),
     }).parse(raw)
   )
   .handler(async ({ context, data }) => {
@@ -184,6 +200,7 @@ export const createDub = createServerFn({ method: "POST" })
         sourceUrl: clientTranscript ? null : data.sourceUrl || null,
         skipAsr: !!clientTranscript,
         providedSegments: data.providedSegments,
+        voiceGender: data.voiceGender,
       });
       if (result.ok) {
         dubbedAudioUrl = result.audioDataUrl;
@@ -211,6 +228,9 @@ export const createDub = createServerFn({ method: "POST" })
           tts_provider: ttsProvider,
           dubbed_segments: dubbedSegments,
           transcript_source: transcriptSource,
+          voice_gender: data.voiceGender,
+          caption_style: data.captionStyle,
+          caption_emojis: data.captionEmojis,
         }
       : null;
 

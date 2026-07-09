@@ -7,6 +7,53 @@ type Segment = { start: number; end: number; text?: string; audioDataUrl: string
 
 type Phase = "idle" | "loading-core" | "fetching" | "mixing" | "done";
 
+export type CaptionStyle = "none" | "classic" | "tiktok" | "neon" | "karaoke" | "minimal";
+
+// ASS/SRT force_style strings per caption look (colors are &HAABBGGRR).
+const CAPTION_STYLES: Record<Exclude<CaptionStyle, "none">, string> = {
+  classic:
+    "Fontname=Arial,Fontsize=22,Bold=1,PrimaryColour=&Hffffff&,OutlineColour=&H80000000&,BorderStyle=3,Outline=1,Shadow=0,MarginV=40",
+  tiktok:
+    "Fontname=Arial,Fontsize=26,Bold=1,PrimaryColour=&H00f6ff&,OutlineColour=&H000000&,BorderStyle=1,Outline=3,Shadow=0,MarginV=60",
+  neon:
+    "Fontname=Arial,Fontsize=24,Bold=1,PrimaryColour=&Hffffff&,OutlineColour=&Hff40e0&,BorderStyle=1,Outline=3,Shadow=1,MarginV=60",
+  karaoke:
+    "Fontname=Arial,Fontsize=24,Bold=1,PrimaryColour=&H000000&,BackColour=&H0080ff&,OutlineColour=&H000000&,BorderStyle=4,Outline=6,Shadow=0,MarginV=60",
+  minimal:
+    "Fontname=Arial,Fontsize=18,PrimaryColour=&Hffffff&,OutlineColour=&H80000000&,BorderStyle=3,Outline=1,Shadow=0,MarginV=32",
+};
+
+// Very small keyword → emoji dictionary. Injects one emoji at the end of a
+// caption line when we spot a matching keyword. Keeps captions lively without
+// hitting an external API.
+const EMOJI_MAP: Array<[RegExp, string]> = [
+  [/\b(love|heart|amor|amour|liebe|حب|❤)\b/i, "❤️"],
+  [/\b(fire|hot|🔥|نار|رهيب|awesome)\b/i, "🔥"],
+  [/\b(money|cash|dollar|revenue|price|pricing|فلوس|مال|سعر)\b/i, "💰"],
+  [/\b(win|winner|victory|success|فوز|نجاح)\b/i, "🏆"],
+  [/\b(idea|think|brain|فكرة)\b/i, "💡"],
+  [/\b(fast|speed|quick|سريع|بسرعة)\b/i, "⚡"],
+  [/\b(secret|hidden|reveal|سر|خفي)\b/i, "🤫"],
+  [/\b(learn|teach|lesson|class|تعلم|درس)\b/i, "📚"],
+  [/\b(video|watch|show|فيديو|شاهد)\b/i, "🎬"],
+  [/\b(music|song|sing|موسيقى|أغنية)\b/i, "🎵"],
+  [/\b(happy|smile|joy|فرح|سعيد)\b/i, "😄"],
+  [/\b(sad|cry|tear|حزين|بكاء)\b/i, "😢"],
+  [/\b(surprise|wow|شگفت|واو|مذهل)\b/i, "😲"],
+  [/\b(warning|danger|alert|تحذير|خطر)\b/i, "⚠️"],
+  [/\b(rocket|launch|scale|grow|إطلاق|نمو)\b/i, "🚀"],
+  [/\b(time|clock|hour|وقت|ساعة)\b/i, "⏰"],
+  [/\b(question|why|how|كيف|لماذا)\b/i, "❓"],
+  [/\b(check|done|ready|جاهز|تم)\b/i, "✅"],
+];
+
+function addEmoji(text: string): string {
+  for (const [rx, emoji] of EMOJI_MAP) {
+    if (rx.test(text)) return text.endsWith(emoji) ? text : `${text} ${emoji}`;
+  }
+  return text;
+}
+
 function toSrtTime(seconds: number) {
   const s = Math.max(0, seconds);
   const h = Math.floor(s / 3600);
@@ -44,6 +91,8 @@ export function DownloadDubbedButton({
   clipEnd,
   autoRender = true,
   onRendered,
+  captionStyle: initialCaptionStyle = "none",
+  captionEmojis: initialCaptionEmojis = false,
 }: {
   videoUrl?: string | null;
   audioUrl?: string | null;
@@ -53,11 +102,14 @@ export function DownloadDubbedButton({
   clipEnd?: number | null;
   autoRender?: boolean;
   onRendered?: (url: string) => void;
+  captionStyle?: CaptionStyle;
+  captionEmojis?: boolean;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [pct, setPct] = useState(0);
   const [label, setLabel] = useState("");
-  const [burnSubs, setBurnSubs] = useState(false);
+  const [captionStyle, setCaptionStyle] = useState<CaptionStyle>(initialCaptionStyle);
+  const [captionEmojis, setCaptionEmojis] = useState<boolean>(initialCaptionEmojis);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const [renderedUrl, setRenderedUrl] = useState<string | null>(null);
@@ -171,7 +223,7 @@ export function DownloadDubbedButton({
     canceledRef.current = false;
     abortRef.current = new AbortController();
     const signal = abortRef.current.signal;
-    const wantBurn = burnSubs && hasSegments;
+    const wantBurn: boolean = (captionStyle as string) !== "none" && hasSegments;
     const hasClip = typeof clipStart === "number" && typeof clipEnd === "number" && clipEnd > clipStart;
 
     try {
@@ -236,7 +288,11 @@ export function DownloadDubbedButton({
 
       // Write SRT for burn-in when the user asked and we have segments.
       if (wantBurn) {
-        const srt = segmentsToSrt(segments!);
+        const styled: Segment[] = segments!.map((s) => ({
+          ...s,
+          text: captionEmojis ? addEmoji(s.text ?? "") : (s.text ?? ""),
+        }));
+        const srt = segmentsToSrt(styled);
         await ffmpeg.writeFile("subs.srt", new TextEncoder().encode(srt));
       }
 
@@ -273,11 +329,15 @@ export function DownloadDubbedButton({
       // Video map: fast stream-copy by default; re-encode with libx264 when
       // burning subtitles or trimming to Gemini timestamps.
       const needsReencode = wantBurn || hasClip;
+      const styleString: string =
+        wantBurn && (captionStyle as string) !== "none"
+          ? CAPTION_STYLES[captionStyle as Exclude<CaptionStyle, "none">]
+          : "";
       const videoArgs = wantBurn
         ? [
             "-filter_complex",
             filterParts.join(";") +
-              `;[0:v]subtitles=subs.srt:force_style='Fontname=Arial,Fontsize=22,PrimaryColour=&Hffffff&,OutlineColour=&H80000000&,BorderStyle=3,Outline=1,Shadow=0,MarginV=40'[vout]`,
+              `;[0:v]subtitles=subs.srt:force_style='${styleString}'[vout]`,
             "-map", "[vout]",
             "-c:v", "libx264",
             "-preset", "veryfast",
@@ -412,16 +472,34 @@ export function DownloadDubbedButton({
           <Play className="h-3.5 w-3.5" /> {previewOpen ? "Hide preview" : "Preview before export"}
         </button>
         {hasSegments ? (
-          <label className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={burnSubs}
-              onChange={(e) => setBurnSubs(e.target.checked)}
-              disabled={busy}
-              className="h-3 w-3 accent-emerald-500"
-            />
-            <Subtitles className="h-3.5 w-3.5" /> Burn subtitles
-          </label>
+          <div className="flex items-center gap-1.5">
+            <label className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-xs cursor-pointer select-none">
+              <Subtitles className="h-3.5 w-3.5" />
+              <select
+                value={captionStyle}
+                onChange={(e) => setCaptionStyle(e.target.value as CaptionStyle)}
+                disabled={busy}
+                className="bg-transparent text-xs outline-none cursor-pointer"
+              >
+                <option value="none" className="bg-slate-900">No captions</option>
+                <option value="classic" className="bg-slate-900">Classic</option>
+                <option value="tiktok" className="bg-slate-900">TikTok</option>
+                <option value="neon" className="bg-slate-900">Neon</option>
+                <option value="karaoke" className="bg-slate-900">Karaoke</option>
+                <option value="minimal" className="bg-slate-900">Minimal</option>
+              </select>
+            </label>
+            <label className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-1.5 text-xs cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={captionEmojis}
+                onChange={(e) => setCaptionEmojis(e.target.checked)}
+                disabled={busy || captionStyle === "none"}
+                className="h-3 w-3 accent-fuchsia-500"
+              />
+              <span>😀 Emojis</span>
+            </label>
+          </div>
         ) : null}
       </div>
 
