@@ -143,10 +143,20 @@ function VideoCard({ video: v, isPro, onOpenMagic }: { video: any; isPro: boolea
   // and route the top Download button to it — so the primary video the user
   // sees and downloads is the dubbed one, not the original source.
   const displayUrl = dubbedUrl || v.output_url;
+  const captionText = v.social_kit?.caption_text || v.social_kit?.title || v.social_kit?.localized_text || v.title;
   return (
     <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
       <div className="relative">
         <video src={displayUrl} controls className="w-full aspect-[9/16] object-cover bg-black" />
+        {captionText && (
+          <div className="pointer-events-none absolute inset-x-3 bottom-4 flex justify-center">
+            <div className="max-w-[92%] rounded-lg border border-white/15 bg-black/75 px-3 py-2 text-center shadow-2xl backdrop-blur-sm">
+              <div className="text-sm font-extrabold uppercase leading-tight text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
+                {captionText}
+              </div>
+            </div>
+          </div>
+        )}
         {v.watermarked && (
           <div className="absolute bottom-2 right-2 rounded bg-black/50 px-2 py-1 text-xs text-white/80 backdrop-blur">TongueSync AI</div>
         )}

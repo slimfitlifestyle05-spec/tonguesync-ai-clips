@@ -8,15 +8,6 @@ const FREE_DUB_MAX_SECONDS = 15;
 const PRO_MONTHLY = 30;
 const PRO_DUB_MAX_SECONDS = 60;
 
-function sampleOutput(kind: "clip" | "dub", idx = 0) {
-  const samples = [
-    "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4",
-    "https://test-videos.co.uk/vids/jellyfish/mp4/h264/360/Jellyfish_360_10s_1MB.mp4",
-    "https://test-videos.co.uk/vids/sintel/mp4/h264/360/Sintel_360_10s_1MB.mp4",
-  ];
-  return samples[(kind === "dub" ? 1 : idx) % samples.length];
-}
-
 // Mocked "transcription" step. In production this is the Gemini transcript of
 // the uploaded video; for the demo we synthesize a plausible, topic-rich
 // transcript so the AI Social Kit output looks like real content analysis.
@@ -282,7 +273,7 @@ export const createDub = createServerFn({ method: "POST" })
         kind: "dub",
         title: socialKit?.title ? `${socialKit.title} (${data.targetCountry})` : `${data.title} \u2014 ${data.targetCountry}`,
         source_url: data.sourceUrl || null,
-        output_url: data.sourceUrl?.trim() ? data.sourceUrl : sampleOutput("dub"),
+        output_url: data.sourceUrl?.trim() ? data.sourceUrl : null,
         style,
         target_language: data.targetLanguage,
         target_country: data.targetCountry,

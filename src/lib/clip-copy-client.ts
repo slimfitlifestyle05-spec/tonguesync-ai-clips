@@ -8,6 +8,12 @@ export type ClipCopy = {
   hashtags: string[];
 };
 
+export type ClipPlan = ClipCopy & {
+  start: number;
+  end: number;
+  reason?: string;
+};
+
 export function hasGeminiKey(): boolean {
   return Boolean(import.meta.env.VITE_GEMINI_API_KEY);
 }
@@ -20,6 +26,112 @@ Rules:
 - Hashtags: exactly 5, lowercase, each starts with #, no spaces, mixing 1 broad + 3 niche + 1 trending.
 
 Return STRICT JSON: { "title": "...", "description": "...", "hashtags": ["#a","#b","#c","#d","#e"] } — no markdown, no preamble.`;
+
+const CLIP_PLAN_SYSTEM = `You are a senior short-form video editor and social strategist.
+
+Analyze the uploaded video's first 5 minutes from its audio. Pick exactly 3 moments that would make the strongest Shorts/Reels/TikToks.
+
+Rules:
+- Return precise timestamps in seconds from the original media.
+- Each clip must be 8 to 30 seconds long.
+- Prefer complete ideas: start just before the hook, end after the payoff.
+- Do not invent content that is not present in the media.
+- Write professional English metadata for each selected moment.
+- Hashtags: exactly 5, lowercase, each starts with #.
+
+Return STRICT JSON only:
+{
+  "clips": [
+    { "start": 12.4, "end": 36.8, "title": "...", "description": "...", "hashtags": ["#a","#b","#c","#d","#e"], "reason": "..." }
+  ]
+}`;
+
+function parseJsonObject(raw: string): any {
+  try { return JSON.parse(raw); } catch {
+    const m = raw.match(/\{[\s\S]*\}/);
+    if (m) { try { return JSON.parse(m[0]); } catch {} }
+  }
+  return {};
+}
+
+async function blobToBase64(blob: Blob): Promise<string> {
+  const buf = await blob.arrayBuffer();
+  let bin = "";
+  const bytes = new Uint8Array(buf);
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(bin);
+}
+
+function normalizeHashtags(input: any): string[] {
+  return Array.isArray(input)
+    ? input
+        .map((h: any) => {
+          const s = String(h).trim().toLowerCase().replace(/\s+/g, "");
+          return s.startsWith("#") ? s : `#${s}`;
+        })
+        .filter((h: string) => h.length > 1)
+        .slice(0, 5)
+    : [];
+}
+
+export async function generateClipPlanFromAudio(
+  audioBlob: Blob,
+  topic: string,
+  count = 3,
+): Promise<ClipPlan[]> {
+  const key = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
+  if (!key) throw new Error("Gemini key is required to choose exact clip timestamps.");
+  const base64 = await blobToBase64(audioBlob);
+  const prompt = `Video/project title: "${topic || "Uploaded video"}"\nPick exactly ${count} real short clips from this media. The media is limited to the first 5 minutes.`;
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: CLIP_PLAN_SYSTEM }] },
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { inlineData: { mimeType: audioBlob.type || "audio/wav", data: base64 } },
+              { text: prompt },
+            ],
+          },
+        ],
+        generationConfig: { temperature: 0.25, responseMimeType: "application/json" },
+      }),
+    },
+  );
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Gemini timestamp analysis failed (${res.status}): ${body.slice(0, 180)}`);
+  }
+  const json: any = await res.json();
+  const raw = String(json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
+  const parsed = parseJsonObject(raw);
+  const plans: ClipPlan[] = (Array.isArray(parsed?.clips) ? parsed.clips : [])
+    .map((c: any) => {
+      const start = Math.max(0, Number(c.start) || 0);
+      const end = Math.max(start + 1, Number(c.end) || start + 20);
+      return {
+        start,
+        end,
+        title: String(c.title ?? "").trim(),
+        description: String(c.description ?? "").trim(),
+        hashtags: normalizeHashtags(c.hashtags),
+        reason: String(c.reason ?? "").trim() || undefined,
+      };
+    })
+    .filter((c: ClipPlan) => c.end > c.start && c.title && c.description && c.hashtags.length >= 3)
+    .sort((a: ClipPlan, b: ClipPlan) => a.start - b.start)
+    .slice(0, count);
+  if (plans.length < count) throw new Error("Gemini did not return enough timestamped clip moments.");
+  return plans;
+}
 
 export async function generateClipCopy(
   topic: string,
@@ -55,19 +167,10 @@ export async function generateClipCopy(
   }
   const json: any = await res.json();
   const raw = String(json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
-  let parsed: any = {};
-  try { parsed = JSON.parse(raw); } catch {
-    const m = raw.match(/\{[\s\S]*\}/);
-    if (m) { try { parsed = JSON.parse(m[0]); } catch {} }
-  }
+  const parsed = parseJsonObject(raw);
   const title = String(parsed?.title ?? "").trim();
   const description = String(parsed?.description ?? "").trim();
-  const hashtags = Array.isArray(parsed?.hashtags)
-    ? parsed.hashtags.map((h: any) => {
-        const s = String(h).trim();
-        return s.startsWith("#") ? s : `#${s}`;
-      }).filter(Boolean).slice(0, 5)
-    : [];
+  const hashtags = normalizeHashtags(parsed?.hashtags);
   if (!title || !description || hashtags.length < 3) {
     throw new Error("Gemini returned incomplete copy");
   }

@@ -13,6 +13,11 @@ export type ClipSlice = {
   blob: Blob;
 };
 
+export type VideoCutWindow = {
+  start: number;
+  end: number;
+};
+
 export type ResolvedVideoSource = {
   blob: Blob;
   name: string;
@@ -69,7 +74,7 @@ export async function fetchVideoBlobFromUrl(sourceUrl: string): Promise<Resolved
   };
 }
 
-async function probeDuration(file: File | Blob): Promise<number> {
+export async function getVideoDuration(file: File | Blob): Promise<number> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
     const v = document.createElement("video");
@@ -86,10 +91,63 @@ async function probeDuration(file: File | Blob): Promise<number> {
   });
 }
 
+export async function extractAnalysisAudio(
+  file: File | Blob,
+  opts: { maxSeconds?: number; onProgress?: (ratio: number, msg?: string) => void } = {},
+): Promise<Blob> {
+  const { maxSeconds = 300, onProgress } = opts;
+  const ff = await getFFmpeg((m) => onProgress?.(-1, m));
+  const nonce = Math.random().toString(36).slice(2, 8);
+  const inputName = `analysis_src_${nonce}.mp4`;
+  const outName = `analysis_${nonce}.wav`;
+  onProgress?.(0, "Preparing audio for Gemini…");
+  await ff.writeFile(inputName, await fetchFile(file));
+  try {
+    await ff.exec([
+      "-i", inputName,
+      "-t", String(maxSeconds),
+      "-vn",
+      "-ac", "1",
+      "-ar", "16000",
+      "-f", "wav",
+      "-y",
+      outName,
+    ]);
+    const data = (await ff.readFile(outName)) as Uint8Array;
+    const buf = new ArrayBuffer(data.byteLength);
+    new Uint8Array(buf).set(data);
+    return new Blob([buf], { type: "audio/wav" });
+  } finally {
+    try { await ff.deleteFile(inputName); } catch {}
+    try { await ff.deleteFile(outName); } catch {}
+  }
+}
+
 /**
  * Pick `count` evenly-spaced segments across the video, each up to
  * `maxLenSeconds` long. Falls back to fixed offsets when duration is unknown.
  */
+function normalizeWindows(
+  windows: VideoCutWindow[] | undefined,
+  duration: number,
+  count: number,
+  maxLenSeconds: number,
+) {
+  if (!windows?.length) return null;
+  const maxEnd = duration > 0 ? duration : Number.POSITIVE_INFINITY;
+  const cleaned = windows
+    .map((w) => {
+      const start = Math.max(0, Number(w.start) || 0);
+      const rawEnd = Math.max(start + 1, Number(w.end) || start + maxLenSeconds);
+      const end = Math.min(maxEnd, start + maxLenSeconds, rawEnd);
+      return { start: Math.floor(start * 100) / 100, end: Math.floor(end * 100) / 100 };
+    })
+    .filter((w) => w.end > w.start)
+    .sort((a, b) => a.start - b.start)
+    .slice(0, count);
+  return cleaned.length ? cleaned : null;
+}
+
 function pickWindows(duration: number, count: number, maxLenSeconds: number) {
   const windows: Array<{ start: number; end: number }> = [];
   if (duration <= 0) {
@@ -111,45 +169,59 @@ function pickWindows(duration: number, count: number, maxLenSeconds: number) {
 export async function sliceIntoClips(
   file: File | Blob,
   count = 3,
-  opts: { maxLenSeconds?: number; analysisWindowSeconds?: number; onProgress?: (ratio: number, msg?: string) => void } = {},
+  opts: {
+    maxLenSeconds?: number;
+    analysisWindowSeconds?: number;
+    windows?: VideoCutWindow[];
+    onProgress?: (ratio: number, msg?: string) => void;
+  } = {},
 ): Promise<ClipSlice[]> {
-  const { maxLenSeconds = 30, analysisWindowSeconds = 300, onProgress } = opts;
+  const { maxLenSeconds = 30, analysisWindowSeconds = 300, windows: requestedWindows, onProgress } = opts;
   const ff = await getFFmpeg((m) => onProgress?.(-1, m));
-  const duration = await probeDuration(file);
+  const duration = await getVideoDuration(file);
   const effectiveDuration = duration > 0 ? Math.min(duration, analysisWindowSeconds) : 0;
-  const windows = pickWindows(effectiveDuration, count, maxLenSeconds);
+  const windows = normalizeWindows(requestedWindows, effectiveDuration || duration, count, maxLenSeconds) ?? pickWindows(effectiveDuration, count, maxLenSeconds);
 
-  const inputName = "clip_src.mp4";
+  const nonce = Math.random().toString(36).slice(2, 8);
+  const inputName = `clip_src_${nonce}.mp4`;
   await ff.writeFile(inputName, await fetchFile(file));
 
   const out: ClipSlice[] = [];
   for (let i = 0; i < windows.length; i++) {
     const { start, end } = windows[i];
     const len = Math.max(1, end - start);
-    const outName = `clip_${i}.mp4`;
+    const outName = `clip_${nonce}_${i}.mp4`;
     onProgress?.(i / windows.length, `Cutting clip ${i + 1}/${windows.length}`);
-    const args = [
-      "-ss", String(start),
+    const preciseArgs = [
       "-i", inputName,
+      "-ss", String(start),
       "-t", String(len),
+      "-map", "0:v:0",
+      "-map", "0:a?",
       "-c:v", "libx264",
-      "-preset", "ultrafast",
-      "-crf", "26",
+      "-preset", "veryfast",
+      "-crf", "18",
+      "-pix_fmt", "yuv420p",
       "-c:a", "aac",
-      "-b:a", "128k",
+      "-b:a", "160k",
       "-movflags", "+faststart",
       "-y",
       outName,
     ];
     try {
-      await ff.exec(args);
+      // Decode-accurate seek: cuts the exact Gemini timestamp, high visual quality.
+      await ff.exec(preciseArgs);
     } catch (e) {
-      // Retry with stream copy as a fallback
+      // Fallback to stream copy if re-encoding fails on an unusual input.
       await ff.exec([
         "-ss", String(start),
         "-i", inputName,
         "-t", String(len),
+        "-map", "0:v:0",
+        "-map", "0:a?",
         "-c", "copy",
+        "-avoid_negative_ts", "make_zero",
+        "-movflags", "+faststart",
         "-y",
         outName,
       ]);
