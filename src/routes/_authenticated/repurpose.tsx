@@ -6,9 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Copy, Loader2, Linkedin, Twitter, Sparkles, Check } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ArrowLeft, Copy, Loader2, Linkedin, Twitter, Sparkles, Check, Share2, Send } from "lucide-react";
 import { toast } from "sonner";
-import { hasGeminiKey, repurposeTranscript, type RepurposeResult } from "@/lib/repurpose-client";
+import {
+  generateLinkedInPost,
+  generateXThread,
+  hasGeminiKey,
+  shareOnLinkedIn,
+  shareOnX,
+} from "@/lib/repurpose-client";
 
 export const Route = createFileRoute("/_authenticated/repurpose")({
   head: () => ({
@@ -48,29 +55,36 @@ function CopyButton({ text }: { text: string }) {
 function RepurposePage() {
   const [transcript, setTranscript] = useState("");
   const [title, setTitle] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<RepurposeResult | null>(null);
+  const [linkedin, setLinkedin] = useState<string | null>(null);
+  const [thread, setThread] = useState<string[] | null>(null);
+  const [loadingLI, setLoadingLI] = useState(false);
+  const [loadingX, setLoadingX] = useState(false);
   const keyOk = hasGeminiKey();
 
-  async function run() {
-    if (!keyOk) {
-      toast.error("Add your VITE_GEMINI_API_KEY in Dashboard settings first.");
-      return;
-    }
-    setLoading(true);
-    setResult(null);
+  const composed = () => (title ? `Title: ${title}\n\n${transcript}` : transcript);
+
+  async function runLinkedIn() {
+    if (!keyOk) { toast.error("Add your VITE_GEMINI_API_KEY in Dashboard settings first."); return; }
+    setLoadingLI(true); setLinkedin(null);
     try {
-      const r = await repurposeTranscript(title ? `Title: ${title}\n\n${transcript}` : transcript);
-      setResult(r);
-      toast.success("Ready — LinkedIn post + X thread generated");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Failed");
-    } finally {
-      setLoading(false);
-    }
+      const post = await generateLinkedInPost(composed());
+      setLinkedin(post);
+      toast.success("LinkedIn post ready");
+    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+    finally { setLoadingLI(false); }
+  }
+  async function runThread() {
+    if (!keyOk) { toast.error("Add your VITE_GEMINI_API_KEY in Dashboard settings first."); return; }
+    setLoadingX(true); setThread(null);
+    try {
+      const t = await generateXThread(composed());
+      setThread(t);
+      toast.success("X thread ready");
+    } catch (e: any) { toast.error(e?.message ?? "Failed"); }
+    finally { setLoadingX(false); }
   }
 
-  const threadJoined = result?.x_thread.join("\n\n") ?? "";
+  const threadJoined = thread?.join("\n\n") ?? "";
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
@@ -125,60 +139,140 @@ function RepurposePage() {
                 />
                 <div className="mt-1 text-[10px] text-slate-500">{transcript.length.toLocaleString()} characters</div>
               </div>
-              <Button
-                type="button"
-                onClick={run}
-                disabled={loading || !transcript.trim()}
-                className="w-full bg-gradient-to-r from-sky-500 to-fuchsia-500 text-black font-semibold"
-              >
-                {loading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Generating…</> : "Generate LinkedIn + X thread"}
-              </Button>
+              <p className="text-[11px] text-slate-500">
+                Pick a tab on the right and click <b>Generate</b> — each artisan runs its own hand-tuned Gemini prompt, so you can iterate on one without regenerating the other.
+              </p>
             </div>
           </section>
 
-          <section className="space-y-6">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Linkedin className="h-4 w-4 text-sky-400" />
-                  <h3 className="text-sm font-semibold">LinkedIn post</h3>
-                </div>
-                {result?.linkedin_post && <CopyButton text={result.linkedin_post} />}
-              </div>
-              {result?.linkedin_post ? (
-                <pre className="whitespace-pre-wrap break-words rounded-lg bg-black/30 border border-white/10 p-4 text-sm leading-relaxed font-sans">{result.linkedin_post}</pre>
-              ) : (
-                <div className="rounded-lg border border-dashed border-white/10 p-8 text-center text-xs text-slate-500">
-                  Your polished LinkedIn post will appear here.
-                </div>
-              )}
-            </div>
+          <section>
+            <Tabs defaultValue="thread" className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
+              <TabsList className="mb-4 grid grid-cols-2 bg-white/5">
+                <TabsTrigger value="thread" className="data-[state=active]:bg-fuchsia-500/20">
+                  <Twitter className="h-4 w-4 mr-1.5 text-sky-300" /> X Thread Artisan
+                </TabsTrigger>
+                <TabsTrigger value="linkedin" className="data-[state=active]:bg-sky-500/20">
+                  <Linkedin className="h-4 w-4 mr-1.5 text-sky-400" /> LinkedIn Post Creator
+                </TabsTrigger>
+              </TabsList>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-6">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Twitter className="h-4 w-4 text-sky-300" />
-                  <h3 className="text-sm font-semibold">X thread</h3>
+              {/* ───── X Thread ───── */}
+              <TabsContent value="thread" className="mt-0 space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    onClick={runThread}
+                    disabled={loadingX || !transcript.trim()}
+                    className="bg-gradient-to-r from-sky-500 to-fuchsia-500 text-black font-semibold"
+                  >
+                    {loadingX ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> AI is crafting your thread…</> : "Generate X Thread"}
+                  </Button>
+                  {thread && <CopyButton text={threadJoined} />}
+                  {thread && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="bg-black text-white hover:bg-black/80"
+                      onClick={() => shareOnX(thread[0])}
+                      title="Opens x.com pre-filled with tweet 1. Paste follow-up tweets as replies."
+                    >
+                      <Send className="h-4 w-4 mr-1" /> Share on X
+                    </Button>
+                  )}
                 </div>
-                {result && <CopyButton text={threadJoined} />}
-              </div>
-              {result?.x_thread?.length ? (
-                <ol className="space-y-3">
-                  {result.x_thread.map((t, i) => (
-                    <li key={i} className="rounded-lg bg-black/30 border border-white/10 p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="whitespace-pre-wrap text-sm leading-relaxed flex-1">{t}</p>
-                        <CopyButton text={t} />
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <div className="rounded-lg border border-dashed border-white/10 p-8 text-center text-xs text-slate-500">
-                  Your viral X thread will appear here, one tweet per row.
+                {loadingX && !thread && (
+                  <div className="rounded-lg border border-white/10 bg-black/30 p-4 space-y-2">
+                    <div className="h-2 w-1/3 bg-fuchsia-500/40 rounded animate-pulse" />
+                    <div className="h-3 w-full bg-white/10 rounded animate-pulse" />
+                    <div className="h-3 w-5/6 bg-white/10 rounded animate-pulse" />
+                    <div className="h-3 w-3/5 bg-white/10 rounded animate-pulse" />
+                    <div className="mt-2 text-[10px] text-slate-500">AI is crafting your post…</div>
+                  </div>
+                )}
+                {thread?.length ? (
+                  <ol className="space-y-3">
+                    {thread.map((t: string, i: number) => (
+                      <li key={i} className="rounded-lg bg-black/30 border border-white/10 p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="whitespace-pre-wrap text-sm leading-relaxed flex-1">{t}</p>
+                          <div className="flex flex-col gap-1 shrink-0">
+                            <CopyButton text={t} />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="border-white/15 bg-white/5 hover:bg-white/10"
+                              onClick={() => shareOnX(t)}
+                              title="Share this tweet on X"
+                            >
+                              <Share2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                ) : !loadingX ? (
+                  <div className="rounded-lg border border-dashed border-white/10 p-8 text-center text-xs text-slate-500">
+                    Your viral X thread will appear here, one tweet per row.
+                  </div>
+                ) : null}
+              </TabsContent>
+
+              {/* ───── LinkedIn ───── */}
+              <TabsContent value="linkedin" className="mt-0 space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    onClick={runLinkedIn}
+                    disabled={loadingLI || !transcript.trim()}
+                    className="bg-gradient-to-r from-sky-500 to-fuchsia-500 text-black font-semibold"
+                  >
+                    {loadingLI ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> AI is crafting your post…</> : "Generate LinkedIn Post"}
+                  </Button>
+                  {linkedin && <CopyButton text={linkedin} />}
+                  {linkedin && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="bg-[#0A66C2] text-white hover:bg-[#0a66c2]/85"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(linkedin);
+                          toast.success("Post copied — LinkedIn will open in a new tab, just paste and publish.");
+                        } catch {
+                          toast.message("Opening LinkedIn — select & copy the post text on the left first.");
+                        }
+                        shareOnLinkedIn();
+                      }}
+                      title="Copies the post and opens LinkedIn's official share window"
+                    >
+                      <Linkedin className="h-4 w-4 mr-1" /> Share on LinkedIn
+                    </Button>
+                  )}
                 </div>
-              )}
-            </div>
+                {loadingLI && !linkedin && (
+                  <div className="rounded-lg border border-white/10 bg-black/30 p-4 space-y-2">
+                    <div className="h-2 w-1/3 bg-fuchsia-500/40 rounded animate-pulse" />
+                    <div className="h-3 w-full bg-white/10 rounded animate-pulse" />
+                    <div className="h-3 w-11/12 bg-white/10 rounded animate-pulse" />
+                    <div className="h-3 w-4/5 bg-white/10 rounded animate-pulse" />
+                    <div className="h-3 w-3/5 bg-white/10 rounded animate-pulse" />
+                    <div className="mt-2 text-[10px] text-slate-500">AI is crafting your post…</div>
+                  </div>
+                )}
+                {linkedin ? (
+                  <pre className="whitespace-pre-wrap break-words rounded-lg bg-black/30 border border-white/10 p-4 text-sm leading-relaxed font-sans">{linkedin}</pre>
+                ) : !loadingLI ? (
+                  <div className="rounded-lg border border-dashed border-white/10 p-8 text-center text-xs text-slate-500">
+                    Your polished LinkedIn post will appear here.
+                  </div>
+                ) : null}
+                <p className="text-[10px] text-slate-500">
+                  LinkedIn's share intent only accepts a URL, so we auto-copy the post text to your clipboard and open LinkedIn — just paste (⌘/Ctrl-V) into the composer and hit Post.
+                </p>
+              </TabsContent>
+            </Tabs>
           </section>
         </div>
       </main>
