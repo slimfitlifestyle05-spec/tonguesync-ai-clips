@@ -9,7 +9,7 @@ import { useI18n } from "@/lib/i18n";
 import { supabase } from "@/integrations/supabase/client";
 import { LogOut, Crown, Video, ChevronRight, Languages, Search, Sparkles } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UpgradeModal } from "@/components/UpgradeModal";
@@ -20,6 +20,7 @@ import { OnboardingTour } from "@/components/OnboardingTour";
 import { CommunityIdeasManager } from "@/components/CommunityIdeasManager";
 import { ShowcaseVideosAdmin } from "@/components/ShowcaseVideosAdmin";
 import { YoutubeChannelSetting } from "@/components/YoutubeChannelSetting";
+import { loadSession } from "@/lib/videoCache";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard \u2014 TongueSync AI" }] }),
@@ -33,6 +34,7 @@ function Dashboard() {
   const listVideos = useServerFn(listMyVideos);
   const { data: profileData } = useQuery({ queryKey: ["me"], queryFn: () => getProfile() });
   const { data: videos } = useQuery({ queryKey: ["my-videos"], queryFn: () => listVideos() });
+  const [cachedClipVideos, setCachedClipVideos] = useState<any[]>([]);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<any | null>(null);
   const [query, setQuery] = useState("");
@@ -45,18 +47,53 @@ function Dashboard() {
   const usedTotal = isPro ? profile?.monthly_used ?? 0 : (profile?.clips_used ?? 0) + (profile?.dubs_used ?? 0);
   const cap = isPro ? LIMITS.PRO_MONTHLY : LIMITS.FREE_CLIPS + LIMITS.FREE_DUBS;
 
+  useEffect(() => {
+    const urls: string[] = [];
+    let active = true;
+    loadSession("clipper").then((s) => {
+      const clips = (Array.isArray(s?.results) ? s!.results : [])
+        .map((clip: any) => {
+          if (clip?.clip_blob instanceof Blob) {
+            const url = URL.createObjectURL(clip.clip_blob);
+            urls.push(url);
+            return { ...clip, output_url: url, is_real_clip: true };
+          }
+          return clip;
+        })
+        .filter((clip: any) => clip?.is_real_clip === true && typeof clip?.output_url === "string" && clip.output_url.startsWith("blob:"));
+      if (!active) {
+        urls.forEach((url) => URL.revokeObjectURL(url));
+        return;
+      }
+      setCachedClipVideos(clips);
+    });
+    return () => {
+      active = false;
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
+
+  const allVideos = useMemo(() => {
+    const map = new Map<string, any>();
+    (videos ?? []).forEach((v: any) => {
+      if (v?.output_url || v?.kind !== "clip") map.set(String(v.id), v);
+    });
+    cachedClipVideos.forEach((v: any, i: number) => map.set(String(v.id ?? `cached-clip-${i}`), v));
+    return Array.from(map.values());
+  }, [videos, cachedClipVideos]);
+
   const languageOptions = useMemo(() => {
     const set = new Set<string>();
-    (videos ?? []).forEach((v: any) => {
+    allVideos.forEach((v: any) => {
       const l = v.target_language || v.language;
       if (l) set.add(l);
     });
     return Array.from(set).sort();
-  }, [videos]);
+  }, [allVideos]);
 
   const filteredVideos = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return (videos ?? []).filter((v: any) => {
+    return allVideos.filter((v: any) => {
       if (kindFilter !== "all" && v.kind !== kindFilter) return false;
       if (langFilter !== "all") {
         const l = v.target_language || v.language;
@@ -69,7 +106,7 @@ function Dashboard() {
         (v.target_country || "").toLowerCase().includes(q)
       );
     });
-  }, [videos, query, kindFilter, langFilter]);
+  }, [allVideos, query, kindFilter, langFilter]);
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -162,7 +199,7 @@ function Dashboard() {
         <section>
           <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
             <h2 className="text-lg font-semibold flex items-center gap-2"><Video className="h-5 w-5" />Recent generations</h2>
-            {(videos && videos.length > 0) && (
+            {(allVideos && allVideos.length > 0) && (
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
@@ -195,7 +232,7 @@ function Dashboard() {
               </div>
             )}
           </div>
-          {(!videos || videos.length === 0) ? (
+          {(!allVideos || allVideos.length === 0) ? (
             <div className="text-slate-400 text-sm">No videos yet. Start with the Clipper or Dubbing card above.</div>
           ) : filteredVideos.length === 0 ? (
             <div className="text-slate-400 text-sm">No matches. Try clearing the filters.</div>
