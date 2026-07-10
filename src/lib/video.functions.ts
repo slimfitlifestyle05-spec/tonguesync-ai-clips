@@ -163,6 +163,21 @@ export const createDub = createServerFn({ method: "POST" })
         .optional()
         .default("none"),
       captionEmojis: z.boolean().optional().default(false),
+      // Fully-client-side path: browser already ran Gemini + Cartesia; just
+      // persist. Skips the server pipeline entirely when provided.
+      providedDubbedSegments: z
+        .array(
+          z.object({
+            start: z.number().nonnegative(),
+            end: z.number().nonnegative(),
+            text: z.string().min(1).max(2000),
+            audioDataUrl: z.string().min(10).max(2_500_000),
+          }),
+        )
+        .max(500)
+        .optional()
+        .default([]),
+      providedLocalizedText: z.string().max(50_000).optional().default(""),
     }).parse(raw)
   )
   .handler(async ({ context, data }) => {
@@ -180,6 +195,10 @@ export const createDub = createServerFn({ method: "POST" })
     const transcript = clientTranscript || mockTranscript(profile.dubs_used + Date.now());
     const socialKit = tier === "pro" ? (await import("./premium")).generateSocialKit(transcript) : null;
 
+    // If the browser ran the full Gemini + Cartesia pipeline itself, skip
+    // the server pipeline and just persist the client-produced audio.
+    const clientRan =
+      data.providedDubbedSegments && data.providedDubbedSegments.length > 0;
     // Ultra-fast Gemini/OpenAI -> Cartesia Sonic pipeline. Best-effort: on
     // failure we still return a video record but surface the error to the UI.
     let pipelineError: string | null = null;
@@ -188,6 +207,15 @@ export const createDub = createServerFn({ method: "POST" })
     let ttsProvider: "cartesia" | "elevenlabs" | "lovable" | null = null;
     let dubbedSegments: Array<{ start: number; end: number; text: string; audioDataUrl: string }> | null = null;
     let transcriptSource: "whisper" | "mock" | null = null;
+    if (clientRan) {
+      dubbedSegments = data.providedDubbedSegments!;
+      dubbedAudioUrl = dubbedSegments[0]?.audioDataUrl ?? null;
+      localizedText =
+        data.providedLocalizedText?.trim() || dubbedSegments.map((s) => s.text).join(" ");
+      ttsProvider = "cartesia";
+      transcriptSource = "whisper";
+      console.log(`[createDub] client pipeline ok segments=${dubbedSegments.length}`);
+    } else {
     try {
       const { runDubbingPipeline } = await import("./dubbing-pipeline.server");
       const result = await runDubbingPipeline({
@@ -218,6 +246,7 @@ export const createDub = createServerFn({ method: "POST" })
     } catch (e: any) {
       pipelineError = e?.message ?? "Pipeline crashed";
       console.error("[createDub] pipeline crashed:", e);
+    }
     }
 
     const enrichedSocialKit = socialKit || dubbedAudioUrl || localizedText
