@@ -84,16 +84,20 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "TongueSync AI \u2014 Viral shorts & cultural AI dubbing" },
+      { title: "TongueSync AI \\u2014 Viral shorts & cultural AI dubbing" },
       { name: "description", content: "Turn any video into vertical shorts with animated captions, then dub them into any local dialect with AI." },
       { name: "author", content: "TongueSync AI" },
-      { property: "og:title", content: "TongueSync AI" },
-      { property: "og:description", content: "Vertical clips + culturally-native AI dubbing for creators and brands." },
+      { property: "og:title", content: "TongueSync AI \\u2014 Viral shorts & cultural AI dubbing" },
+      { property: "og:description", content: "Turn any video into vertical shorts with animated captions, then dub them into any local dialect with AI." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "theme-color", content: "#0f172a" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "twitter:title", content: "TongueSync AI \\u2014 Viral shorts & cultural AI dubbing" },
+      { name: "twitter:description", content: "Turn any video into vertical shorts with animated captions, then dub them into any local dialect with AI." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/1b48ff50-9f28-48cb-b8ca-45c1134d2e1d" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/1b48ff50-9f28-48cb-b8ca-45c1134d2e1d" },
     ],
     links: [
       {
