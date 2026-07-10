@@ -138,6 +138,25 @@ function Dashboard() {
             desc="Translate, rewrite, and re-voice your video into localized regional dialects and accents instantly."
             visual={<DubbingVisual />}
           />
+          <FeatureCard
+            to={"/repurpose" as any}
+            title="LinkedIn Post & X Thread Artisan"
+            desc="Turn any long-form video transcript into a high-converting LinkedIn post and a viral X thread, in one click."
+            visual={
+              <div className="flex h-full w-full items-center justify-center p-6">
+                <div className="grid w-full max-w-sm gap-3">
+                  <div className="rounded-xl border border-sky-400/30 bg-sky-500/10 p-3 text-left text-xs text-sky-100 shadow-inner">
+                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-sky-300">LinkedIn</div>
+                    Stop guessing your pricing. Here's the exact 3-step tweak that doubled our MRR…
+                  </div>
+                  <div className="rounded-xl border border-fuchsia-400/30 bg-fuchsia-500/10 p-3 text-left text-xs text-fuchsia-100 shadow-inner">
+                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-fuchsia-300">X thread</div>
+                    1/ Most creators fail in year one for one reason 🧵
+                  </div>
+                </div>
+              </div>
+            }
+          />
         </div>
 
         <section>
