@@ -6,6 +6,7 @@ import { createDub, getMyProfile, LIMITS } from "@/lib/video.functions";
 import { transcribeUpload } from "@/lib/transcribe.functions";
 import { previewDubbingVoice } from "@/lib/voice-preview.functions";
 import { hasClientDubbingKeys, runClientDubbing } from "@/lib/dubbing-client";
+import { muxDubbedVideo } from "@/lib/video-mux-client";
 import { Logo } from "@/components/Logo";
 import { LangToggle } from "@/components/LangToggle";
 import { Button } from "@/components/ui/button";
@@ -92,16 +93,20 @@ function DubbingPage() {
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [localVideoUrl, setLocalVideoUrl] = useState<string | null>(null);
+  const [muxedVideoUrl, setMuxedVideoUrl] = useState<string | null>(null);
+  const [muxProgress, setMuxProgress] = useState<number | null>(null);
   const hydrated = useRef(false);
 
   const isUploadUrl = (url: unknown) => typeof url === "string" && /^upload:\/\//i.test(url);
 
   const withPlayableUploadUrl = (video: any) => {
-    if (!video || !localVideoUrl) return video;
+    if (!video) return video;
+    const playable = muxedVideoUrl ?? localVideoUrl;
+    if (!playable) return video;
     return {
       ...video,
-      source_url: isUploadUrl(video.source_url) ? localVideoUrl : video.source_url,
-      output_url: isUploadUrl(video.output_url) ? localVideoUrl : video.output_url,
+      source_url: isUploadUrl(video.source_url) ? (localVideoUrl ?? playable) : video.source_url,
+      output_url: isUploadUrl(video.output_url) ? playable : video.output_url,
     };
   };
 
@@ -244,6 +249,25 @@ function DubbingPage() {
             });
             providedDubbedSegments = r.segments;
             providedLocalizedText = r.localizedText;
+            // Browser-native muxing: replace the original audio with the
+            // Cartesia dub, produce an MP4 the user can preview & download.
+            if (file && providedDubbedSegments.length > 0 && i === 0) {
+              try {
+                setMuxProgress(0);
+                toast.message("Rendering your dubbed short video in the browser…");
+                const { url } = await muxDubbedVideo(
+                  file,
+                  providedDubbedSegments.map((s) => ({ start: s.start, audioDataUrl: s.audioDataUrl })),
+                  (ratio) => { if (ratio >= 0) setMuxProgress(ratio); },
+                );
+                setMuxedVideoUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return url; });
+                setMuxProgress(1);
+              } catch (mx: any) {
+                toast.warning(`In-browser render failed (${mx?.message ?? "error"}). Showing original video with dubbed audio track separately.`);
+              } finally {
+                setTimeout(() => setMuxProgress(null), 1200);
+              }
+            }
           } catch (e: any) {
             toast.warning(`Client dubbing failed (${e?.message ?? "error"}). Falling back to server.`);
           }
