@@ -18,8 +18,9 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
 import { ProcessingProgress } from "@/components/ProcessingProgress";
 import { loadSession, saveSession, clearSession } from "@/lib/videoCache";
-import { fetchVideoBlobFromUrl, sliceIntoClips } from "@/lib/video-clip-client";
+import { extractAnalysisAudio, fetchVideoBlobFromUrl, sliceIntoClips } from "@/lib/video-clip-client";
 import { Upload } from "lucide-react";
+import { generateClipPlanFromAudio, hasGeminiKey } from "@/lib/clip-copy-client";
 
 const CACHE_KEY = "clipper";
 
@@ -68,6 +69,13 @@ function Clipper() {
         if (typeof f.language === "string") setLanguage(f.language);
         if (typeof f.autoEmojis === "boolean") setAutoEmojis(f.autoEmojis);
         if (typeof f.highlight === "boolean") setHighlight(f.highlight);
+        if (s.file && s.file.blob) {
+          try {
+            const restored = new File([s.file.blob], s.file.name, { type: s.file.type });
+            setFile(restored);
+            setFileName(s.file.name);
+          } catch {}
+        }
         if (s.results) {
           setResults(s.results);
           toast.success("Restored your last session");
@@ -85,8 +93,9 @@ function Clipper() {
       updatedAt: Date.now(),
       form: { title, source, style, language, autoEmojis, highlight },
       results,
+      file: file ? { name: file.name, type: file.type, size: file.size, blob: file } : null,
     });
-  }, [title, source, style, language, autoEmojis, highlight, results]);
+  }, [title, source, style, language, autoEmojis, highlight, results, file]);
 
   function resetAll() {
     setTitle("");
@@ -112,14 +121,24 @@ function Clipper() {
     setLoading(true);
     setResults(null);
     try {
+      if (!hasGeminiKey()) {
+        throw new Error("Gemini key is required to analyze this video and choose exact real clip timestamps.");
+      }
       const sourceFile = file
         ? { blob: file, name: fileName || file.name, url: source.trim() || `upload://${file.name}` }
         : await fetchVideoBlobFromUrl(source);
 
-      const [slices] = await Promise.all([
-        sliceIntoClips(sourceFile.blob, 3, { maxLenSeconds: 30, analysisWindowSeconds: 300 }),
-        new Promise((r) => setTimeout(r, 1200)),
-      ]);
+      toast.message("Gemini is choosing the exact moments from your video…");
+      const analysisAudio = await extractAnalysisAudio(sourceFile.blob, {
+        maxSeconds: 300,
+        onProgress: (_ratio, msg) => { if (msg) console.debug("[clipper]", msg); },
+      });
+      const clipPlans = await generateClipPlanFromAudio(analysisAudio, title, 3);
+      const slices = await sliceIntoClips(sourceFile.blob, 3, {
+        maxLenSeconds: 30,
+        analysisWindowSeconds: 300,
+        windows: clipPlans.map((p) => ({ start: p.start, end: p.end })),
+      });
 
       if (!slices.length) {
         throw new Error("Couldn't cut real clips from this video. Please upload the original file again.");
@@ -133,16 +152,25 @@ function Clipper() {
       const persisted = Array.isArray((res as any).videos) ? ((res as any).videos as any[]) : [];
       const vids = slices.map((s, i) => {
         const v = persisted[i] ?? {};
+        const plan = clipPlans[i];
         return {
           ...v,
           id: v.id ?? `local-${Date.now()}-${i}`,
-          title: v.title ?? `${title} — Short ${i + 1}`,
+          title: plan?.title ?? v.title ?? `${title} — Short ${i + 1}`,
           output_url: s.url,
           source_url: sourceFile.url,
           duration_seconds: Math.round(s.end - s.start),
+          clip_start: s.start,
+          clip_end: s.end,
+          clip_blob: s.blob,
           is_real_clip: true,
           social_kit: {
             ...(v.social_kit ?? {}),
+            title: plan?.title,
+            description: plan?.description,
+            hashtags: plan?.hashtags,
+            caption_text: plan?.title,
+            gemini_reason: plan?.reason,
             clip_start: s.start,
             clip_end: s.end,
           },
@@ -156,6 +184,7 @@ function Clipper() {
         updatedAt: Date.now(),
         form: { title, source, style, language, autoEmojis, highlight, fileName: sourceFile.name },
         results: vids,
+        file: { name: sourceFile.name, type: sourceFile.blob.type || "video/mp4", size: sourceFile.blob.size, blob: sourceFile.blob },
       });
       toast.success("Cut 3 real shorts from your video!");
       navigate({ to: "/clipper/results" });
