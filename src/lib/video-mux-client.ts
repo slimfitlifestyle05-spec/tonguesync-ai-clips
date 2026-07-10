@@ -9,7 +9,7 @@ import { fetchFile, toBlobURL } from "@ffmpeg/util";
 let _ff: FFmpeg | null = null;
 let _loading: Promise<FFmpeg> | null = null;
 
-async function getFFmpeg(onLog?: (m: string) => void): Promise<FFmpeg> {
+export async function getFFmpeg(onLog?: (m: string) => void): Promise<FFmpeg> {
   if (_ff) return _ff;
   if (_loading) return _loading;
   _loading = (async () => {
