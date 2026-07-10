@@ -190,11 +190,15 @@ export const createDub = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: profile } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
     if (!profile) throw new Error("Profile missing");
-    const tier = profile.tier;
-    const maxDur = tier === "free" ? FREE_DUB_MAX_SECONDS : PRO_DUB_MAX_SECONDS;
-    if (data.durationSeconds > maxDur) return { error: "duration" as const, maxDur };
-    if (tier === "free" && profile.dubs_used >= FREE_DUBS) return { error: "limit" as const };
-    if (tier === "pro" && profile.monthly_used >= PRO_MONTHLY) return { error: "limit" as const };
+    const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+    const isAdmin = (roles ?? []).some((r) => r.role === "admin");
+    const tier = isAdmin ? "pro" : profile.tier;
+    const maxDur = isAdmin ? Number.MAX_SAFE_INTEGER : (tier === "free" ? FREE_DUB_MAX_SECONDS : PRO_DUB_MAX_SECONDS);
+    if (!isAdmin) {
+      if (data.durationSeconds > maxDur) return { error: "duration" as const, maxDur };
+      if (tier === "free" && profile.dubs_used >= FREE_DUBS) return { error: "limit" as const };
+      if (tier === "pro" && profile.monthly_used >= PRO_MONTHLY) return { error: "limit" as const };
+    }
 
     const style = tier === "free" && data.style !== "modern" && data.style !== "minimal" ? "modern" : data.style;
     const clientTranscript = data.providedTranscript?.trim() ?? "";
@@ -280,7 +284,7 @@ export const createDub = createServerFn({ method: "POST" })
         style,
         target_language: data.targetLanguage,
         target_country: data.targetCountry,
-        watermarked: tier === "free",
+        watermarked: tier === "free" && !isAdmin,
         social_kit: enrichedSocialKit,
         status: "ready",
         duration_seconds: data.durationSeconds,
@@ -288,14 +292,16 @@ export const createDub = createServerFn({ method: "POST" })
       .select()
       .single();
     if (error) throw new Error(error.message);
-    await supabase
-      .from("profiles")
-      .update({
-        dubs_used: profile.dubs_used + 1,
-        monthly_used: profile.monthly_used + 1,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", userId);
+    if (!isAdmin) {
+      await supabase
+        .from("profiles")
+        .update({
+          dubs_used: profile.dubs_used + 1,
+          monthly_used: profile.monthly_used + 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
+    }
     return { video: inserted, pipelineError };
   });
 
