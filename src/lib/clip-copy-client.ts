@@ -15,7 +15,10 @@ export type ClipPlan = ClipCopy & {
 };
 
 export function hasGeminiKey(): boolean {
-  return Boolean(import.meta.env.VITE_GEMINI_API_KEY);
+  // Kept for backward compat. Clip planning now always routes through the
+  // server (personal Gemini key → Lovable AI Gateway fallback), so callers
+  // no longer need to gate on a client-side env var.
+  return true;
 }
 
 const SYSTEM = `You are an expert short-form video strategist. From a topic, you write viral English copy for a vertical short (TikTok / Reels / Shorts).
@@ -82,55 +85,19 @@ export async function generateClipPlanFromAudio(
   topic: string,
   count = 3,
 ): Promise<ClipPlan[]> {
-  const key = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
-  if (!key) throw new Error("Gemini key is required to choose exact clip timestamps.");
   const base64 = await blobToBase64(audioBlob);
-  const prompt = `Video/project title: "${topic || "Uploaded video"}"\nPick exactly ${count} real short clips from this media. The media is limited to the first 5 minutes.`;
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: CLIP_PLAN_SYSTEM }] },
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { inlineData: { mimeType: audioBlob.type || "audio/wav", data: base64 } },
-              { text: prompt },
-            ],
-          },
-        ],
-        generationConfig: { temperature: 0.25, responseMimeType: "application/json" },
-      }),
+  const { planClips } = await import("./clip-copy.functions");
+  const { plans } = await planClips({
+    data: {
+      base64,
+      mimeType: audioBlob.type || "audio/wav",
+      topic,
+      count,
+      durationSeconds: 0,
     },
-  );
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`Gemini timestamp analysis failed (${res.status}): ${body.slice(0, 180)}`);
-  }
-  const json: any = await res.json();
-  const raw = String(json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
-  const parsed = parseJsonObject(raw);
-  const plans: ClipPlan[] = (Array.isArray(parsed?.clips) ? parsed.clips : [])
-    .map((c: any) => {
-      const start = Math.max(0, Number(c.start) || 0);
-      const end = Math.max(start + 1, Number(c.end) || start + 20);
-      return {
-        start,
-        end,
-        title: String(c.title ?? "").trim(),
-        description: String(c.description ?? "").trim(),
-        hashtags: normalizeHashtags(c.hashtags),
-        reason: String(c.reason ?? "").trim() || undefined,
-      };
-    })
-    .filter((c: ClipPlan) => c.end > c.start && c.title && c.description && c.hashtags.length >= 3)
-    .sort((a: ClipPlan, b: ClipPlan) => a.start - b.start)
-    .slice(0, count);
-  if (plans.length < count) throw new Error("Gemini did not return enough timestamped clip moments.");
-  return plans;
+  });
+  if (!plans?.length) throw new Error("The AI couldn't pick clip moments from this video. Try a shorter or clearer video.");
+  return plans as ClipPlan[];
 }
 
 export async function generateClipCopy(
