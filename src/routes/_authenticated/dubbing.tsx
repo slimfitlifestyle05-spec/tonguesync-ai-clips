@@ -180,6 +180,8 @@ function DubbingPage() {
     setStyle("modern");
     setDuration(20);
     setResult(null);
+    setMuxedVideoUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+    setMuxProgress(null);
     clearSession(CACHE_KEY);
     toast.success("Cleared — ready for a new video");
   }
@@ -582,6 +584,19 @@ function DubbingPage() {
                     <div className="text-[10px] text-slate-500">
                       {batchProgress ? `Language ${batchProgress.done + 1} of ${batchProgress.total}` : "This may take a few moments"}
                     </div>
+                    {muxProgress !== null && (
+                      <div className="mt-2 w-3/4 max-w-[220px]">
+                        <div className="text-[10px] text-fuchsia-300 mb-1 text-center">
+                          Rendering dubbed short in your browser… {Math.round(muxProgress * 100)}%
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                          <div
+                            className="h-full bg-gradient-to-r from-fuchsia-500 to-amber-400 transition-[width] duration-200"
+                            style={{ width: `${Math.max(4, Math.round(muxProgress * 100))}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="p-3 space-y-3">
