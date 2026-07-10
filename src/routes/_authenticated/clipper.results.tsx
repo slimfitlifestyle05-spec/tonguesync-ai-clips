@@ -39,21 +39,36 @@ function ClipCard({ clip, index, topic, cachedCopy, onCopyReady }: {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
+  const [regenCount, setRegenCount] = useState(0);
+  const [justRegenerated, setJustRegenerated] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
 
-  async function run() {
+  async function run(isRegen = false) {
     if (!hasGeminiKey()) {
       setError("Add VITE_GEMINI_API_KEY in Dashboard settings.");
       return;
     }
     setLoading(true); setError(null);
+    const nextVariation = isRegen ? regenCount + 1 : 0;
+    if (isRegen) toast(`Regenerating Short ${index + 1}…`, { icon: "✨" });
     try {
-      const c = await generateClipCopy(topic || clip.title || "Short clip", index);
+      const c = await generateClipCopy(
+        topic || clip.title || "Short clip",
+        index,
+        nextVariation,
+      );
       setCopy(c);
       onCopyReady(index, c);
+      if (isRegen) {
+        setRegenCount(nextVariation);
+        setJustRegenerated(true);
+        toast.success(`Short ${index + 1} regenerated`);
+        setTimeout(() => setJustRegenerated(false), 1400);
+      }
     } catch (e: any) {
       setError(e?.message ?? "Gemini failed");
+      if (isRegen) toast.error("Regeneration failed — try again");
     } finally { setLoading(false); }
   }
 
@@ -97,14 +112,44 @@ function ClipCard({ clip, index, topic, cachedCopy, onCopyReady }: {
           <span className="truncate text-sm font-medium text-white/90">
             {copy?.title ?? clip.title ?? `Short ${index + 1}`}
           </span>
+          {regenCount > 0 && (
+            <span
+              className="ml-1 shrink-0 rounded-full bg-fuchsia-500/15 text-fuchsia-200 border border-fuchsia-500/25 text-[10px] px-1.5 py-0 font-mono"
+              title={`Regenerated ${regenCount} time${regenCount === 1 ? "" : "s"}`}
+            >
+              v{regenCount + 1}
+            </span>
+          )}
         </div>
         <button
-          onClick={run}
+          type="button"
+          onClick={() => run(true)}
           disabled={loading}
-          className="text-slate-400 hover:text-fuchsia-300 transition"
-          title="Regenerate copy"
+          aria-label="Regenerate AI copy for this short"
+          title="Regenerate title, description & hashtags for this short only"
+          className={
+            "group/regen inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-medium transition " +
+            (loading
+              ? "border-fuchsia-500/40 bg-fuchsia-500/10 text-fuchsia-200 cursor-wait"
+              : "border-fuchsia-500/25 bg-fuchsia-500/5 text-fuchsia-200 hover:border-fuchsia-400/60 hover:bg-fuchsia-500/15 hover:text-white active:scale-95")
+          }
         >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+          {loading ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <span>Rewriting…</span>
+            </>
+          ) : justRegenerated ? (
+            <>
+              <Check className="h-3.5 w-3.5 text-emerald-300" />
+              <span>Fresh</span>
+            </>
+          ) : (
+            <>
+              <RefreshCcw className="h-3.5 w-3.5 transition-transform group-hover/regen:-rotate-90" />
+              <span>Regenerate</span>
+            </>
+          )}
         </button>
       </div>
 
@@ -139,7 +184,20 @@ function ClipCard({ clip, index, topic, cachedCopy, onCopyReady }: {
       </div>
 
       {/* Copy area */}
-      <div className="p-4 space-y-2.5">
+      <div className="p-4 space-y-2.5 relative">
+        {/* When regenerating over an existing copy, keep the old text visible
+            with a shimmering fuchsia overlay so the card never blanks out. */}
+        {loading && copy && (
+          <div className="absolute inset-0 z-10 rounded-b-2xl backdrop-blur-[2px] bg-slate-950/40 flex flex-col items-center justify-center gap-2 pointer-events-none">
+            <div className="inline-flex items-center gap-2 rounded-full border border-fuchsia-500/40 bg-black/70 px-3 py-1.5 text-xs text-fuchsia-100 shadow-[0_0_20px_rgba(217,70,239,0.35)]">
+              <Sparkles className="h-3.5 w-3.5 text-amber-300 animate-pulse" />
+              Gemini is rewriting this short…
+            </div>
+            <div className="h-0.5 w-3/4 overflow-hidden rounded-full bg-white/5">
+              <div className="h-full w-1/3 bg-gradient-to-r from-fuchsia-500 to-amber-400 animate-[shimmer_1.4s_ease-in-out_infinite]" />
+            </div>
+          </div>
+        )}
         {loading && !copy ? (
           <div className="space-y-2 animate-pulse">
             <div className="h-4 w-3/4 bg-white/10 rounded" />
