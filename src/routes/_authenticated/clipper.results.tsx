@@ -77,12 +77,17 @@ function ClipCard({ clip, index, topic, cachedCopy, onCopyReady }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fake in/out timestamps for the badge — deterministic per index.
+  // Prefer real cut timestamps from the browser slicer; only fall back for old cached sessions.
   const stamp = useMemo(() => {
+    const clipStart = Number(clip?.social_kit?.clip_start ?? clip?.clip_start);
+    const clipEnd = Number(clip?.social_kit?.clip_end ?? clip?.clip_end);
+    if (Number.isFinite(clipStart) && Number.isFinite(clipEnd) && clipEnd > clipStart) {
+      return `${fmt(clipStart)} - ${fmt(clipEnd)}`;
+    }
     const startBase = 30 + index * 87;
     const dur = 55 + (index * 13) % 40;
     return `${fmt(startBase)} - ${fmt(startBase + dur)}`;
-  }, [index]);
+  }, [clip, index]);
 
   async function copyAll() {
     if (!copy) return;

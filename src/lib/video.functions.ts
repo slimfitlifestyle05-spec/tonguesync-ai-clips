@@ -108,7 +108,9 @@ export const createClips = createServerFn({ method: "POST" })
         kind: "clip" as const,
         title: socialKit?.title ?? `${data.title} \u2014 Short ${i + 1}`,
         source_url: data.sourceUrl || null,
-        output_url: sampleOutput("clip", i),
+        // Real clip media is produced in the browser from the user's source video.
+        // Never attach demo/sample videos to clipped shorts.
+        output_url: null,
         style,
         language: data.language,
         watermarked: tier === "free" && !isAdmin,

@@ -18,7 +18,7 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
 import { ProcessingProgress } from "@/components/ProcessingProgress";
 import { loadSession, saveSession, clearSession } from "@/lib/videoCache";
-import { sliceIntoClips } from "@/lib/video-clip-client";
+import { fetchVideoBlobFromUrl, sliceIntoClips } from "@/lib/video-clip-client";
 import { Upload } from "lucide-react";
 
 const CACHE_KEY = "clipper";
@@ -95,6 +95,8 @@ function Clipper() {
     setLanguage("en");
     setAutoEmojis(false);
     setHighlight(false);
+    setFile(null);
+    setFileName("");
     setResults(null);
     clearSession(CACHE_KEY);
     toast.success("Cleared — ready for a new video");
@@ -110,51 +112,52 @@ function Clipper() {
     setLoading(true);
     setResults(null);
     try {
-      // Keep the fake pipeline visible for a beat even if the mock backend replies instantly.
-      const slicesPromise: Promise<null | Awaited<ReturnType<typeof sliceIntoClips>>> = file
-        ? sliceIntoClips(file, 3, { maxLenSeconds: 30 }).catch((err) => {
-            console.warn("[clipper] slice failed", err);
-            toast.error("Couldn't slice the video in the browser — using preview clips");
-            return null;
-          })
-        : Promise.resolve(null);
-      const [res, slices] = await Promise.all([
-        create({ data: { title, sourceUrl: source, style, language, autoEmojis, highlight } }),
-        slicesPromise,
+      const sourceFile = file
+        ? { blob: file, name: fileName || file.name, url: source.trim() || `upload://${file.name}` }
+        : await fetchVideoBlobFromUrl(source);
+
+      const [slices] = await Promise.all([
+        sliceIntoClips(sourceFile.blob, 3, { maxLenSeconds: 30, analysisWindowSeconds: 300 }),
         new Promise((r) => setTimeout(r, 1200)),
       ]);
+
+      if (!slices.length) {
+        throw new Error("Couldn't cut real clips from this video. Please upload the original file again.");
+      }
+
+      const res = await create({ data: { title, sourceUrl: sourceFile.url, style, language, autoEmojis, highlight } });
       if ((res as any).error === "limit") {
         setUpgradeOpen(true);
         return;
       }
-      let vids = (res as any).videos as any[];
-      if (slices && Array.isArray(vids)) {
-        vids = vids.map((v, i) => {
-          const s = slices[i];
-          if (!s) return v;
-          return {
-            ...v,
-            output_url: s.url,
-            source_url: v.source_url || fileName || "upload",
-            duration_seconds: Math.round(s.end - s.start),
-            social_kit: {
-              ...(v.social_kit ?? {}),
-              clip_start: s.start,
-              clip_end: s.end,
-            },
-          };
-        });
-      }
+      const persisted = Array.isArray((res as any).videos) ? ((res as any).videos as any[]) : [];
+      const vids = slices.map((s, i) => {
+        const v = persisted[i] ?? {};
+        return {
+          ...v,
+          id: v.id ?? `local-${Date.now()}-${i}`,
+          title: v.title ?? `${title} — Short ${i + 1}`,
+          output_url: s.url,
+          source_url: sourceFile.url,
+          duration_seconds: Math.round(s.end - s.start),
+          is_real_clip: true,
+          social_kit: {
+            ...(v.social_kit ?? {}),
+            clip_start: s.start,
+            clip_end: s.end,
+          },
+        };
+      });
       setResults(vids);
       qc.invalidateQueries();
       // Persist immediately so the results page can read the fresh clips.
       await saveSession({
         key: CACHE_KEY,
         updatedAt: Date.now(),
-        form: { title, source, style, language, autoEmojis, highlight, fileName },
+        form: { title, source, style, language, autoEmojis, highlight, fileName: sourceFile.name },
         results: vids,
       });
-      toast.success("Generated 3 shorts!");
+      toast.success("Cut 3 real shorts from your video!");
       navigate({ to: "/clipper/results" });
     } catch (err: any) {
       toast.error(err?.message ?? "Failed");
@@ -200,7 +203,7 @@ function Clipper() {
                   {fileName ? fileName : "Choose a video file (mp4, mov, webm)…"}
                 </div>
                 <div className="text-xs text-slate-400">
-                  We'll slice it into 3 real short clips right in your browser.
+                  Best option: cuts 3 real shorts from the uploaded video itself.
                 </div>
               </div>
               {fileName && (
@@ -231,6 +234,9 @@ function Clipper() {
           <div>
             <Label>{t("source_placeholder")}</Label>
             <Input value={source} onChange={(e) => setSource(e.target.value)} placeholder="https://youtube.com/..." className="bg-white/5 border-white/10 mt-1" />
+            <p className="mt-1 text-xs text-slate-500">
+              Direct .mp4/.mov/.webm links can be cut here. For YouTube/TikTok/Instagram pages, upload the original file so the clips come from the same video.
+            </p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
