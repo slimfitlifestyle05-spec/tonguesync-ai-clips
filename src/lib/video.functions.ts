@@ -79,16 +79,20 @@ export const createClips = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const { data: profile } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
     if (!profile) throw new Error("Profile missing");
-    const tier = profile.tier;
-    // Quota
-    if (tier === "free") {
-      if (profile.clips_used >= FREE_CLIPS) {
-        return { error: "limit" as const };
+    const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+    const isAdmin = (roles ?? []).some((r) => r.role === "admin");
+    const tier = isAdmin ? "pro" : profile.tier;
+    // Quota — admins bypass all limits
+    if (!isAdmin) {
+      if (tier === "free") {
+        if (profile.clips_used >= FREE_CLIPS) {
+          return { error: "limit" as const };
+        }
+      } else {
+        if (profile.monthly_used >= PRO_MONTHLY) return { error: "limit" as const };
       }
-    } else {
-      if (profile.monthly_used >= PRO_MONTHLY) return { error: "limit" as const };
     }
-    // Premium features locked on free
+    // Premium features locked on free (admins get pro)
     const style = tier === "free" && data.style !== "modern" && data.style !== "minimal" ? "modern" : data.style;
     const autoEmojis = tier === "pro" ? data.autoEmojis : false;
     const highlight = tier === "pro" ? data.highlight : false;
@@ -107,21 +111,23 @@ export const createClips = createServerFn({ method: "POST" })
         output_url: sampleOutput("clip", i),
         style,
         language: data.language,
-        watermarked: tier === "free",
+        watermarked: tier === "free" && !isAdmin,
         social_kit: socialKit ? { ...socialKit, autoEmojis, highlight } : { autoEmojis, highlight },
         status: "ready",
       };
     });
     const { data: inserted, error } = await supabase.from("videos").insert(rows).select();
     if (error) throw new Error(error.message);
-    await supabase
-      .from("profiles")
-      .update({
-        clips_used: profile.clips_used + 1,
-        monthly_used: profile.monthly_used + 3,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", userId);
+    if (!isAdmin) {
+      await supabase
+        .from("profiles")
+        .update({
+          clips_used: profile.clips_used + 1,
+          monthly_used: profile.monthly_used + 3,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", userId);
+    }
     return { videos: inserted };
   });
 
