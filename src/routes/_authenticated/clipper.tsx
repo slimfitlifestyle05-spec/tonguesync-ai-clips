@@ -18,6 +18,8 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
 import { ProcessingProgress } from "@/components/ProcessingProgress";
 import { loadSession, saveSession, clearSession } from "@/lib/videoCache";
+import { sliceIntoClips } from "@/lib/video-clip-client";
+import { Upload } from "lucide-react";
 
 const CACHE_KEY = "clipper";
 
@@ -44,6 +46,8 @@ function Clipper() {
 
   const [title, setTitle] = useState("");
   const [source, setSource] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [fileName, setFileName] = useState<string>("");
   const [style, setStyle] = useState("modern");
   const [language, setLanguage] = useState("en");
   const [autoEmojis, setAutoEmojis] = useState(false);
@@ -99,26 +103,55 @@ function Clipper() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!title) return;
+    if (!file && !source.trim()) {
+      toast.error("Upload a video or paste a link");
+      return;
+    }
     setLoading(true);
     setResults(null);
     try {
       // Keep the fake pipeline visible for a beat even if the mock backend replies instantly.
-      const [res] = await Promise.all([
+      const slicesPromise: Promise<null | Awaited<ReturnType<typeof sliceIntoClips>>> = file
+        ? sliceIntoClips(file, 3, { maxLenSeconds: 30 }).catch((err) => {
+            console.warn("[clipper] slice failed", err);
+            toast.error("Couldn't slice the video in the browser — using preview clips");
+            return null;
+          })
+        : Promise.resolve(null);
+      const [res, slices] = await Promise.all([
         create({ data: { title, sourceUrl: source, style, language, autoEmojis, highlight } }),
-        new Promise((r) => setTimeout(r, 4200)),
+        slicesPromise,
+        new Promise((r) => setTimeout(r, 1200)),
       ]);
       if ((res as any).error === "limit") {
         setUpgradeOpen(true);
         return;
       }
-      const vids = (res as any).videos;
+      let vids = (res as any).videos as any[];
+      if (slices && Array.isArray(vids)) {
+        vids = vids.map((v, i) => {
+          const s = slices[i];
+          if (!s) return v;
+          return {
+            ...v,
+            output_url: s.url,
+            source_url: v.source_url || fileName || "upload",
+            duration_seconds: Math.round(s.end - s.start),
+            social_kit: {
+              ...(v.social_kit ?? {}),
+              clip_start: s.start,
+              clip_end: s.end,
+            },
+          };
+        });
+      }
       setResults(vids);
       qc.invalidateQueries();
       // Persist immediately so the results page can read the fresh clips.
       await saveSession({
         key: CACHE_KEY,
         updatedAt: Date.now(),
-        form: { title, source, style, language, autoEmojis, highlight },
+        form: { title, source, style, language, autoEmojis, highlight, fileName },
         results: vids,
       });
       toast.success("Generated 3 shorts!");
@@ -152,6 +185,48 @@ function Clipper() {
           <div>
             <Label>{t("title_placeholder")}</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={200} className="bg-white/5 border-white/10 mt-1" />
+          </div>
+          <div className="space-y-2">
+            <Label>Upload a video from your computer</Label>
+            <label
+              htmlFor="clipper-upload"
+              className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-fuchsia-400/40 bg-fuchsia-500/5 px-4 py-3 hover:bg-fuchsia-500/10 transition"
+            >
+              <div className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-gradient-to-br from-fuchsia-500 to-amber-400 text-black">
+                <Upload className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium truncate">
+                  {fileName ? fileName : "Choose a video file (mp4, mov, webm)…"}
+                </div>
+                <div className="text-xs text-slate-400">
+                  We'll slice it into 3 real short clips right in your browser.
+                </div>
+              </div>
+              {fileName && (
+                <button
+                  type="button"
+                  onClick={(ev) => { ev.preventDefault(); setFile(null); setFileName(""); }}
+                  className="text-xs text-slate-300 hover:text-white underline underline-offset-2"
+                >
+                  Remove
+                </button>
+              )}
+              <input
+                id="clipper-upload"
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={(ev) => {
+                  const f = ev.target.files?.[0] ?? null;
+                  setFile(f);
+                  setFileName(f ? f.name : "");
+                }}
+              />
+            </label>
+          </div>
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-slate-500">
+            <span className="h-px flex-1 bg-white/10" /> or paste a link <span className="h-px flex-1 bg-white/10" />
           </div>
           <div>
             <Label>{t("source_placeholder")}</Label>
