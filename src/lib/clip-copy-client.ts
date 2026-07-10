@@ -21,10 +21,17 @@ Rules:
 
 Return STRICT JSON: { "title": "...", "description": "...", "hashtags": ["#a","#b","#c","#d","#e"] } — no markdown, no preamble.`;
 
-export async function generateClipCopy(topic: string, clipIndex: number): Promise<ClipCopy> {
+export async function generateClipCopy(
+  topic: string,
+  clipIndex: number,
+  variation = 0,
+): Promise<ClipCopy> {
   const key = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
   if (!key) throw new Error("VITE_GEMINI_API_KEY not set");
-  const user = `Master video topic: """${topic}"""\nThis is short clip #${clipIndex + 1} of 3 extracted from that video. Write copy that highlights a distinct angle of the topic for this specific short.`;
+  const angleHint = variation > 0
+    ? `\n\nIMPORTANT: This is regeneration #${variation}. Produce a COMPLETELY DIFFERENT angle, hook, and word choice than any previous attempt. Do not reuse the same opening pattern. Session nonce: ${Math.random().toString(36).slice(2, 10)}.`
+    : "";
+  const user = `Master video topic: """${topic}"""\nThis is short clip #${clipIndex + 1} of 3 extracted from that video. Write copy that highlights a distinct angle of the topic for this specific short.${angleHint}`;
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${encodeURIComponent(key)}`,
@@ -34,7 +41,11 @@ export async function generateClipCopy(topic: string, clipIndex: number): Promis
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SYSTEM }] },
         contents: [{ role: "user", parts: [{ text: user }] }],
-        generationConfig: { temperature: 0.9, responseMimeType: "application/json" },
+        generationConfig: {
+          temperature: variation > 0 ? 1.15 : 0.9,
+          topP: 0.95,
+          responseMimeType: "application/json",
+        },
       }),
     },
   );
