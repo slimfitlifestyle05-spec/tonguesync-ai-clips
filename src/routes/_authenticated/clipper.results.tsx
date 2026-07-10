@@ -22,6 +22,14 @@ export const Route = createFileRoute("/_authenticated/clipper/results")({
 
 type Clip = any;
 
+function copyFromClip(clip: Clip): ClipCopy | null {
+  const kit = clip?.social_kit ?? {};
+  const title = String(kit.title ?? "").trim();
+  const description = String(kit.description ?? "").trim();
+  const hashtags = Array.isArray(kit.hashtags) ? kit.hashtags.map((h: any) => String(h).trim()).filter(Boolean) : [];
+  return title && description && hashtags.length ? { title, description, hashtags } : null;
+}
+
 function fmt(sec: number) {
   const m = Math.floor(sec / 60).toString().padStart(2, "0");
   const s = Math.floor(sec % 60).toString().padStart(2, "0");
@@ -35,7 +43,7 @@ function ClipCard({ clip, index, topic, cachedCopy, onCopyReady }: {
   cachedCopy: ClipCopy | null;
   onCopyReady: (i: number, copy: ClipCopy) => void;
 }) {
-  const [copy, setCopy] = useState<ClipCopy | null>(cachedCopy);
+  const [copy, setCopy] = useState<ClipCopy | null>(cachedCopy ?? copyFromClip(clip));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
@@ -174,6 +182,15 @@ function ClipCard({ clip, index, topic, cachedCopy, onCopyReady }: {
         <div className="absolute top-2 right-2 rounded-md bg-black/70 backdrop-blur px-2 py-1 text-[11px] font-mono tabular-nums text-white/90 border border-white/10">
           {stamp}
         </div>
+        {(copy?.title || clip?.social_kit?.caption_text) && (
+          <div className="pointer-events-none absolute inset-x-3 bottom-4 flex justify-center">
+            <div className="max-w-[92%] rounded-lg border border-white/15 bg-black/75 px-3 py-2 text-center shadow-2xl backdrop-blur-sm">
+              <div className="text-sm font-extrabold uppercase leading-tight text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
+                {copy?.title ?? clip.social_kit.caption_text}
+              </div>
+            </div>
+          </div>
+        )}
         {/* Play overlay */}
         {!playing && (
           <button
@@ -266,10 +283,26 @@ function ClipperResults() {
   const [copies, setCopies] = useState<Record<number, ClipCopy>>({});
 
   useEffect(() => {
+    const createdUrls: string[] = [];
+    let active = true;
     loadSession(CACHE_KEY).then((s) => {
-      const v = Array.isArray(s?.results) ? (s!.results as Clip[]) : [];
-      if (!v.length) {
-        toast.error("No clips found — generate some first.");
+      const raw = Array.isArray(s?.results) ? (s!.results as Clip[]) : [];
+      const v = raw
+        .map((clip) => {
+          if (clip?.clip_blob instanceof Blob) {
+            const url = URL.createObjectURL(clip.clip_blob);
+            createdUrls.push(url);
+            return { ...clip, output_url: url, is_real_clip: true };
+          }
+          return clip;
+        })
+        .filter((clip) => clip?.is_real_clip === true && typeof clip?.output_url === "string" && clip.output_url.startsWith("blob:"));
+      if (!active) {
+        createdUrls.forEach((url) => URL.revokeObjectURL(url));
+        return;
+      }
+      if (v.length !== 3) {
+        toast.error("No real local clips found — upload the original video again.");
         navigate({ to: "/clipper" });
         return;
       }
@@ -279,6 +312,10 @@ function ClipperResults() {
       if (cached && typeof cached === "object") setCopies(cached);
       setReady(true);
     });
+    return () => {
+      active = false;
+      createdUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
   }, [navigate]);
 
   function onCopyReady(i: number, c: ClipCopy) {
