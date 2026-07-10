@@ -16,6 +16,25 @@ export type ClipSlice = {
 export type VideoCutWindow = {
   start: number;
   end: number;
+  quality?: ClipQuality;
+};
+
+export type ClipQuality = {
+  /** target height in px; width auto-preserves aspect. 0 = source */
+  height?: 0 | 480 | 720 | 1080 | 1440 | 2160;
+  /** target frame rate; 0 = source */
+  fps?: 0 | 24 | 30 | 60;
+  /** video bitrate in kbps; 0 = CRF quality mode */
+  videoBitrateKbps?: 0 | 3000 | 5000 | 8000 | 12000;
+  /** audio bitrate in kbps */
+  audioBitrateKbps?: 96 | 128 | 160 | 192;
+};
+
+export const DEFAULT_QUALITY: ClipQuality = {
+  height: 1080,
+  fps: 30,
+  videoBitrateKbps: 0,
+  audioBitrateKbps: 160,
 };
 
 export type ResolvedVideoSource = {
@@ -140,7 +159,7 @@ function normalizeWindows(
       const start = Math.max(0, Number(w.start) || 0);
       const rawEnd = Math.max(start + 1, Number(w.end) || start + maxLenSeconds);
       const end = Math.min(maxEnd, start + maxLenSeconds, rawEnd);
-      return { start: Math.floor(start * 100) / 100, end: Math.floor(end * 100) / 100 };
+      return { start: Math.floor(start * 100) / 100, end: Math.floor(end * 100) / 100, quality: w.quality };
     })
     .filter((w) => w.end > w.start)
     .sort((a, b) => a.start - b.start)
@@ -188,22 +207,34 @@ export async function sliceIntoClips(
 
   const out: ClipSlice[] = [];
   for (let i = 0; i < windows.length; i++) {
-    const { start, end } = windows[i];
+    const w = windows[i];
+    const { start, end } = w;
+    const q: ClipQuality = { ...DEFAULT_QUALITY, ...(w.quality ?? {}) };
     const len = Math.max(1, end - start);
     const outName = `clip_${nonce}_${i}.mp4`;
     onProgress?.(i / windows.length, `Cutting clip ${i + 1}/${windows.length}`);
+    // Build video filter chain (scale) + rate control.
+    const filters: string[] = [];
+    if (q.height && q.height > 0) filters.push(`scale=-2:${q.height}`);
+    const vfArgs = filters.length ? ["-vf", filters.join(",")] : [];
+    const fpsArgs = q.fps && q.fps > 0 ? ["-r", String(q.fps)] : [];
+    const bitrateArgs = q.videoBitrateKbps && q.videoBitrateKbps > 0
+      ? ["-b:v", `${q.videoBitrateKbps}k`, "-maxrate", `${q.videoBitrateKbps}k`, "-bufsize", `${q.videoBitrateKbps * 2}k`]
+      : ["-crf", "18"];
     const preciseArgs = [
       "-i", inputName,
       "-ss", String(start),
       "-t", String(len),
       "-map", "0:v:0",
       "-map", "0:a?",
+      ...vfArgs,
+      ...fpsArgs,
       "-c:v", "libx264",
       "-preset", "veryfast",
-      "-crf", "18",
+      ...bitrateArgs,
       "-pix_fmt", "yuv420p",
       "-c:a", "aac",
-      "-b:a", "160k",
+      "-b:a", `${q.audioBitrateKbps ?? 160}k`,
       "-movflags", "+faststart",
       "-y",
       outName,
