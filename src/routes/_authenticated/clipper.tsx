@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
 import { loadSession, saveSession, clearSession } from "@/lib/videoCache";
-import { extractAnalysisAudio, fetchVideoBlobFromUrl, sliceIntoClips, DEFAULT_QUALITY, type ClipQuality } from "@/lib/video-clip-client";
+import { extractAnalysisAudio, fetchVideoBlobFromUrl, getVideoDuration, sliceIntoClips, DEFAULT_QUALITY, type ClipQuality } from "@/lib/video-clip-client";
 import { Upload } from "lucide-react";
 import { generateClipPlanFromAudio, type ClipPlan } from "@/lib/clip-copy-client";
 
@@ -321,6 +321,8 @@ function Clipper() {
       const sourceFile = file
         ? { blob: file as Blob, name: fileName || file.name, url: source.trim() || `upload://${file.name}` }
         : await fetchVideoBlobFromUrl(source);
+      const durationSeconds = await getVideoDuration(sourceFile.blob);
+      if (!durationSeconds || durationSeconds < 8) throw new Error("This video is too short to cut into real shorts. Upload a video longer than 8 seconds.");
       setStageDone("fetch");
 
       // Stage 2 — analyze (extract audio)
@@ -337,8 +339,9 @@ function Clipper() {
       stage = "plan";
       setStageActive("plan");
       setDetail("Gemini is picking the 3 best moments…");
-      const clipPlans = await generateClipPlanFromAudio(analysisAudio, title, 3);
+      const clipPlans = await generateClipPlanFromAudio(analysisAudio, title, 3, durationSeconds);
       if (!clipPlans?.length) throw new Error("Gemini did not return any clip suggestions.");
+      if (clipPlans.length !== 3) throw new Error("Gemini did not return exactly 3 real clip timestamps.");
       setStageDone("plan");
 
       // Preview phase — wait for user confirmation before cutting
@@ -383,7 +386,9 @@ function Clipper() {
           if (msg) setDetail(msg);
         },
       });
-      if (!slices.length) throw new Error("Couldn't cut real clips from this video. Try uploading the original file.");
+      if (slices.length !== preview.plans.length || slices.some((s) => !s.blob?.size || !s.url.startsWith("blob:"))) {
+        throw new Error("Couldn't cut 3 real local clips from this video. No placeholder shorts were used — upload the original file and try again.");
+      }
       setStageDone("cut");
 
       // Stage 5 — output

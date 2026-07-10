@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Copy, Loader2, RefreshCcw, Scissors, Sparkles, Check, Play } from "lucide-react";
 import { toast } from "sonner";
 import { loadSession, saveSession } from "@/lib/videoCache";
-import { generateClipCopy, hasGeminiKey, type ClipCopy } from "@/lib/clip-copy-client";
+import { generateClipCopy, type ClipCopy } from "@/lib/clip-copy-client";
 
 const CACHE_KEY = "clipper";
 
@@ -53,10 +53,6 @@ function ClipCard({ clip, index, topic, cachedCopy, onCopyReady }: {
   const [playing, setPlaying] = useState(false);
 
   async function run(isRegen = false) {
-    if (!hasGeminiKey()) {
-      setError("Add VITE_GEMINI_API_KEY in Dashboard settings.");
-      return;
-    }
     setLoading(true); setError(null);
     const nextVariation = isRegen ? regenCount + 1 : 0;
     if (isRegen) toast(`Regenerating Short ${index + 1}…`, { icon: "✨" });
@@ -81,7 +77,7 @@ function ClipCard({ clip, index, topic, cachedCopy, onCopyReady }: {
   }
 
   useEffect(() => {
-    if (!copy && hasGeminiKey()) { run(); }
+    if (!copy) { run(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -365,12 +361,6 @@ function ClipperResults() {
             </p>
           </div>
         </div>
-
-        {!hasGeminiKey() && (
-          <div className="mb-6 rounded-xl border border-amber-400/40 bg-amber-500/10 p-4 text-sm text-amber-200">
-            Add <code className="rounded bg-black/40 px-1.5 py-0.5">VITE_GEMINI_API_KEY</code> to your project env to enable AI-generated titles, descriptions & hashtags.
-          </div>
-        )}
 
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {videos.map((v, i) => (

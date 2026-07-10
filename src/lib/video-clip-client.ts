@@ -31,8 +31,8 @@ export type ClipQuality = {
 };
 
 export const DEFAULT_QUALITY: ClipQuality = {
-  height: 1080,
-  fps: 30,
+  height: 0,
+  fps: 0,
   videoBitrateKbps: 0,
   audioBitrateKbps: 160,
 };
