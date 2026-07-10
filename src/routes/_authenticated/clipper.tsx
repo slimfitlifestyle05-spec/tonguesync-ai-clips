@@ -17,9 +17,9 @@ import { toast } from "sonner";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { VideoResult } from "@/components/VideoResult";
 import { loadSession, saveSession, clearSession } from "@/lib/videoCache";
-import { extractAnalysisAudio, fetchVideoBlobFromUrl, sliceIntoClips } from "@/lib/video-clip-client";
+import { extractAnalysisAudio, fetchVideoBlobFromUrl, sliceIntoClips, DEFAULT_QUALITY, type ClipQuality } from "@/lib/video-clip-client";
 import { Upload } from "lucide-react";
-import { generateClipPlanFromAudio, hasGeminiKey, type ClipPlan } from "@/lib/clip-copy-client";
+import { generateClipPlanFromAudio, type ClipPlan } from "@/lib/clip-copy-client";
 
 const CACHE_KEY = "clipper";
 
@@ -68,7 +68,19 @@ function StageList({
   );
 }
 
-function PreviewCard({ plan, srcUrl, index }: { plan: ClipPlan; srcUrl: string; index: number }) {
+function PreviewCard({
+  plan,
+  srcUrl,
+  index,
+  quality,
+  onQualityChange,
+}: {
+  plan: ClipPlan;
+  srcUrl: string;
+  index: number;
+  quality: ClipQuality;
+  onQualityChange: (q: ClipQuality) => void;
+}) {
   const ref = useRef<HTMLVideoElement | null>(null);
   function play() {
     const v = ref.current;
@@ -85,6 +97,9 @@ function PreviewCard({ plan, srcUrl, index }: { plan: ClipPlan; srcUrl: string; 
     }
   }
   const dur = Math.max(1, Math.round(plan.end - plan.start));
+  const resValue = String(quality.height ?? 1080);
+  const fpsValue = String(quality.fps ?? 30);
+  const brValue = String(quality.videoBitrateKbps ?? 0);
   return (
     <div className="rounded-xl border border-white/10 bg-black/30 overflow-hidden">
       <div className="relative aspect-[9/16] bg-black">
@@ -115,9 +130,50 @@ function PreviewCard({ plan, srcUrl, index }: { plan: ClipPlan; srcUrl: string; 
           {plan.start.toFixed(1)}s → {plan.end.toFixed(1)}s
         </div>
       </div>
-      <div className="p-3 space-y-1">
+      <div className="p-3 space-y-2">
         <div className="text-sm font-medium line-clamp-1">{plan.title}</div>
         <div className="text-xs text-slate-400 line-clamp-2">{plan.description}</div>
+        <div className="pt-2 border-t border-white/5 grid grid-cols-3 gap-1.5">
+          <div>
+            <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">Res</div>
+            <Select value={resValue} onValueChange={(v) => onQualityChange({ ...quality, height: Number(v) as ClipQuality["height"] })}>
+              <SelectTrigger className="h-8 text-xs bg-white/5 border-white/10"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="2160">4K</SelectItem>
+                <SelectItem value="1440">1440p</SelectItem>
+                <SelectItem value="1080">1080p</SelectItem>
+                <SelectItem value="720">720p</SelectItem>
+                <SelectItem value="480">480p</SelectItem>
+                <SelectItem value="0">Source</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">FPS</div>
+            <Select value={fpsValue} onValueChange={(v) => onQualityChange({ ...quality, fps: Number(v) as ClipQuality["fps"] })}>
+              <SelectTrigger className="h-8 text-xs bg-white/5 border-white/10"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="60">60</SelectItem>
+                <SelectItem value="30">30</SelectItem>
+                <SelectItem value="24">24</SelectItem>
+                <SelectItem value="0">Source</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">Bitrate</div>
+            <Select value={brValue} onValueChange={(v) => onQualityChange({ ...quality, videoBitrateKbps: Number(v) as ClipQuality["videoBitrateKbps"] })}>
+              <SelectTrigger className="h-8 text-xs bg-white/5 border-white/10"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">Auto</SelectItem>
+                <SelectItem value="12000">12 Mbps</SelectItem>
+                <SelectItem value="8000">8 Mbps</SelectItem>
+                <SelectItem value="5000">5 Mbps</SelectItem>
+                <SelectItem value="3000">3 Mbps</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
     </div>
   );
