@@ -192,34 +192,35 @@ export async function sliceIntoClips(
     const len = Math.max(1, end - start);
     const outName = `clip_${nonce}_${i}.mp4`;
     onProgress?.(i / windows.length, `Cutting clip ${i + 1}/${windows.length}`);
-    const copyArgs = [
-      "-ss", String(start),
+    const preciseArgs = [
       "-i", inputName,
+      "-ss", String(start),
       "-t", String(len),
       "-map", "0:v:0",
       "-map", "0:a?",
-      "-c", "copy",
-      "-avoid_negative_ts", "make_zero",
+      "-c:v", "libx264",
+      "-preset", "veryfast",
+      "-crf", "18",
+      "-pix_fmt", "yuv420p",
+      "-c:a", "aac",
+      "-b:a", "160k",
       "-movflags", "+faststart",
       "-y",
       outName,
     ];
     try {
-      // First try a stream copy: no placeholder media, no quality loss.
-      await ff.exec(copyArgs);
+      // Decode-accurate seek: cuts the exact Gemini timestamp, high visual quality.
+      await ff.exec(preciseArgs);
     } catch (e) {
-      // Fallback to high-quality re-encode for containers/codecs that can't be copied cleanly.
+      // Fallback to stream copy if re-encoding fails on an unusual input.
       await ff.exec([
         "-ss", String(start),
         "-i", inputName,
         "-t", String(len),
         "-map", "0:v:0",
         "-map", "0:a?",
-        "-c:v", "libx264",
-        "-preset", "veryfast",
-        "-crf", "18",
-        "-c:a", "aac",
-        "-b:a", "160k",
+        "-c", "copy",
+        "-avoid_negative_ts", "make_zero",
         "-movflags", "+faststart",
         "-y",
         outName,
