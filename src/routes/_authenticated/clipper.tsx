@@ -214,6 +214,7 @@ function Clipper() {
   const [errorStage, setErrorStage] = useState<StageKey | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [preview, setPreview] = useState<PlanPreview | null>(null);
+  const [qualities, setQualities] = useState<ClipQuality[]>([]);
   const busy = phase === "analyzing" || phase === "exporting";
 
   useEffect(() => {
@@ -313,9 +314,6 @@ function Clipper() {
     resetProgress();
     let stage: StageKey = "fetch";
     try {
-      if (!hasGeminiKey()) {
-        throw new Error("Gemini API key is missing. Add VITE_GEMINI_API_KEY to enable real clip selection.");
-      }
       // Stage 1 — fetch
       stage = "fetch";
       setStageActive("fetch");
@@ -352,6 +350,7 @@ function Clipper() {
         sourceUrl: sourceFile.url,
         previewObjectUrl,
       });
+      setQualities(clipPlans.map(() => ({ ...DEFAULT_QUALITY })));
       setPhase("preview");
       setDetail("Review the 3 selected moments, then confirm to export.");
     } catch (err: any) {
@@ -378,7 +377,7 @@ function Clipper() {
       const slices = await sliceIntoClips(preview.sourceBlob, 3, {
         maxLenSeconds: 30,
         analysisWindowSeconds: 300,
-        windows: preview.plans.map((p) => ({ start: p.start, end: p.end })),
+        windows: preview.plans.map((p, i) => ({ start: p.start, end: p.end, quality: qualities[i] ?? DEFAULT_QUALITY })),
         onProgress: (r, msg) => {
           setStageProgress("cut", r);
           if (msg) setDetail(msg);
@@ -603,7 +602,14 @@ function Clipper() {
                 </div>
                 <div className="grid gap-3 sm:grid-cols-3">
                   {preview.plans.map((p, i) => (
-                    <PreviewCard key={i} plan={p} srcUrl={preview.previewObjectUrl} index={i} />
+                    <PreviewCard
+                      key={i}
+                      plan={p}
+                      srcUrl={preview.previewObjectUrl}
+                      index={i}
+                      quality={qualities[i] ?? DEFAULT_QUALITY}
+                      onQualityChange={(q) => setQualities((prev) => prev.map((x, idx) => (idx === i ? q : x)))}
+                    />
                   ))}
                 </div>
                 <div className="flex flex-wrap justify-end gap-2 pt-1">
