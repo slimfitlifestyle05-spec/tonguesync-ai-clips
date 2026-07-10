@@ -168,7 +168,7 @@ function normalizeWindows(
 }
 
 function pickWindows(duration: number, count: number, maxLenSeconds: number) {
-  const windows: Array<{ start: number; end: number }> = [];
+  const windows: Array<{ start: number; end: number; quality?: ClipQuality }> = [];
   if (duration <= 0) {
     for (let i = 0; i < count; i++) {
       const start = i * maxLenSeconds;
