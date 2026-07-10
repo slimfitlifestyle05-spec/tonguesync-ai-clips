@@ -104,7 +104,9 @@ export async function muxDubbedVideo(
     try { await ff.deleteFile(`s${i}.mp3`); } catch {}
   }
 
-  const blob = new Blob([data], { type: "video/mp4" });
+  const buf = new ArrayBuffer(data.byteLength);
+  new Uint8Array(buf).set(data);
+  const blob = new Blob([buf], { type: "video/mp4" });
   const url = URL.createObjectURL(blob);
   return { url, blob };
 }
