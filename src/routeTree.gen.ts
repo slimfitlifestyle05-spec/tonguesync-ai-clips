@@ -26,6 +26,7 @@ import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as CompareRaskRouteImport } from './routes/compare.rask'
 import { Route as CompareHeygenRouteImport } from './routes/compare.heygen'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
+import { Route as AuthenticatedRepurposeRouteImport } from './routes/_authenticated/repurpose'
 import { Route as AuthenticatedDubbingRouteImport } from './routes/_authenticated/dubbing'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedClipperRouteImport } from './routes/_authenticated/clipper'
@@ -116,6 +117,11 @@ const BlogSlugRoute = BlogSlugRouteImport.update({
   path: '/blog/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRepurposeRoute = AuthenticatedRepurposeRouteImport.update({
+  id: '/repurpose',
+  path: '/repurpose',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDubbingRoute = AuthenticatedDubbingRouteImport.update({
   id: '/dubbing',
   path: '/dubbing',
@@ -158,6 +164,7 @@ export interface FileRoutesByFullPath {
   '/clipper': typeof AuthenticatedClipperRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/dubbing': typeof AuthenticatedDubbingRoute
+  '/repurpose': typeof AuthenticatedRepurposeRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/compare/heygen': typeof CompareHeygenRoute
   '/compare/rask': typeof CompareRaskRoute
@@ -181,6 +188,7 @@ export interface FileRoutesByTo {
   '/clipper': typeof AuthenticatedClipperRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/dubbing': typeof AuthenticatedDubbingRoute
+  '/repurpose': typeof AuthenticatedRepurposeRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/compare/heygen': typeof CompareHeygenRoute
   '/compare/rask': typeof CompareRaskRoute
@@ -206,6 +214,7 @@ export interface FileRoutesById {
   '/_authenticated/clipper': typeof AuthenticatedClipperRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/dubbing': typeof AuthenticatedDubbingRoute
+  '/_authenticated/repurpose': typeof AuthenticatedRepurposeRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/compare/heygen': typeof CompareHeygenRoute
   '/compare/rask': typeof CompareRaskRoute
@@ -231,6 +240,7 @@ export interface FileRouteTypes {
     | '/clipper'
     | '/dashboard'
     | '/dubbing'
+    | '/repurpose'
     | '/blog/$slug'
     | '/compare/heygen'
     | '/compare/rask'
@@ -254,6 +264,7 @@ export interface FileRouteTypes {
     | '/clipper'
     | '/dashboard'
     | '/dubbing'
+    | '/repurpose'
     | '/blog/$slug'
     | '/compare/heygen'
     | '/compare/rask'
@@ -278,6 +289,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clipper'
     | '/_authenticated/dashboard'
     | '/_authenticated/dubbing'
+    | '/_authenticated/repurpose'
     | '/blog/$slug'
     | '/compare/heygen'
     | '/compare/rask'
@@ -429,6 +441,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BlogSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/repurpose': {
+      id: '/_authenticated/repurpose'
+      path: '/repurpose'
+      fullPath: '/repurpose'
+      preLoaderRoute: typeof AuthenticatedRepurposeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dubbing': {
       id: '/_authenticated/dubbing'
       path: '/dubbing'
@@ -471,6 +490,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClipperRoute: typeof AuthenticatedClipperRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDubbingRoute: typeof AuthenticatedDubbingRoute
+  AuthenticatedRepurposeRoute: typeof AuthenticatedRepurposeRoute
   AuthenticatedActionVideoIdRoute: typeof AuthenticatedActionVideoIdRoute
 }
 
@@ -478,6 +498,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedClipperRoute: AuthenticatedClipperRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDubbingRoute: AuthenticatedDubbingRoute,
+  AuthenticatedRepurposeRoute: AuthenticatedRepurposeRoute,
   AuthenticatedActionVideoIdRoute: AuthenticatedActionVideoIdRoute,
 }
 
