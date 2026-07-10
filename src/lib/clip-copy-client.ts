@@ -84,6 +84,7 @@ export async function generateClipPlanFromAudio(
   audioBlob: Blob,
   topic: string,
   count = 3,
+  durationSeconds = 0,
 ): Promise<ClipPlan[]> {
   const base64 = await blobToBase64(audioBlob);
   const { planClips } = await import("./clip-copy.functions");
@@ -93,7 +94,7 @@ export async function generateClipPlanFromAudio(
       mimeType: audioBlob.type || "audio/wav",
       topic,
       count,
-      durationSeconds: 0,
+      durationSeconds,
     },
   });
   if (!plans?.length) throw new Error("The AI couldn't pick clip moments from this video. Try a shorter or clearer video.");
@@ -106,7 +107,10 @@ export async function generateClipCopy(
   variation = 0,
 ): Promise<ClipCopy> {
   const key = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
-  if (!key) throw new Error("VITE_GEMINI_API_KEY not set");
+  if (!key) {
+    const { generateCopy } = await import("./clip-copy.functions");
+    return generateCopy({ data: { topic, clipIndex, variation } });
+  }
   const angleHint = variation > 0
     ? `\n\nIMPORTANT: This is regeneration #${variation}. Produce a COMPLETELY DIFFERENT angle, hook, and word choice than any previous attempt. Do not reuse the same opening pattern. Session nonce: ${Math.random().toString(36).slice(2, 10)}.`
     : "";
