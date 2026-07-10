@@ -157,6 +157,132 @@ async function translateWithGemini(
   return out.trim();
 }
 
+// === AI Studio–tested structured localization ===
+// Ships the user's exact validated prompt: takes an array of transcript
+// segments with timestamps and returns the same segments localized into
+// Egyptian/Gulf casual Arabic (or the requested dialect), preserving IDs
+// and timestamps exactly so the dubbed audio slots into the original video.
+const AI_STUDIO_SYSTEM_PROMPT =
+  "You are an expert AI Video Localization Engineer and Cultural Dubbing Artist. Your job is to analyze an English video transcript and translate/localize it into natural, authentic, and culturally resonant Egyptian/Gulf Arabic.\n\n" +
+  "Strict Engineering Rules:\n" +
+  "1. Maintain exactly the same timestamps mapping from the input. Do not alter, omit, or merge timestamps.\n" +
+  "2. The localized translation must match the pacing of the original text so that the dubbed audio fits perfectly within the timestamp duration.\n" +
+  "3. Translate into \"Modern Egyptian/Gulf Casual Dialect\" (اللهجة العامية المصرية/الخليجية الحية). Avoid formal Modern Standard Arabic (الفصحى) or robotic literal translations. Use cultural idioms and natural phrasing.\n" +
+  "4. Output the result STRICTLY as a valid JSON object matching the requested schema. Do not include markdown formatting (like ```json) in the raw API response text.";
+
+const AI_STUDIO_RESPONSE_SCHEMA = {
+  type: "object",
+  properties: {
+    localized_segments: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "number" },
+          start: { type: "number" },
+          end: { type: "number" },
+          original_text: { type: "string" },
+          localized_text: { type: "string" },
+        },
+        required: ["id", "start", "end", "original_text", "localized_text"],
+      },
+    },
+  },
+  required: ["localized_segments"],
+} as const;
+
+export type LocalizedSegment = {
+  id: number;
+  start: number;
+  end: number;
+  original_text: string;
+  localized_text: string;
+};
+
+async function localizeSegmentsWithGeminiOnce(
+  key: string,
+  segments: Array<{ start: number; end: number; text: string }>,
+  targetLanguage: string,
+  targetCountry: string,
+): Promise<LocalizedSegment[]> {
+  const transcriptPayload = {
+    target_dialect:
+      /^ar/i.test(targetLanguage) && /eg/i.test(targetCountry)
+        ? "Egyptian Arabic"
+        : /^ar/i.test(targetLanguage)
+          ? "Gulf Arabic"
+          : `${targetLanguage} (${targetCountry})`,
+    transcript_segments: segments.map((s, i) => ({
+      id: i + 1,
+      start: Number(s.start.toFixed(2)),
+      end: Number(s.end.toFixed(2)),
+      text: s.text,
+    })),
+  };
+  const userMessage =
+    `Target language: ${targetLanguage}. Target country/dialect: ${targetCountry}.\n\n` +
+    `INPUT_JSON:\n${JSON.stringify(transcriptPayload)}`;
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${encodeURIComponent(key)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: AI_STUDIO_SYSTEM_PROMPT }] },
+        contents: [{ role: "user", parts: [{ text: userMessage }] }],
+        generationConfig: {
+          temperature: 0.4,
+          responseMimeType: "application/json",
+          responseSchema: AI_STUDIO_RESPONSE_SCHEMA,
+        },
+      }),
+    },
+  );
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Gemini localize ${res.status}: ${body.slice(0, 200)}`);
+  }
+  const json: any = await res.json();
+  const raw: string = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  let parsed: any = {};
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    const m = raw.match(/\{[\s\S]*\}/);
+    if (m) parsed = JSON.parse(m[0]);
+  }
+  const out: LocalizedSegment[] = Array.isArray(parsed?.localized_segments)
+    ? parsed.localized_segments
+        .map((s: any, i: number) => ({
+          id: Number(s.id) || i + 1,
+          start: Number(s.start) || 0,
+          end: Number(s.end) || 0,
+          original_text: String(s.original_text || "").trim(),
+          localized_text: String(s.localized_text || "").trim(),
+        }))
+        .filter((s: LocalizedSegment) => s.localized_text)
+    : [];
+  if (!out.length) throw new Error("Gemini returned no localized_segments");
+  return out;
+}
+
+export async function localizeSegmentsWithGemini(
+  apiKeys: ApiKeys,
+  segments: Array<{ start: number; end: number; text: string }>,
+  targetLanguage: string,
+  targetCountry: string,
+): Promise<LocalizedSegment[] | null> {
+  const keys = [apiKeys.gemini, apiKeys.gemini2].filter(Boolean) as string[];
+  for (const key of keys) {
+    try {
+      return await localizeSegmentsWithGeminiOnce(key, segments, targetLanguage, targetCountry);
+    } catch (e: any) {
+      console.warn("[dubbing-pipeline] AI Studio localize key failed:", e?.message ?? e);
+    }
+  }
+  return null;
+}
+
 async function translateWithOpenAI(
   key: string,
   transcript: string,
@@ -547,7 +673,24 @@ export async function runDubbingPipeline(input: {
   // Translation step — try Gemini keys in order, then OpenAI, then Lovable.
   let localizedText = "";
   let llm: "gemini" | "openai" = "gemini";
+  // Preferred path — the AI-Studio-validated structured localizer. Runs when
+  // we have per-segment timestamps AND a Gemini key from Dashboard settings.
+  let studioLocalized: LocalizedSegment[] | null = null;
+  if (asrSegments.length > 0 && (apiKeys.gemini || apiKeys.gemini2)) {
+    studioLocalized = await localizeSegmentsWithGemini(
+      apiKeys,
+      asrSegments.map((s) => ({ start: s.start, end: s.end, text: s.text })),
+      input.targetLanguage,
+      input.targetCountry,
+    );
+    if (studioLocalized && studioLocalized.length) {
+      localizedText = studioLocalized.map((s) => s.localized_text).join(" ");
+      llm = "gemini";
+      console.log(`[dubbing-pipeline] AI-Studio localizer ok segments=${studioLocalized.length}`);
+    }
+  }
   try {
+    if (!localizedText) {
     const geminiResult = await tryGeminiTranslate(
       apiKeys,
       workingTranscript,
@@ -580,6 +723,7 @@ export async function runDubbingPipeline(input: {
         { temperature: 0.3, maxTokens: 2048 },
       );
       llm = "gemini";
+    }
     }
     if (!localizedText.trim() || localizedText === workingTranscript) {
       return {
@@ -620,12 +764,26 @@ export async function runDubbingPipeline(input: {
       if (asrSegments.length > 0) {
         try {
           const out: Array<{ start: number; end: number; text: string; audioDataUrl: string }> = [];
-          // Parallelism cap = 4 to keep Cartesia + Gemini rate-limits happy.
-          const queue = [...asrSegments];
+          // Build the work queue. When the AI-Studio localizer produced
+          // aligned segments, reuse them verbatim (id-preserved timestamps
+          // + localized_text) so per-segment TTS matches the tested output
+          // exactly. Otherwise fall back to translating each ASR sentence.
+          const workItems: Array<{ start: number; end: number; text: string; pretranslated: boolean }> =
+            studioLocalized && studioLocalized.length === asrSegments.length
+              ? studioLocalized.map((s) => ({
+                  start: s.start,
+                  end: s.end,
+                  text: s.localized_text,
+                  pretranslated: true,
+                }))
+              : asrSegments.map((s) => ({ start: s.start, end: s.end, text: s.text, pretranslated: false }));
+          const queue = [...workItems];
           async function worker() {
             while (queue.length) {
               const s = queue.shift()!;
-              const localized = await translateSentence(apiKeys, s.text, input.targetLanguage, input.targetCountry);
+              const localized = s.pretranslated
+                ? s.text
+                : await translateSentence(apiKeys, s.text, input.targetLanguage, input.targetCountry);
               const { audioDataUrl: segAudio } = await synthesizeWithCartesia(
                 apiKeys.cartesia!,
                 localized,
