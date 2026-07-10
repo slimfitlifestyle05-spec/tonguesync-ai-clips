@@ -31,6 +31,7 @@ import { Route as AuthenticatedDubbingRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedClipperRouteImport } from './routes/_authenticated/clipper'
 import { Route as ApiPublicProxyRouteImport } from './routes/api/public/proxy'
+import { Route as AuthenticatedClipperResultsRouteImport } from './routes/_authenticated/clipper.results'
 import { Route as AuthenticatedActionVideoIdRouteImport } from './routes/_authenticated/action.$videoId'
 
 const TsSecretGate2026Route = TsSecretGate2026RouteImport.update({
@@ -142,6 +143,12 @@ const ApiPublicProxyRoute = ApiPublicProxyRouteImport.update({
   path: '/api/public/proxy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedClipperResultsRoute =
+  AuthenticatedClipperResultsRouteImport.update({
+    id: '/results',
+    path: '/results',
+    getParentRoute: () => AuthenticatedClipperRoute,
+  } as any)
 const AuthenticatedActionVideoIdRoute =
   AuthenticatedActionVideoIdRouteImport.update({
     id: '/action/$videoId',
@@ -161,7 +168,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/ts-secret-gate-2026': typeof TsSecretGate2026Route
-  '/clipper': typeof AuthenticatedClipperRoute
+  '/clipper': typeof AuthenticatedClipperRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/dubbing': typeof AuthenticatedDubbingRoute
   '/repurpose': typeof AuthenticatedRepurposeRoute
@@ -171,6 +178,7 @@ export interface FileRoutesByFullPath {
   '/blog/': typeof BlogIndexRoute
   '/compare/': typeof CompareIndexRoute
   '/action/$videoId': typeof AuthenticatedActionVideoIdRoute
+  '/clipper/results': typeof AuthenticatedClipperResultsRoute
   '/api/public/proxy': typeof ApiPublicProxyRoute
 }
 export interface FileRoutesByTo {
@@ -185,7 +193,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/ts-secret-gate-2026': typeof TsSecretGate2026Route
-  '/clipper': typeof AuthenticatedClipperRoute
+  '/clipper': typeof AuthenticatedClipperRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/dubbing': typeof AuthenticatedDubbingRoute
   '/repurpose': typeof AuthenticatedRepurposeRoute
@@ -195,6 +203,7 @@ export interface FileRoutesByTo {
   '/blog': typeof BlogIndexRoute
   '/compare': typeof CompareIndexRoute
   '/action/$videoId': typeof AuthenticatedActionVideoIdRoute
+  '/clipper/results': typeof AuthenticatedClipperResultsRoute
   '/api/public/proxy': typeof ApiPublicProxyRoute
 }
 export interface FileRoutesById {
@@ -211,7 +220,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/ts-secret-gate-2026': typeof TsSecretGate2026Route
-  '/_authenticated/clipper': typeof AuthenticatedClipperRoute
+  '/_authenticated/clipper': typeof AuthenticatedClipperRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/dubbing': typeof AuthenticatedDubbingRoute
   '/_authenticated/repurpose': typeof AuthenticatedRepurposeRoute
@@ -221,6 +230,7 @@ export interface FileRoutesById {
   '/blog/': typeof BlogIndexRoute
   '/compare/': typeof CompareIndexRoute
   '/_authenticated/action/$videoId': typeof AuthenticatedActionVideoIdRoute
+  '/_authenticated/clipper/results': typeof AuthenticatedClipperResultsRoute
   '/api/public/proxy': typeof ApiPublicProxyRoute
 }
 export interface FileRouteTypes {
@@ -247,6 +257,7 @@ export interface FileRouteTypes {
     | '/blog/'
     | '/compare/'
     | '/action/$videoId'
+    | '/clipper/results'
     | '/api/public/proxy'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -271,6 +282,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/compare'
     | '/action/$videoId'
+    | '/clipper/results'
     | '/api/public/proxy'
   id:
     | '__root__'
@@ -296,6 +308,7 @@ export interface FileRouteTypes {
     | '/blog/'
     | '/compare/'
     | '/_authenticated/action/$videoId'
+    | '/_authenticated/clipper/results'
     | '/api/public/proxy'
   fileRoutesById: FileRoutesById
 }
@@ -476,6 +489,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicProxyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/clipper/results': {
+      id: '/_authenticated/clipper/results'
+      path: '/results'
+      fullPath: '/clipper/results'
+      preLoaderRoute: typeof AuthenticatedClipperResultsRouteImport
+      parentRoute: typeof AuthenticatedClipperRoute
+    }
     '/_authenticated/action/$videoId': {
       id: '/_authenticated/action/$videoId'
       path: '/action/$videoId'
@@ -486,8 +506,19 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedClipperRouteChildren {
+  AuthenticatedClipperResultsRoute: typeof AuthenticatedClipperResultsRoute
+}
+
+const AuthenticatedClipperRouteChildren: AuthenticatedClipperRouteChildren = {
+  AuthenticatedClipperResultsRoute: AuthenticatedClipperResultsRoute,
+}
+
+const AuthenticatedClipperRouteWithChildren =
+  AuthenticatedClipperRoute._addFileChildren(AuthenticatedClipperRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedClipperRoute: typeof AuthenticatedClipperRoute
+  AuthenticatedClipperRoute: typeof AuthenticatedClipperRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDubbingRoute: typeof AuthenticatedDubbingRoute
   AuthenticatedRepurposeRoute: typeof AuthenticatedRepurposeRoute
@@ -495,7 +526,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedClipperRoute: AuthenticatedClipperRoute,
+  AuthenticatedClipperRoute: AuthenticatedClipperRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDubbingRoute: AuthenticatedDubbingRoute,
   AuthenticatedRepurposeRoute: AuthenticatedRepurposeRoute,

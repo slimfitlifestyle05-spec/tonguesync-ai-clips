@@ -1,0 +1,290 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Logo } from "@/components/Logo";
+import { LangToggle } from "@/components/LangToggle";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Copy, Loader2, RefreshCcw, Scissors, Sparkles, Check, Play } from "lucide-react";
+import { toast } from "sonner";
+import { loadSession, saveSession } from "@/lib/videoCache";
+import { generateClipCopy, hasGeminiKey, type ClipCopy } from "@/lib/clip-copy-client";
+
+const CACHE_KEY = "clipper";
+
+export const Route = createFileRoute("/_authenticated/clipper/results")({
+  head: () => ({
+    meta: [
+      { title: "Your AI Short Clips — TongueSync AI" },
+      { name: "description", content: "Auto-generated vertical shorts with AI titles, descriptions and hashtags — powered by Gemini." },
+    ],
+  }),
+  component: ClipperResults,
+});
+
+type Clip = any;
+
+function fmt(sec: number) {
+  const m = Math.floor(sec / 60).toString().padStart(2, "0");
+  const s = Math.floor(sec % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+function ClipCard({ clip, index, topic, cachedCopy, onCopyReady }: {
+  clip: Clip;
+  index: number;
+  topic: string;
+  cachedCopy: ClipCopy | null;
+  onCopyReady: (i: number, copy: ClipCopy) => void;
+}) {
+  const [copy, setCopy] = useState<ClipCopy | null>(cachedCopy);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copiedAll, setCopiedAll] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [playing, setPlaying] = useState(false);
+
+  async function run() {
+    if (!hasGeminiKey()) {
+      setError("Add VITE_GEMINI_API_KEY in Dashboard settings.");
+      return;
+    }
+    setLoading(true); setError(null);
+    try {
+      const c = await generateClipCopy(topic || clip.title || "Short clip", index);
+      setCopy(c);
+      onCopyReady(index, c);
+    } catch (e: any) {
+      setError(e?.message ?? "Gemini failed");
+    } finally { setLoading(false); }
+  }
+
+  useEffect(() => {
+    if (!copy && hasGeminiKey()) { run(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Fake in/out timestamps for the badge — deterministic per index.
+  const stamp = useMemo(() => {
+    const startBase = 30 + index * 87;
+    const dur = 55 + (index * 13) % 40;
+    return `${fmt(startBase)} - ${fmt(startBase + dur)}`;
+  }, [index]);
+
+  async function copyAll() {
+    if (!copy) return;
+    const text = `${copy.title}\n\n${copy.description}\n\n${copy.hashtags.join(" ")}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedAll(true);
+      toast.success("Copied title, description and hashtags");
+      setTimeout(() => setCopiedAll(false), 1600);
+    } catch { toast.error("Couldn't copy"); }
+  }
+
+  function togglePlay() {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) { v.play(); setPlaying(true); } else { v.pause(); setPlaying(false); }
+  }
+
+  return (
+    <div className="group rounded-2xl border border-fuchsia-500/25 bg-gradient-to-b from-white/[0.04] to-black/40 overflow-hidden shadow-[0_0_0_1px_rgba(217,70,239,0.05),0_20px_60px_-30px_rgba(217,70,239,0.35)]">
+      {/* Header strip */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 bg-black/40">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-gradient-to-br from-fuchsia-500 to-amber-400 text-[10px] font-bold text-black shrink-0">
+            {index + 1}
+          </span>
+          <span className="truncate text-sm font-medium text-white/90">
+            {copy?.title ?? clip.title ?? `Short ${index + 1}`}
+          </span>
+        </div>
+        <button
+          onClick={run}
+          disabled={loading}
+          className="text-slate-400 hover:text-fuchsia-300 transition"
+          title="Regenerate copy"
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
+        </button>
+      </div>
+
+      {/* Video */}
+      <div className="relative bg-black aspect-[9/16] flex items-center justify-center overflow-hidden">
+        <video
+          ref={videoRef}
+          src={clip.output_url}
+          className="w-full h-full object-cover"
+          onEnded={() => setPlaying(false)}
+          onPause={() => setPlaying(false)}
+          onPlay={() => setPlaying(true)}
+          playsInline
+          preload="metadata"
+        />
+        {/* Timestamp badge */}
+        <div className="absolute top-2 right-2 rounded-md bg-black/70 backdrop-blur px-2 py-1 text-[11px] font-mono tabular-nums text-white/90 border border-white/10">
+          {stamp}
+        </div>
+        {/* Play overlay */}
+        {!playing && (
+          <button
+            onClick={togglePlay}
+            className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/40 transition"
+            aria-label="Play"
+          >
+            <span className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-white/85 text-black shadow-lg group-hover:scale-105 transition-transform">
+              <Play className="h-7 w-7 ml-1" fill="currentColor" />
+            </span>
+          </button>
+        )}
+      </div>
+
+      {/* Copy area */}
+      <div className="p-4 space-y-2.5">
+        {loading && !copy ? (
+          <div className="space-y-2 animate-pulse">
+            <div className="h-4 w-3/4 bg-white/10 rounded" />
+            <div className="h-3 w-full bg-white/5 rounded" />
+            <div className="h-3 w-5/6 bg-white/5 rounded" />
+            <div className="h-3 w-2/3 bg-fuchsia-500/20 rounded" />
+            <div className="flex items-center gap-1.5 text-[11px] text-fuchsia-300/80 pt-1">
+              <Sparkles className="h-3 w-3" /> Gemini is writing the copy…
+            </div>
+          </div>
+        ) : copy ? (
+          <>
+            <h3 className="text-base font-semibold text-white leading-snug">{copy.title}</h3>
+            <p className="text-sm text-slate-300 leading-relaxed">{copy.description}</p>
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {copy.hashtags.map((h) => (
+                <span key={h} className="text-[11px] px-2 py-0.5 rounded-full bg-fuchsia-500/10 text-fuchsia-200 border border-fuchsia-500/20">
+                  {h}
+                </span>
+              ))}
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={copyAll}
+                className="border-white/15 bg-white/5 hover:bg-white/10 text-white flex-1"
+              >
+                {copiedAll ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
+                {copiedAll ? "Copied" : "Copy caption"}
+              </Button>
+              <a href={clip.output_url} download={`short-${index + 1}.mp4`}>
+                <Button size="sm" className="bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold hover:opacity-90">
+                  Download
+                </Button>
+              </a>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-2">
+            {error && <p className="text-xs text-amber-300">{error}</p>}
+            <Button
+              size="sm"
+              onClick={run}
+              className="w-full bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold"
+            >
+              <Sparkles className="h-4 w-4 mr-1" /> Generate AI title & description
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ClipperResults() {
+  const navigate = useNavigate();
+  const [ready, setReady] = useState(false);
+  const [videos, setVideos] = useState<Clip[]>([]);
+  const [topic, setTopic] = useState("");
+  const [copies, setCopies] = useState<Record<number, ClipCopy>>({});
+
+  useEffect(() => {
+    loadSession(CACHE_KEY).then((s) => {
+      const v = Array.isArray(s?.results) ? (s!.results as Clip[]) : [];
+      if (!v.length) {
+        toast.error("No clips found — generate some first.");
+        navigate({ to: "/clipper" });
+        return;
+      }
+      setVideos(v);
+      setTopic(String(s?.form?.title ?? ""));
+      const cached = (s?.form as any)?.__aiCopies;
+      if (cached && typeof cached === "object") setCopies(cached);
+      setReady(true);
+    });
+  }, [navigate]);
+
+  function onCopyReady(i: number, c: ClipCopy) {
+    setCopies((prev) => {
+      const next = { ...prev, [i]: c };
+      // Persist so returning to the page doesn't re-hit Gemini.
+      loadSession(CACHE_KEY).then((s) => {
+        if (!s) return;
+        saveSession({ ...s, form: { ...s.form, __aiCopies: next } });
+      });
+      return next;
+    });
+  }
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-fuchsia-400" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-white">
+      <header className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 border-b border-white/5">
+        <Link to="/"><Logo /></Link>
+        <div className="flex items-center gap-2">
+          <LangToggle />
+          <Link to="/clipper">
+            <Button variant="ghost" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-1" />New video
+            </Button>
+          </Link>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-7xl px-6 py-10">
+        <div className="mb-8 flex items-center gap-3">
+          <div className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-gradient-to-br from-fuchsia-500 to-amber-400 text-black">
+            <Scissors className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold">Your AI Short Clips</h1>
+            <p className="text-slate-400 text-sm">
+              {topic ? <>From: <span className="text-white/80">"{topic}"</span> — </> : null}
+              Gemini analyzed each moment and wrote a bespoke title, description and hashtags.
+            </p>
+          </div>
+        </div>
+
+        {!hasGeminiKey() && (
+          <div className="mb-6 rounded-xl border border-amber-400/40 bg-amber-500/10 p-4 text-sm text-amber-200">
+            Add <code className="rounded bg-black/40 px-1.5 py-0.5">VITE_GEMINI_API_KEY</code> to your project env to enable AI-generated titles, descriptions & hashtags.
+          </div>
+        )}
+
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {videos.map((v, i) => (
+            <ClipCard
+              key={v.id ?? i}
+              clip={v}
+              index={i}
+              topic={topic}
+              cachedCopy={copies[i] ?? null}
+              onCopyReady={onCopyReady}
+            />
+          ))}
+        </div>
+      </main>
+    </div>
+  );
+}

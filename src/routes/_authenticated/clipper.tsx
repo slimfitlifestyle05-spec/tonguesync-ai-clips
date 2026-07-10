@@ -35,6 +35,7 @@ export const Route = createFileRoute("/_authenticated/clipper")({
 
 function Clipper() {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const getProfile = useServerFn(getMyProfile);
   const create = useServerFn(createClips);
   const qc = useQueryClient();
@@ -110,9 +111,18 @@ function Clipper() {
         setUpgradeOpen(true);
         return;
       }
-      setResults((res as any).videos);
+      const vids = (res as any).videos;
+      setResults(vids);
       qc.invalidateQueries();
+      // Persist immediately so the results page can read the fresh clips.
+      await saveSession({
+        key: CACHE_KEY,
+        updatedAt: Date.now(),
+        form: { title, source, style, language, autoEmojis, highlight },
+        results: vids,
+      });
       toast.success("Generated 3 shorts!");
+      navigate({ to: "/clipper/results" });
     } catch (err: any) {
       toast.error(err?.message ?? "Failed");
     } finally {
