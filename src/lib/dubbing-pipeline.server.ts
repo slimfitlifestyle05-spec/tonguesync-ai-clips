@@ -673,7 +673,24 @@ export async function runDubbingPipeline(input: {
   // Translation step — try Gemini keys in order, then OpenAI, then Lovable.
   let localizedText = "";
   let llm: "gemini" | "openai" = "gemini";
+  // Preferred path — the AI-Studio-validated structured localizer. Runs when
+  // we have per-segment timestamps AND a Gemini key from Dashboard settings.
+  let studioLocalized: LocalizedSegment[] | null = null;
+  if (asrSegments.length > 0 && (apiKeys.gemini || apiKeys.gemini2)) {
+    studioLocalized = await localizeSegmentsWithGemini(
+      apiKeys,
+      asrSegments.map((s) => ({ start: s.start, end: s.end, text: s.text })),
+      input.targetLanguage,
+      input.targetCountry,
+    );
+    if (studioLocalized && studioLocalized.length) {
+      localizedText = studioLocalized.map((s) => s.localized_text).join(" ");
+      llm = "gemini";
+      console.log(`[dubbing-pipeline] AI-Studio localizer ok segments=${studioLocalized.length}`);
+    }
+  }
   try {
+    if (!localizedText) {
     const geminiResult = await tryGeminiTranslate(
       apiKeys,
       workingTranscript,
@@ -706,6 +723,7 @@ export async function runDubbingPipeline(input: {
         { temperature: 0.3, maxTokens: 2048 },
       );
       llm = "gemini";
+    }
     }
     if (!localizedText.trim() || localizedText === workingTranscript) {
       return {
@@ -746,12 +764,26 @@ export async function runDubbingPipeline(input: {
       if (asrSegments.length > 0) {
         try {
           const out: Array<{ start: number; end: number; text: string; audioDataUrl: string }> = [];
-          // Parallelism cap = 4 to keep Cartesia + Gemini rate-limits happy.
-          const queue = [...asrSegments];
+          // Build the work queue. When the AI-Studio localizer produced
+          // aligned segments, reuse them verbatim (id-preserved timestamps
+          // + localized_text) so per-segment TTS matches the tested output
+          // exactly. Otherwise fall back to translating each ASR sentence.
+          const workItems: Array<{ start: number; end: number; text: string; pretranslated: boolean }> =
+            studioLocalized && studioLocalized.length === asrSegments.length
+              ? studioLocalized.map((s) => ({
+                  start: s.start,
+                  end: s.end,
+                  text: s.localized_text,
+                  pretranslated: true,
+                }))
+              : asrSegments.map((s) => ({ start: s.start, end: s.end, text: s.text, pretranslated: false }));
+          const queue = [...workItems];
           async function worker() {
             while (queue.length) {
               const s = queue.shift()!;
-              const localized = await translateSentence(apiKeys, s.text, input.targetLanguage, input.targetCountry);
+              const localized = s.pretranslated
+                ? s.text
+                : await translateSentence(apiKeys, s.text, input.targetLanguage, input.targetCountry);
               const { audioDataUrl: segAudio } = await synthesizeWithCartesia(
                 apiKeys.cartesia!,
                 localized,
