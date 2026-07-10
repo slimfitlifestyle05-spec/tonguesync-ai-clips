@@ -241,7 +241,7 @@ function ClipCard({ clip, index, topic, cachedCopy, onCopyReady }: {
             {error && <p className="text-xs text-amber-300">{error}</p>}
             <Button
               size="sm"
-              onClick={run}
+              onClick={() => run(false)}
               className="w-full bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold"
             >
               <Sparkles className="h-4 w-4 mr-1" /> Generate AI title & description
