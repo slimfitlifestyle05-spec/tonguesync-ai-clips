@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createDub, getMyProfile, LIMITS } from "@/lib/video.functions";
 import { transcribeUpload } from "@/lib/transcribe.functions";
 import { previewDubbingVoice } from "@/lib/voice-preview.functions";
+import { hasClientDubbingKeys, runClientDubbing } from "@/lib/dubbing-client";
 import { Logo } from "@/components/Logo";
 import { LangToggle } from "@/components/LangToggle";
 import { Button } from "@/components/ui/button";
@@ -227,10 +228,28 @@ function DubbingPage() {
       if (isBatch) setBatchProgress({ done: 0, total: targets.length });
       const results: any[] = [];
       let firstError: string | null = null;
+      const clientDubEnabled = hasClientDubbingKeys() && providedSegments.length > 0;
       for (let i = 0; i < targets.length; i++) {
         const lang = targets[i];
+        // Client-side path — Gemini + Cartesia straight from the browser.
+        let providedDubbedSegments: Array<{ start: number; end: number; text: string; audioDataUrl: string }> = [];
+        let providedLocalizedText = "";
+        if (clientDubEnabled) {
+          try {
+            const r = await runClientDubbing({
+              segments: providedSegments,
+              targetLanguage: lang,
+              targetCountry,
+              voiceGender,
+            });
+            providedDubbedSegments = r.segments;
+            providedLocalizedText = r.localizedText;
+          } catch (e: any) {
+            toast.warning(`Client dubbing failed (${e?.message ?? "error"}). Falling back to server.`);
+          }
+        }
         const [res] = await Promise.all([
-          dub({ data: { title: isBatch ? `${title} — ${lang.toUpperCase()}` : title, sourceUrl, targetLanguage: lang, targetCountry, style, durationSeconds: duration, providedTranscript, providedSegments, voiceGender, captionStyle, captionEmojis } }),
+          dub({ data: { title: isBatch ? `${title} — ${lang.toUpperCase()}` : title, sourceUrl, targetLanguage: lang, targetCountry, style, durationSeconds: duration, providedTranscript, providedSegments, voiceGender, captionStyle, captionEmojis, providedDubbedSegments, providedLocalizedText } }),
           i === 0 ? new Promise((r) => setTimeout(r, 4200)) : Promise.resolve(),
         ]);
         if ((res as any).error === "limit") { setUpgradeOpen(true); return; }
