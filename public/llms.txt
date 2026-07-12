@@ -1,0 +1,23 @@
+# TongueSync AI
+
+> TongueSync AI turns one video into vertical shorts with animated captions and dubs them into local dialects (Arabic, Spanish, French, Hindi and more) with culturally-aware AI.
+
+TongueSync AI is a web app for creators, agencies, and brand teams who want to reach global audiences without reshooting. The Clipper picks viral moments from long videos and renders vertical shorts with dynamic captions. The Dubbing pipeline translates and re-voices those shorts in 40+ regional accents. An AI Coach helps script and improve short-form ideas.
+
+## Pages
+
+- [Home](/): Product overview, how it works, pricing, and FAQ.
+- [Pricing](/pricing): Free and Pro plans with credits, video quotas, and premium styles.
+- [Showcase](/showcase): Real dubbed shorts made by creators using TongueSync AI.
+- [Viral Ideas](/community): Trending short-form video ideas with downloadable PDF playbooks.
+- [Blog](/blog): Articles on AI dubbing, voice cloning, lip-sync, and video localization.
+- [Compare](/compare): How TongueSync stacks up against other tools.
+- [TongueSync AI vs HeyGen](/compare/heygen): Cultural dubbing comparison with HeyGen.
+- [TongueSync AI vs Rask AI](/compare/rask): Cultural dubbing and clipping comparison with Rask AI.
+- [About](/about): Who we are and why we build TongueSync AI.
+- [Contact](/contact): Support, partnerships, and press.
+
+## Optional
+
+- [Privacy Policy](/privacy): How we collect, use, and protect data.
+- [Terms of Service](/terms): Terms governing use of TongueSync AI.
