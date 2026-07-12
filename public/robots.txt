@@ -8,4 +8,4 @@ Disallow: /dubbing
 Disallow: /action/
 Disallow: /ts-secret-gate-2026
 
-Sitemap: https://tonguesync-ai-clips.lovable.app/sitemap.xml
+Sitemap: https://tonguesyncai.com/sitemap.xml
