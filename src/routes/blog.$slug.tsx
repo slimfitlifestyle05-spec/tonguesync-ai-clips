@@ -18,6 +18,7 @@ export const Route = createFileRoute("/blog/$slug")({
   head: ({ loaderData }) => {
     const post = loaderData as Awaited<ReturnType<typeof getPostBySlug>> | undefined;
     if (!post) return { meta: [{ title: "Article not found — TongueSync" }] };
+    const url = `https://tonguesyncai.com/blog/${post.slug}`;
     return {
       meta: [
         { title: `${post.title} — TongueSync Blog` },
@@ -25,10 +26,24 @@ export const Route = createFileRoute("/blog/$slug")({
         { property: "og:title", content: post.title },
         { property: "og:description", content: post.excerpt },
         { property: "og:type", content: "article" },
+        { property: "og:url", content: url },
         { property: "article:published_time", content: post.published_at },
         { property: "article:author", content: post.author_name },
         { name: "twitter:card", content: "summary_large_image" },
       ],
+      links: [{ rel: "canonical", href: url }],
+      scripts: [{
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Article",
+          headline: post.title,
+          description: post.excerpt,
+          author: { "@type": "Person", name: post.author_name },
+          datePublished: post.published_at,
+          mainEntityOfPage: url,
+        }),
+      }],
     };
   },
   loader: async ({ context, params }) => {
@@ -91,7 +106,7 @@ function BlogPostPage() {
         </article>
 
         <div className="mt-16 rounded-xl border border-white/10 bg-gradient-to-br from-fuchsia-500/10 to-amber-500/10 p-8 text-center">
-          <h3 className="text-xl font-bold">Try TongueSync AI free</h3>
+          <h2 className="text-xl font-bold">Try TongueSync AI free</h2>
           <p className="mt-2 text-slate-300">Turn one video into vertical shorts dubbed for any market — in minutes.</p>
           <Link to="/auth">
             <Button className="mt-5 bg-gradient-to-r from-fuchsia-500 to-amber-400 text-black font-semibold hover:opacity-90">
