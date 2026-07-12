@@ -12,8 +12,10 @@ export const Route = createFileRoute("/showcase")({
       { property: "og:title", content: "TongueSync AI Showcase" },
       { property: "og:description", content: "Real vertical shorts dubbed into local dialects by creators around the world." },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://tonguesyncai.com/showcase" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: "https://tonguesyncai.com/showcase" }],
   }),
   component: ShowcasePage,
 });
