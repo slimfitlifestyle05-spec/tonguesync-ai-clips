@@ -30,8 +30,10 @@ export const Route = createFileRoute("/pricing")({
       { property: "og:title", content: "TongueSync Pricing — Free vs Pro" },
       { property: "og:description", content: "Upgrade to Pro: 50 AI Coach credits/day, 30 videos/month, all premium styles, and no watermark." },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://tonguesyncai.com/pricing" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
+    links: [{ rel: "canonical", href: "https://tonguesyncai.com/pricing" }],
   }),
   component: PricingPage,
 });
