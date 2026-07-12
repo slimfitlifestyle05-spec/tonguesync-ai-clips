@@ -9,7 +9,9 @@ export const Route = createFileRoute("/privacy")({
       { name: "description", content: "How TongueSync AI collects, uses, and protects your data." },
       { property: "og:title", content: "Privacy Policy — TongueSync AI" },
       { property: "og:description", content: "How TongueSync AI collects, uses, and protects your data." },
+      { property: "og:url", content: "https://tonguesyncai.com/privacy" },
     ],
+    links: [{ rel: "canonical", href: "https://tonguesyncai.com/privacy" }],
   }),
   component: PrivacyPage,
 });
