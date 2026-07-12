@@ -522,10 +522,51 @@ function Clipper() {
           </div>
           <div>
             <Label>{t("source_placeholder")}</Label>
-            <Input value={source} onChange={(e) => setSource(e.target.value)} placeholder="https://youtube.com/..." className="bg-white/5 border-white/10 mt-1" />
-            <p className="mt-1 text-xs text-slate-500">
-              Direct .mp4/.mov/.webm links can be cut here. For YouTube/TikTok/Instagram pages, upload the original file so the clips come from the same video.
-            </p>
+            <Input
+              value={source}
+              onChange={(e) => setSource(e.target.value)}
+              placeholder="https://example.com/video.mp4"
+              className="bg-white/5 border-white/10 mt-1"
+            />
+            {(() => {
+              const s = source.trim();
+              if (!s) {
+                return (
+                  <p className="mt-1 text-xs text-slate-500">
+                    Only direct .mp4 / .mov / .webm file links work here. YouTube, TikTok, Instagram, Facebook and Drive pages aren't raw video files — upload the original video instead.
+                  </p>
+                );
+              }
+              let host = "";
+              try { host = new URL(s).hostname; } catch {}
+              const isPage = /(youtube\.com|youtu\.be|vimeo\.com|tiktok\.com|instagram\.com|facebook\.com|drive\.google\.com)/i.test(host);
+              const isDirect = /\.(mp4|mov|m4v|webm|ogg)(\?|#|$)/i.test(s);
+              if (isPage && !isDirect) {
+                return (
+                  <div className="mt-2 flex items-start gap-2 rounded-md border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                    <span className="mt-0.5">⚠️</span>
+                    <div className="flex-1">
+                      <div className="font-medium">This is a video page link, not the raw video file.</div>
+                      <div className="text-amber-200/80">
+                        We can't cut from {host} pages. Upload the original video so the shorts are sliced from it exactly.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); setSource(""); document.getElementById("clipper-upload")?.click(); }}
+                        className="mt-1.5 inline-flex items-center gap-1 rounded border border-amber-300/40 bg-amber-400/20 px-2 py-1 font-medium text-amber-50 hover:bg-amber-400/30"
+                      >
+                        <Upload className="h-3 w-3" /> Upload the original video
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <p className="mt-1 text-xs text-slate-500">
+                  Direct .mp4 / .mov / .webm links only. For YouTube, TikTok, Instagram or Drive pages, upload the original file.
+                </p>
+              );
+            })()}
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
