@@ -9,7 +9,9 @@ export const Route = createFileRoute("/terms")({
       { name: "description", content: "The terms governing your use of TongueSync AI." },
       { property: "og:title", content: "Terms of Service — TongueSync AI" },
       { property: "og:description", content: "The terms governing your use of TongueSync AI." },
+      { property: "og:url", content: "https://tonguesyncai.com/terms" },
     ],
+    links: [{ rel: "canonical", href: "https://tonguesyncai.com/terms" }],
   }),
   component: TermsPage,
 });

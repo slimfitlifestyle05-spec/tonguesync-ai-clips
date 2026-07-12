@@ -9,7 +9,9 @@ export const Route = createFileRoute("/about")({
       { name: "description", content: "TongueSync AI helps creators speak every culture — turning one video into localized shorts for the world." },
       { property: "og:title", content: "About TongueSync AI" },
       { property: "og:description", content: "Turning one video into localized shorts for every culture." },
+      { property: "og:url", content: "https://tonguesyncai.com/about" },
     ],
+    links: [{ rel: "canonical", href: "https://tonguesyncai.com/about" }],
   }),
   component: AboutPage,
 });
@@ -35,6 +37,7 @@ function AboutPage() {
       </section>
 
       <section className="mx-auto max-w-5xl px-6 pb-24 grid gap-4 md:grid-cols-3">
+        <h2 className="sr-only col-span-full">Our values</h2>
         <ValueCard icon={<Globe2 className="h-5 w-5" />} title="Cultural, not literal" desc="Idioms, slang, humor — translated the way real people speak, not the way a dictionary does." />
         <ValueCard icon={<Sparkles className="h-5 w-5" />} title="Creator-first" desc="Every feature is shipped after real feedback from creators, agencies, and brand teams." />
         <ValueCard icon={<Users className="h-5 w-5" />} title="Global team" desc="Distributed across MENA, Europe, and LATAM — the same regions we help our users reach." />

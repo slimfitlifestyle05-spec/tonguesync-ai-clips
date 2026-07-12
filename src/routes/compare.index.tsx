@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Logo } from "@/components/Logo";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
-const URL = "https://tonguesync-ai-clips.lovable.app/compare";
+const URL = "https://tonguesyncai.com/compare";
 
 export const Route = createFileRoute("/compare/")({
   head: () => ({

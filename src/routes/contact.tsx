@@ -9,7 +9,9 @@ export const Route = createFileRoute("/contact")({
       { name: "description", content: "Get in touch with the TongueSync AI team — support, partnerships, and press." },
       { property: "og:title", content: "Contact TongueSync AI" },
       { property: "og:description", content: "Support, partnerships, and press." },
+      { property: "og:url", content: "https://tonguesyncai.com/contact" },
     ],
+    links: [{ rel: "canonical", href: "https://tonguesyncai.com/contact" }],
   }),
   component: ContactPage,
 });

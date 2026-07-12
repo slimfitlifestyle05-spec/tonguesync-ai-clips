@@ -3,7 +3,7 @@ import { ComparePage } from "@/components/ComparePage";
 
 const TITLE = "TongueSync AI vs Rask AI — Cultural dubbing & viral shorts";
 const DESC = "How TongueSync AI compares to Rask AI for translating videos into 130+ languages, with cultural rewrites and automatic short-form clipping built in.";
-const URL = "https://tonguesync-ai-clips.lovable.app/compare/rask";
+const URL = "https://tonguesyncai.com/compare/rask";
 
 export const Route = createFileRoute("/compare/rask")({
   head: () => ({

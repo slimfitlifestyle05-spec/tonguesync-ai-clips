@@ -3,7 +3,7 @@ import { ComparePage } from "@/components/ComparePage";
 
 const TITLE = "TongueSync AI vs HeyGen — Cultural dubbing for viral shorts";
 const DESC = "How TongueSync AI compares to HeyGen for translating and dubbing short videos into culturally authentic Arabic, Spanish and more.";
-const URL = "https://tonguesync-ai-clips.lovable.app/compare/heygen";
+const URL = "https://tonguesyncai.com/compare/heygen";
 
 export const Route = createFileRoute("/compare/heygen")({
   head: () => ({
