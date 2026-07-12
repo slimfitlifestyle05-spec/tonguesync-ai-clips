@@ -18,6 +18,35 @@ import { getShowcaseVideos } from "@/lib/showcase-videos.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
+  head: () => {
+    const faqs = [
+      { q: "What languages and dialects are supported?", a: "We support 40+ regional accents including Egyptian, Khaleeji, Levantine, North African, English, Spanish, and more." },
+      { q: "Can I cancel my Pro subscription anytime?", a: "Yes, you can cancel, upgrade, or downgrade your plan at any time directly from your billing dashboard." },
+      { q: "What happens if I run out of video minutes?", a: "Pro users can easily top up their account or upgrade tiers to continue generating high-quality clips instantly." },
+    ];
+    return {
+      meta: [
+        { title: "TongueSync AI — Viral shorts & cultural AI dubbing" },
+        { name: "description", content: "Turn any video into vertical shorts with animated captions, then dub them into any local dialect with AI." },
+        { property: "og:title", content: "TongueSync AI — Viral shorts & cultural AI dubbing" },
+        { property: "og:description", content: "Turn any video into vertical shorts with animated captions, then dub them into any local dialect with AI." },
+        { property: "og:url", content: "https://tonguesyncai.com/" },
+      ],
+      links: [{ rel: "canonical", href: "https://tonguesyncai.com/" }],
+      scripts: [{
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: faqs.map((f) => ({
+            "@type": "Question",
+            name: f.q,
+            acceptedAnswer: { "@type": "Answer", text: f.a },
+          })),
+        }),
+      }],
+    };
+  },
   component: Index,
 });
 
@@ -81,6 +110,7 @@ function Index() {
         </nav>
       </header>
 
+      <main>
       <Reveal as="section" className="mx-auto max-w-4xl px-6 pt-16 pb-24 text-center">
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs">
           <Sparkles className="h-3 w-3 text-amber-300" /> {t("hero_badge")}
@@ -169,6 +199,7 @@ function Index() {
       </Reveal>
 
       <Reveal><FAQSection /></Reveal>
+      </main>
 
       <Footer />
       <SocialProofToast />
