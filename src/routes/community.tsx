@@ -54,7 +54,9 @@ export const Route = createFileRoute("/community")({
         property: "og:description",
         content: "Fresh viral short video ideas + PDF playbooks curated by the TongueSync team.",
       },
+      { property: "og:url", content: "https://tonguesyncai.com/community" },
     ],
+    links: [{ rel: "canonical", href: "https://tonguesyncai.com/community" }],
   }),
   component: CommunityPage,
 });
@@ -116,6 +118,9 @@ function CommunityPage() {
       </header>
 
       <section className="mx-auto max-w-6xl px-6 pt-4 pb-10">
+        <h1 className="mb-6 text-3xl md:text-5xl font-bold tracking-tight bg-gradient-to-r from-fuchsia-300 via-white to-amber-200 bg-clip-text text-transparent">
+          Viral Video Ideas &amp; PDF Playbooks
+        </h1>
         {channelUrl ? (
           <a
             href={channelUrl}
