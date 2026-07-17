@@ -98,8 +98,8 @@ function normalizeLanguage(input: string): string {
 export type VoiceGender = "female" | "male";
 
 const FEMALE_VOICES: Record<string, string> = {
-  ar: "a67e0421-22e0-4d5b-b586-bd4a64aee41d", // Arabic-friendly narrator
-  en: "79a125e8-cd45-4c13-8a67-188112f4dd22", // British Reading Lady
+  ar: "8985388c-1332-4ce7-8d55-789bed6df7b3", // Middle Eastern Woman — warm, expressive
+  en: "bf0a246a-8642-498a-9950-80c35e9276b5", // Sophie — natural conversational female
   es: "846d6cb0-2301-48b6-9683-48f5618ea2f6", // Spanish-speaking Lady
   fr: "a249eaff-1e96-4d2c-b23b-12efa4f66f41", // French Conversational Lady
   de: "b9de4a89-2257-424b-94c2-db18ba68c81a", // German conversational
@@ -113,14 +113,14 @@ const FEMALE_VOICES: Record<string, string> = {
 };
 
 const MALE_VOICES: Record<string, string> = {
-  ar: "a67e0421-22e0-4d5b-b586-bd4a64aee41d", // Warm Arabic male-leaning narrator
-  en: "a0e99841-438c-4a64-b679-ae501e7d6091", // Barbershop Man
+  ar: "5abd2130-146a-41b1-bcdb-974ea8e19f56", // Casual Arabic Man — distinctly male, natural
+  en: "421b3369-f63f-4b03-8980-37a44df1d4e8", // Friendly Man — warm conversational male
   es: "15a9cd88-84b0-4a8b-95f2-5d583b54c72e", // Spanish Reporter Man
   fr: "a8a1eb38-5f15-4c1d-8722-7ac0f329727d", // Calm French Man
   de: "384b625b-da5d-49e8-a76d-a2855d4f31eb", // German Reporter Man
   pt: "6a16c1f4-462b-44de-998d-ccdaa4125a0a", // Brazilian Portuguese Man
   it: "408daed0-c597-4c27-aae8-fa0497d644bf", // Italian Foreground
-  tr: "bf991597-6c13-47e4-8411-91ec2de5c466", // Turkish narrator
+  tr: "d9b5e5d3-f6c8-4c9f-8f8a-0a4b0e6f1e1d", // Turkish male narrator
   hi: "3f4ade23-6eb4-4279-ab05-6a144947c4d5", // Hindi male reporter
   ja: "2b568345-1d48-4047-b25f-7baccf842eb0", // Japanese narrator
   zh: "e90c6678-f0d3-4767-9883-5d0ecf5894a8", // Mandarin narrator
