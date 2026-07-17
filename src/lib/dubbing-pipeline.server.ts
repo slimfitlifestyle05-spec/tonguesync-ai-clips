@@ -120,7 +120,7 @@ const MALE_VOICES: Record<string, string> = {
   de: "384b625b-da5d-49e8-a76d-a2855d4f31eb", // German Reporter Man
   pt: "6a16c1f4-462b-44de-998d-ccdaa4125a0a", // Brazilian Portuguese Man
   it: "408daed0-c597-4c27-aae8-fa0497d644bf", // Italian Foreground
-  tr: "d9b5e5d3-f6c8-4c9f-8f8a-0a4b0e6f1e1d", // Turkish male narrator
+  tr: "bf991597-6c13-47e4-8411-91ec2de5c466", // Turkish narrator
   hi: "3f4ade23-6eb4-4279-ab05-6a144947c4d5", // Hindi male reporter
   ja: "2b568345-1d48-4047-b25f-7baccf842eb0", // Japanese narrator
   zh: "e90c6678-f0d3-4767-9883-5d0ecf5894a8", // Mandarin narrator
