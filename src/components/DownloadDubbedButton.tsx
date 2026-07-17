@@ -449,19 +449,8 @@ export function DownloadDubbedButton({
 
   return (
     <div className="space-y-2">
-      {renderedUrl ? (
-        <div className="rounded-lg border border-emerald-400/30 bg-black overflow-hidden">
-          <video
-            src={renderedUrl}
-            controls
-            playsInline
-            className="w-full aspect-[9/16] object-cover bg-black"
-          />
-          <div className="p-2 text-[10px] text-emerald-300 text-center">
-            Rendered in your browser · original audio muted, replaced with dubbed track
-          </div>
-        </div>
-      ) : null}
+      {/* The main player above already swaps to the rendered dubbed video
+          via onRendered — avoid showing a second copy here. */}
       <div className="flex items-center gap-2">
         <button
           type="button"
