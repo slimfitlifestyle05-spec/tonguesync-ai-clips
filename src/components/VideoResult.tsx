@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
 import { MagicPreviewModal } from "@/components/MagicPreviewModal";
 import { DownloadDubbedButton } from "@/components/DownloadDubbedButton";
+import { generateClipCopy, type ClipCopy } from "@/lib/clip-copy-client";
 
 const KIT_STAGES = [
   { label: "Reading transcript…", boundary: 30 },
@@ -12,21 +13,39 @@ const KIT_STAGES = [
   { label: "Writing viral copy…", boundary: 100 },
 ];
 
-function SocialKitPanel({ kit, isPro }: { kit: any; isPro: boolean }) {
+function extractTranscript(v: any): string {
+  const kit = v?.social_kit || {};
+  const segs: any[] = Array.isArray(kit.dubbed_segments) ? kit.dubbed_segments : [];
+  const fromSegs = segs
+    .map((s) => String(s?.original_text || s?.localized_text || s?.text || "").trim())
+    .filter(Boolean)
+    .join(" ");
+  if (fromSegs.length > 40) return fromSegs;
+  const flat = String(kit.localized_text || kit.transcript || "").trim();
+  if (flat.length > 40) return flat;
+  return String(v?.title || "").trim();
+}
+
+function SocialKitPanel({ video, kit, isPro }: { video: any; kit: any; isPro: boolean }) {
   const { t } = useI18n();
-  const [state, setState] = useState<"idle" | "loading" | "ready">("ready" in (kit || {}) ? "idle" : "idle");
+  const hasExisting = !!(kit?.title && kit?.description);
+  const [state, setState] = useState<"idle" | "loading" | "ready">(hasExisting ? "ready" : "idle");
   const [pct, setPct] = useState(0);
   const [stageIdx, setStageIdx] = useState(0);
+  const [copy, setCopy] = useState<ClipCopy | null>(
+    hasExisting ? { title: kit.title, description: kit.description, hashtags: kit.hashtags || [] } : null,
+  );
+  const [variation, setVariation] = useState(0);
   const announced = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     if (state !== "loading") return;
+    let cancelled = false;
     const start = performance.now();
-    const duration = 2600;
     const cap = 97;
     const id = setInterval(() => {
       const elapsed = performance.now() - start;
-      const p = Math.min(cap, (elapsed / duration) * cap);
+      const p = Math.min(cap, (elapsed / 4000) * cap);
       setPct(p);
       let idx = 0;
       for (let i = 0; i < KIT_STAGES.length; i++) {
@@ -38,14 +57,29 @@ function SocialKitPanel({ kit, isPro }: { kit: any; isPro: boolean }) {
         announced.current.add(idx);
         toast(KIT_STAGES[idx].label, { icon: <Sparkles className="h-4 w-4 text-fuchsia-400" /> });
       }
-      if (elapsed >= duration) {
-        clearInterval(id);
+    }, 80);
+
+    (async () => {
+      try {
+        const transcript = extractTranscript(video);
+        if (!transcript) throw new Error("No transcript found on this video yet. Run dubbing first.");
+        const out = await generateClipCopy(transcript, 0, variation);
+        if (cancelled) return;
+        setCopy(out);
         setPct(100);
         setState("ready");
         toast.success("AI Social Kit ready");
+      } catch (e: any) {
+        if (cancelled) return;
+        setState("idle");
+        setPct(0);
+        toast.error(e?.message || "Failed to generate copy");
+      } finally {
+        clearInterval(id);
       }
-    }, 80);
-    return () => clearInterval(id);
+    })();
+
+    return () => { cancelled = true; clearInterval(id); };
   }, [state]);
 
   function start() {
@@ -53,6 +87,7 @@ function SocialKitPanel({ kit, isPro }: { kit: any; isPro: boolean }) {
     announced.current = new Set();
     setPct(0);
     setStageIdx(0);
+    setVariation((n) => n + 1);
     setState("loading");
   }
 
@@ -97,9 +132,18 @@ function SocialKitPanel({ kit, isPro }: { kit: any; isPro: boolean }) {
           <div className="flex items-center gap-1 text-emerald-300 text-[10px] uppercase tracking-wide">
             <Check className="h-3 w-3" /> AI generated
           </div>
-          <div className="text-white/90 font-medium">{kit?.title}</div>
-          <div className="text-slate-400">{kit?.description}</div>
-          <div className="text-fuchsia-300">{(kit?.hashtags || []).join(" ")}</div>
+          <div className="text-white/90 font-medium">{copy?.title || kit?.title}</div>
+          <div className="text-slate-400">{copy?.description || kit?.description}</div>
+          <div className="text-fuchsia-300">{(copy?.hashtags || kit?.hashtags || []).join(" ")}</div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={start}
+            className="mt-2 h-7 border-white/15 bg-white/5 hover:bg-white/10 text-[11px]"
+          >
+            <Wand2 className="h-3 w-3 mr-1" /> Regenerate
+          </Button>
         </div>
       )}
     </div>
@@ -184,7 +228,7 @@ function VideoCard({ video: v, isPro, onOpenMagic }: { video: any; isPro: boolea
             </Button>
           </a>
         </div>
-        <SocialKitPanel kit={v.social_kit} isPro={isPro} />
+        <SocialKitPanel video={v} kit={v.social_kit} isPro={isPro} />
         {hasDub ? (
           <DownloadDubbedButton
             videoUrl={v.source_url || v.output_url}
